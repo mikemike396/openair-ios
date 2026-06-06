@@ -94,7 +94,7 @@ struct ComfortPreferences: Codable, Sendable, Equatable {
     var idealMinimumFahrenheit = 55.0
     var idealMaximumFahrenheit = 75.0
     var maximumDewPointFahrenheit = 60.0
-    var maximumRainChance = 0.20
+    var maximumRainChance = 0.50
     var maximumWindMPH = 15.0
     var alertsEnabled = true
     var temperatureUnit: TemperatureUnit = .fahrenheit

@@ -54,6 +54,26 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(restored.preferences.maximumWindMPH, 12)
     }
 
+    func testOldDefaultRainThresholdMigratesToFiftyPercent() throws {
+        var oldPreferences = ComfortPreferences.default
+        oldPreferences.maximumRainChance = 0.20
+        defaults.set(try JSONEncoder().encode(oldPreferences), forKey: "comfortPreferences")
+
+        let store = makeStore()
+
+        XCTAssertEqual(store.preferences.maximumRainChance, 0.50)
+    }
+
+    func testCustomizedRainThresholdIsNotMigrated() throws {
+        var customizedPreferences = ComfortPreferences.default
+        customizedPreferences.maximumRainChance = 0.35
+        defaults.set(try JSONEncoder().encode(customizedPreferences), forKey: "comfortPreferences")
+
+        let store = makeStore()
+
+        XCTAssertEqual(store.preferences.maximumRainChance, 0.35)
+    }
+
     private func makeStore(
         location: any LocationProviding = LocationStub(result: .success(.init(latitude: 0, longitude: 0)))
     ) -> AppStore {

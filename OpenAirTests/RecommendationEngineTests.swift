@@ -15,9 +15,13 @@ final class RecommendationEngineTests: XCTestCase {
     }
 
     func testRainThresholdClosesWindows() {
-        let result = engine.evaluate(weather(rain: 0.20), preferences: preferences)
+        let result = engine.evaluate(weather(rain: 0.50), preferences: preferences)
         XCTAssertEqual(result.status, .keepClosed)
         XCTAssertTrue(result.reasons.contains(.rainRisk))
+    }
+
+    func testRainProbabilityBelowThresholdAllowsOpen() {
+        XCTAssertEqual(engine.evaluate(weather(rain: 0.499), preferences: preferences).status, .open)
     }
 
     func testEachHardCloseConditionWins() {
@@ -32,7 +36,7 @@ final class RecommendationEngineTests: XCTestCase {
     func testAnyComfortThresholdMissClosesWindows() {
         XCTAssertEqual(engine.evaluate(weather(temp: 80), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(dewPoint: 64), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(rain: 0.20), preferences: preferences).status, .keepClosed)
+        XCTAssertEqual(engine.evaluate(weather(rain: 0.50), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(wind: 16), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(temp: 80, dewPoint: 64, wind: 20), preferences: preferences).status, .keepClosed)
     }
