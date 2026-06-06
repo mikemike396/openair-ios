@@ -21,7 +21,7 @@ struct DashboardView: View {
             SettingsView()
                 .environment(store)
         }
-        .refreshable { await store.refresh() }
+        .refreshable { await store.refreshPreservingLoadedState() }
     }
 
     @ViewBuilder
@@ -69,9 +69,15 @@ struct DashboardView: View {
             Label(snapshot.locationName, systemImage: "location")
                 .font(.headline)
             Spacer()
-            Text("Updated \(snapshot.fetchedAt, style: .relative) ago")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                if store.isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Text("Updated: \(snapshot.fetchedAt, style: .relative) ago")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 

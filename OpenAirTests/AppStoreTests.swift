@@ -172,6 +172,153 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(fetchCount, 2)
     }
 
+    func testCachedWeatherIsLoadedImmediatelyAfterInitialization() {
+        let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
+        WeatherCache(url: cacheURL).save(cached)
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+
+        let store = makeStore()
+
+        guard case .loaded(let snapshot, _, let isOffline) = store.loadState else {
+            return XCTFail("Expected cached dashboard state")
+        }
+        XCTAssertEqual(snapshot, cached)
+        XCTAssertFalse(isOffline)
+    }
+
+    func testStartRefreshesFreshCachedWeather() async {
+        let cached = Self.snapshot(fetchedAt: Date())
+        let refreshed = Self.snapshot(fetchedAt: Date().addingTimeInterval(60))
+        WeatherCache(url: cacheURL).save(cached)
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+        let weather = WeatherSpy(snapshots: [refreshed])
+        let store = makeStore(weather: weather)
+
+        await store.start()
+
+        let fetchCount = await weather.fetchCount
+        XCTAssertEqual(fetchCount, 1)
+        guard case .loaded(let snapshot, _, let isOffline) = store.loadState else {
+            return XCTFail("Expected refreshed dashboard state")
+        }
+        XCTAssertEqual(snapshot.fetchedAt, refreshed.fetchedAt)
+        XCTAssertFalse(isOffline)
+    }
+
+    func testStartKeepsCachedWeatherVisibleWhileRefreshIsPending() async {
+        let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
+        WeatherCache(url: cacheURL).save(cached)
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+        let weather = SuspendedWeatherProvider()
+        let store = makeStore(weather: weather)
+
+        let refreshTask = Task { await store.start() }
+        await weather.waitUntilFetchStarts()
+
+        XCTAssertTrue(store.isRefreshing)
+        guard case .loaded(let snapshot, _, _) = store.loadState else {
+            refreshTask.cancel()
+            return XCTFail("Expected cached dashboard state during refresh")
+        }
+        XCTAssertEqual(snapshot, cached)
+
+        await weather.resume(returning: Self.snapshot(fetchedAt: Date()))
+        await refreshTask.value
+        XCTAssertFalse(store.isRefreshing)
+    }
+
+    func testStartFailurePreservesCachedWeatherAsOffline() async {
+        let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
+        WeatherCache(url: cacheURL).save(cached)
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+        let store = makeStore(weather: FailingWeatherProvider())
+
+        await store.start()
+
+        XCTAssertFalse(store.isRefreshing)
+        guard case .loaded(let snapshot, _, let isOffline) = store.loadState else {
+            return XCTFail("Expected cached dashboard state")
+        }
+        XCTAssertEqual(snapshot, cached)
+        XCTAssertTrue(isOffline)
+    }
+
+    func testPreservingRefreshKeepsLoadedWeatherVisibleWhilePending() async {
+        let current = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
+        let weather = SuspendedWeatherProvider()
+        WeatherCache(url: cacheURL).save(current)
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+        let restoredStore = makeStore(weather: weather)
+
+        let refreshTask = Task { await restoredStore.refreshPreservingLoadedState() }
+        await weather.waitUntilFetchStarts()
+
+        XCTAssertTrue(restoredStore.isRefreshing)
+        guard case .loaded(let snapshot, _, _) = restoredStore.loadState else {
+            refreshTask.cancel()
+            return XCTFail("Expected loaded weather during preserving refresh")
+        }
+        XCTAssertEqual(snapshot, current)
+
+        await weather.resume(returning: Self.snapshot(fetchedAt: Date()))
+        await refreshTask.value
+        XCTAssertFalse(restoredStore.isRefreshing)
+    }
+
+    func testPreservingRefreshFailureKeepsLoadedWeatherOffline() async {
+        let current = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
+        WeatherCache(url: cacheURL).save(current)
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+        let store = makeStore(weather: FailingWeatherProvider())
+
+        await store.refreshPreservingLoadedState()
+
+        guard case .loaded(let snapshot, _, let isOffline) = store.loadState else {
+            return XCTFail("Expected loaded weather after failed preserving refresh")
+        }
+        XCTAssertEqual(snapshot, current)
+        XCTAssertTrue(isOffline)
+    }
+
+    func testStartWithoutCacheShowsLoadingThenFailure() async {
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+        let weather = SuspendedWeatherProvider()
+        let store = makeStore(weather: weather)
+
+        let refreshTask = Task { await store.start() }
+        await weather.waitUntilFetchStarts()
+
+        guard case .loading = store.loadState else {
+            refreshTask.cancel()
+            return XCTFail("Expected loading state without cached weather")
+        }
+
+        await weather.resume(throwing: WeatherProviderError.unavailable)
+        await refreshTask.value
+
+        guard case .failed = store.loadState else {
+            return XCTFail("Expected failure state without cached weather")
+        }
+    }
+
+    func testConcurrentLaunchRefreshesOnlyFetchOnce() async {
+        let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60 * 20))
+        WeatherCache(url: cacheURL).save(cached)
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+        let weather = SuspendedWeatherProvider()
+        let store = makeStore(weather: weather)
+
+        let startTask = Task { await store.start() }
+        await weather.waitUntilFetchStarts()
+        await store.refreshIfNeeded()
+
+        let fetchCount = await weather.fetchCount
+        XCTAssertEqual(fetchCount, 1)
+
+        await weather.resume(returning: Self.snapshot(fetchedAt: Date()))
+        await startTask.value
+    }
+
     private func makeStore(
         weather: any WeatherProviding = PreviewWeatherClient(),
         location: any LocationProviding = LocationStub(result: .success(.init(latitude: 0, longitude: 0)))
@@ -242,6 +389,51 @@ private actor WeatherSpy: WeatherProviding {
             current: snapshot.current,
             hourly: snapshot.hourly
         )
+    }
+}
+
+private enum WeatherProviderError: Error {
+    case unavailable
+}
+
+private struct FailingWeatherProvider: WeatherProviding {
+    func fetchWeather(for coordinate: Coordinate, locationName: String) async throws -> WeatherSnapshot {
+        throw WeatherProviderError.unavailable
+    }
+}
+
+private actor SuspendedWeatherProvider: WeatherProviding {
+    private var continuation: CheckedContinuation<WeatherSnapshot, any Error>?
+    private var fetchStartedContinuation: CheckedContinuation<Void, Never>?
+    private(set) var fetchCount = 0
+
+    func fetchWeather(for coordinate: Coordinate, locationName: String) async throws -> WeatherSnapshot {
+        fetchCount += 1
+        fetchStartedContinuation?.resume()
+        fetchStartedContinuation = nil
+        let snapshot = try await withCheckedThrowingContinuation { continuation = $0 }
+        return WeatherSnapshot(
+            locationName: locationName,
+            coordinate: coordinate,
+            fetchedAt: snapshot.fetchedAt,
+            current: snapshot.current,
+            hourly: snapshot.hourly
+        )
+    }
+
+    func waitUntilFetchStarts() async {
+        guard fetchCount == 0 else { return }
+        await withCheckedContinuation { fetchStartedContinuation = $0 }
+    }
+
+    func resume(returning snapshot: WeatherSnapshot) {
+        continuation?.resume(returning: snapshot)
+        continuation = nil
+    }
+
+    func resume(throwing error: any Error) {
+        continuation?.resume(throwing: error)
+        continuation = nil
     }
 }
 

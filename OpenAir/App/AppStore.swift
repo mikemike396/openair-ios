@@ -25,6 +25,7 @@ final class AppStore {
     private let defaults: UserDefaults
 
     var loadState: DashboardLoadState = .idle
+    private(set) var isRefreshing = false
     var searchResults: [SavedPlace] = []
     var isSearching = false
     var searchError: String?
@@ -65,12 +66,16 @@ final class AppStore {
         savedPlace = Self.decode(SavedPlace.self, key: Keys.place, defaults: defaults)
         preferences = Self.decode(ComfortPreferences.self, key: Keys.preferences, defaults: defaults) ?? .default
         encode(preferences, key: Keys.preferences)
+        if hasCompletedOnboarding, let cached = cache.load() {
+            let plan = evaluator.plan(snapshot: cached, preferences: preferences)
+            loadState = .loaded(snapshot: cached, plan: plan, isOffline: false)
+        }
     }
 
     func start() async {
         notificationStatus = await notifications.authorizationStatus()
         guard hasCompletedOnboarding else { return }
-        await refresh()
+        await refresh(preservingLoadedState: true)
     }
 
     func requestLocationPermission() {
@@ -142,7 +147,27 @@ final class AppStore {
     }
 
     func refresh() async {
-        loadState = .loading
+        await refresh(preservingLoadedState: false)
+    }
+
+    func refreshPreservingLoadedState() async {
+        await refresh(preservingLoadedState: true)
+    }
+
+    private func refresh(preservingLoadedState: Bool) async {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+
+        let existingSnapshot: WeatherSnapshot?
+        if preservingLoadedState,
+           case .loaded(let snapshot, _, _) = loadState {
+            existingSnapshot = snapshot
+        } else {
+            existingSnapshot = nil
+            loadState = .loading
+        }
+
         do {
             let target = try await weatherTarget()
             let snapshot = try await weather.fetchWeather(for: target.coordinate, locationName: target.name)
@@ -156,7 +181,7 @@ final class AppStore {
             )
             scheduleBackgroundRefresh()
         } catch {
-            if let cached = cache.load() {
+            if let cached = existingSnapshot ?? cache.load() {
                 let plan = evaluator.plan(snapshot: cached, preferences: preferences)
                 loadState = .loaded(snapshot: cached, plan: plan, isOffline: true)
             } else {
