@@ -265,8 +265,10 @@
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAir/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = OpenAir;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.weather";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 26.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mikemike396.OpenAir;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -287,8 +289,10 @@
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAir/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = OpenAir;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.weather";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 26.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mikemike396.OpenAir;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

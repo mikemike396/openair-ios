@@ -63,14 +63,8 @@ final class AppStore {
         self.defaults = defaults
         hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarding)
         savedPlace = Self.decode(SavedPlace.self, key: Keys.place, defaults: defaults)
-        var storedPreferences = Self.decode(ComfortPreferences.self, key: Keys.preferences, defaults: defaults) ?? .default
-        if !defaults.bool(forKey: Keys.rainThresholdMigration),
-           storedPreferences.maximumRainChance == 0.20 {
-            storedPreferences.maximumRainChance = 0.50
-        }
-        preferences = storedPreferences
+        preferences = Self.decode(ComfortPreferences.self, key: Keys.preferences, defaults: defaults) ?? .default
         encode(preferences, key: Keys.preferences)
-        defaults.set(true, forKey: Keys.rainThresholdMigration)
     }
 
     func start() async {
@@ -201,6 +195,5 @@ final class AppStore {
         static let onboarding = "hasCompletedOnboarding"
         static let place = "savedPlace"
         static let preferences = "comfortPreferences"
-        static let rainThresholdMigration = "didMigrateDefaultRainThresholdTo50Percent"
     }
 }
