@@ -56,15 +56,15 @@ struct HourDetailView: View {
                         .foregroundStyle(recommendation.status.color)
                     StatusPill(status: recommendation.status)
                     WeatherCard {
-                        LabeledContent("Temperature", value: "\(unit.display(weather.temperatureFahrenheit))\(unit.symbol)")
-                        Divider()
-                        LabeledContent("Dew point", value: "\(unit.display(weather.dewPointFahrenheit))\(unit.symbol)")
-                        Divider()
-                        LabeledContent("Rain chance", value: weather.precipitationChance, format: .percent)
-                        Divider()
-                        LabeledContent("Wind", value: "\(Int(weather.windMPH.rounded())) mph")
-                        Divider()
-                        LabeledContent("Gusts", value: "\(Int((weather.gustMPH ?? 0).rounded())) mph")
+                        VStack(spacing: 12) {
+                            LabeledContent("Temperature", value: "\(unit.display(weather.temperatureFahrenheit))\(unit.symbol)")
+                            LabeledContent("Dew point", value: "\(unit.display(weather.dewPointFahrenheit))\(unit.symbol)")
+                            LabeledContent("Rain chance", value: weather.precipitationChance, format: .percent)
+                            LabeledContent("Wind", value: "\(Int(weather.windMPH.rounded())) mph")
+                            if let gustMPH = weather.gustMPH {
+                                LabeledContent("Gusts", value: "\(Int(gustMPH.rounded())) mph")
+                            }
+                        }
                     }
                     WeatherCard {
                         VStack(alignment: .leading, spacing: 12) {

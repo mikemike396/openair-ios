@@ -352,6 +352,9 @@ private struct HourlyList: View {
                         .padding(.vertical, 10)
                     }
                     .buttonStyle(.plain)
+                    if index < min(plan.hourly.count, 8) - 1 {
+                        Divider()
+                    }
                 }
             }
         }
