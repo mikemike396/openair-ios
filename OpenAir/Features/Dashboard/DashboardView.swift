@@ -165,15 +165,17 @@ private struct TodayPlanCard: View {
     let windows: [RecommendationWindow]
 
     var body: some View {
+        let timeline = timelinePlan
+
         WeatherCard {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Today’s window plan")
                     .font(.title3.bold())
 
                 VStack(alignment: .leading, spacing: 10) {
-                    ForEach(Array(todayWindows.enumerated()), id: \.element.id) { index, window in
+                    ForEach(Array(timeline.windows.enumerated()), id: \.element.id) { index, window in
                         Label {
-                            Text(windowLabel(window, index: index))
+                            Text(windowLabel(window, index: index, now: timeline.start))
                         } icon: {
                             Circle()
                                 .fill(window.status.color)
@@ -183,34 +185,30 @@ private struct TodayPlanCard: View {
                     }
                 }
 
-                DayStatusBar(windows: todayWindows, day: day)
+                DayStatusBar(windows: timeline.windows, start: timeline.start, end: timeline.end)
             }
         }
     }
 
-    private var day: Date {
-        windows.first?.start ?? .now
-    }
-
-    private var todayWindows: [RecommendationWindow] {
+    private var timelinePlan: TimelinePlan {
+        let now = Date()
         let calendar = Calendar.current
-        let dayStart = calendar.startOfDay(for: day)
-        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return [] }
+        let dayStart = calendar.startOfDay(for: now)
+        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else {
+            return TimelinePlan(start: now, end: now, windows: [])
+        }
 
-        var clipped: [RecommendationWindow] = windows.compactMap { window in
-            let start = max(window.start, dayStart)
+        let clipped: [RecommendationWindow] = windows.compactMap { window in
+            let start = max(window.start, now)
             let end = min(window.end, dayEnd)
             guard start < end else { return nil }
             return RecommendationWindow(start: start, end: end, status: window.status)
         }
-        if let first = clipped.first, first.start > dayStart {
-            clipped[0] = RecommendationWindow(start: dayStart, end: first.end, status: first.status)
-        }
-        return clipped
+        return TimelinePlan(start: now, end: dayEnd, windows: clipped)
     }
 
-    private func windowLabel(_ window: RecommendationWindow, index: Int) -> String {
-        let isCurrent = window.start <= .now && .now < window.end
+    private func windowLabel(_ window: RecommendationWindow, index: Int, now: Date) -> String {
+        let isCurrent = window.start <= now && now < window.end
         let action: String
         switch (window.status, isCurrent, index) {
         case (.open, true, _): action = "Open now"
@@ -228,21 +226,23 @@ private struct TodayPlanCard: View {
 
     private func timeLabel(_ date: Date) -> String {
         let calendar = Calendar.current
-        if calendar.isDate(date, inSameDayAs: day),
-           date == calendar.startOfDay(for: day) {
-            return "12 AM"
-        }
-        if let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: day)),
-           date == nextDay {
+        if date == calendar.startOfDay(for: date) {
             return "12 AM"
         }
         return date.formatted(date: .omitted, time: .shortened)
+    }
+
+    private struct TimelinePlan {
+        let start: Date
+        let end: Date
+        let windows: [RecommendationWindow]
     }
 }
 
 private struct DayStatusBar: View {
     let windows: [RecommendationWindow]
-    let day: Date
+    let start: Date
+    let end: Date
 
     private let barHeight: CGFloat = 22
 
@@ -280,17 +280,19 @@ private struct DayStatusBar: View {
             }
             .frame(height: barHeight)
 
-            HStack(spacing: 0) {
-                Text("12 AM")
-                Spacer()
-                Text("6 AM")
-                Spacer()
-                Text("12 PM")
-                Spacer()
-                Text("6 PM")
-                Spacer()
-                Text("12 AM")
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    ForEach(axisMarks) { mark in
+                        Text(mark.label)
+                            .frame(width: 56, alignment: mark.alignment)
+                            .position(
+                                x: min(max(proxy.size.width * fraction(for: mark.date), 28), proxy.size.width - 28),
+                                y: 8
+                            )
+                    }
+                }
             }
+            .frame(height: 16)
             .font(.caption2)
             .foregroundStyle(.secondary)
         }
@@ -305,12 +307,9 @@ private struct DayStatusBar: View {
     }
 
     private func fraction(for date: Date) -> Double {
-        let calendar = Calendar.current
-        let start = calendar.startOfDay(for: day)
-        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return 0 }
-        let dayDuration = end.timeIntervalSince(start)
-        guard dayDuration > 0 else { return 0 }
-        return min(max(date.timeIntervalSince(start) / dayDuration, 0), 1)
+        let duration = end.timeIntervalSince(start)
+        guard duration > 0 else { return 0 }
+        return min(max(date.timeIntervalSince(start) / duration, 0), 1)
     }
 
     private var accessibilitySummary: String {
@@ -318,6 +317,28 @@ private struct DayStatusBar: View {
             "\($0.status.shortTitle) from \($0.start.formatted(date: .omitted, time: .shortened)) to \($0.end.formatted(date: .omitted, time: .shortened))"
         }
         .joined(separator: ". ")
+    }
+
+    private var axisMarks: [AxisMark] {
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: start)
+        let boundaries = [6, 12, 18].compactMap {
+            calendar.date(bySettingHour: $0, minute: 0, second: 0, of: dayStart)
+        }
+        var marks = [AxisMark(date: start, label: "Now", alignment: .leading)]
+        marks.append(contentsOf: boundaries.filter { start < $0 && $0 < end }.map {
+            AxisMark(date: $0, label: $0.formatted(.dateTime.hour()), alignment: .center)
+        })
+        marks.append(AxisMark(date: end, label: "12 AM", alignment: .trailing))
+        return marks
+    }
+
+    private struct AxisMark: Identifiable {
+        let date: Date
+        let label: String
+        let alignment: Alignment
+
+        var id: Date { date }
     }
 }
 
