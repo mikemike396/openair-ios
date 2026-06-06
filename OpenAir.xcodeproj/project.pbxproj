@@ -267,6 +267,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAir/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenAir;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.weather";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 26.1;
@@ -292,6 +293,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAir/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenAir;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.weather";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 26.1;
