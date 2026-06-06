@@ -91,8 +91,8 @@ struct RecommendationPlan: Sendable, Equatable {
 }
 
 struct ComfortPreferences: Codable, Sendable, Equatable {
-    var idealMinimumFahrenheit = 55.0
-    var idealMaximumFahrenheit = 75.0
+    var idealMinimumFahrenheit = 52.0
+    var idealMaximumFahrenheit = 78.0
     var maximumDewPointFahrenheit = 60.0
     var maximumRainChance = 0.50
     var maximumWindMPH = 15.0

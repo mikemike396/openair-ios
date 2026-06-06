@@ -1,4 +1,5 @@
 .DS_Store
+.build/DerivedData/
 .derivedData/
 .derivedData-device/
 .swift-module-cache/

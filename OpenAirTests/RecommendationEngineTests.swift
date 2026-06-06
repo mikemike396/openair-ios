@@ -7,8 +7,8 @@ final class RecommendationEngineTests: XCTestCase {
     private let start = Date(timeIntervalSince1970: 1_800_000_000)
 
     func testIdealBoundariesAreOpen() {
-        XCTAssertEqual(engine.evaluate(weather(temp: 55), preferences: preferences).status, .open)
-        XCTAssertEqual(engine.evaluate(weather(temp: 75), preferences: preferences).status, .open)
+        XCTAssertEqual(engine.evaluate(weather(temp: 52), preferences: preferences).status, .open)
+        XCTAssertEqual(engine.evaluate(weather(temp: 78), preferences: preferences).status, .open)
         XCTAssertEqual(engine.evaluate(weather(dewPoint: 60), preferences: preferences).status, .open)
         XCTAssertEqual(engine.evaluate(weather(rain: 0.199), preferences: preferences).status, .open)
         XCTAssertEqual(engine.evaluate(weather(wind: 15), preferences: preferences).status, .open)
