@@ -332,7 +332,7 @@ private struct HourlyList: View {
                         HourDetailView(weather: item.weather, recommendation: item.recommendation, unit: unit)
                     } label: {
                         HStack {
-                            Text(index == 0 ? "Now" : item.weather.date.formatted(date: .omitted, time: .shortened))
+                            Text(index == 0 ? "Now" : item.weather.date.formatted(.dateTime.hour()))
                                 .frame(width: 62, alignment: .leading)
                             StatusPill(status: item.recommendation.status)
                             Spacer()
