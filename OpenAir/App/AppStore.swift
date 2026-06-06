@@ -116,6 +116,13 @@ final class AppStore {
     func choose(place: SavedPlace) {
         savedPlace = place
         searchResults = []
+        searchError = nil
+    }
+
+    func chooseAndRefresh(place: SavedPlace) async {
+        choose(place: place)
+        guard hasCompletedOnboarding else { return }
+        await refresh()
     }
 
     func useCurrentLocation() async -> Bool {

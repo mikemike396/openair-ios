@@ -9,7 +9,6 @@ struct DashboardView: View {
             AppBackground()
             content
         }
-        .navigationTitle("OpenAir")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Settings", systemImage: "gearshape") {
@@ -49,6 +48,8 @@ struct DashboardView: View {
                         staleBanner(snapshot)
                     }
                     RecommendationCard(snapshot: snapshot, plan: plan, unit: store.preferences.temperatureUnit)
+                    TodayPlanCard(windows: plan.windows)
+                    HourlyList(plan: plan, unit: store.preferences.temperatureUnit)
                     NavigationLink {
                         ScheduleView(snapshot: snapshot, plan: plan, unit: store.preferences.temperatureUnit)
                     } label: {
@@ -56,8 +57,6 @@ struct DashboardView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.glassProminent)
-                    TodayPlanCard(windows: plan.windows)
-                    HourlyList(plan: plan, unit: store.preferences.temperatureUnit)
                     attribution
                 }
                 .padding()

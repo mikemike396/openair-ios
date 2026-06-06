@@ -3,7 +3,7 @@ import SwiftUI
 
 @main
 struct OpenAirApp: App {
-    static let refreshTaskIdentifier = "com.mikemike396.OpenAir.refresh"
+    static let refreshTaskIdentifier = "com.openairapp.openair.refresh"
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: AppStore

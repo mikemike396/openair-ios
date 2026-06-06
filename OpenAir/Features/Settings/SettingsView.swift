@@ -52,8 +52,10 @@ struct SettingsView: View {
                         }
                     ForEach(store.searchResults.prefix(4)) { place in
                         Button(place.name) {
-                            store.choose(place: place)
-                            query = ""
+                            Task {
+                                query = ""
+                                await store.chooseAndRefresh(place: place)
+                            }
                         }
                     }
                 }

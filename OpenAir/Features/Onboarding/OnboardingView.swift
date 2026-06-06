@@ -118,6 +118,7 @@ struct OnboardingView: View {
                         store.choose(place: place)
                         query = place.name
                         hasChosenLocation = true
+                        currentLocationMessage = nil
                     } label: {
                         HStack {
                             Image(systemName: store.savedPlace == place ? "checkmark.circle.fill" : "mappin.circle")
