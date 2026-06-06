@@ -166,24 +166,154 @@ private struct TodayPlanCard: View {
 
     var body: some View {
         WeatherCard {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
                 Text("Today’s window plan")
                     .font(.title3.bold())
-                ForEach(windows.prefix(5)) { window in
-                    HStack {
-                        Circle()
-                            .fill(window.status.color)
-                            .frame(width: 10, height: 10)
-                        Text(window.status.shortTitle)
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Text("\(window.start.formatted(date: .omitted, time: .shortened))–\(window.end.formatted(date: .omitted, time: .shortened))")
-                            .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(todayWindows.enumerated()), id: \.element.id) { index, window in
+                        Label {
+                            Text(windowLabel(window, index: index))
+                        } icon: {
+                            Circle()
+                                .fill(window.status.color)
+                                .frame(width: 10, height: 10)
+                        }
+                        .font(.subheadline)
                     }
-                    .font(.subheadline)
                 }
+
+                DayStatusBar(windows: todayWindows, day: day)
             }
         }
+    }
+
+    private var day: Date {
+        windows.first?.start ?? .now
+    }
+
+    private var todayWindows: [RecommendationWindow] {
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: day)
+        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return [] }
+
+        return windows.compactMap { window in
+            let start = max(window.start, dayStart)
+            let end = min(window.end, dayEnd)
+            guard start < end else { return nil }
+            return RecommendationWindow(start: start, end: end, status: window.status)
+        }
+    }
+
+    private func windowLabel(_ window: RecommendationWindow, index: Int) -> String {
+        let isCurrent = window.start <= .now && .now < window.end
+        let action: String
+        switch (window.status, isCurrent, index) {
+        case (.open, true, _): action = "Open now"
+        case (.open, false, 0): action = "Open"
+        case (.open, false, _): action = "Open again"
+        case (.keepClosed, true, _): action = "Keep closed now"
+        case (.keepClosed, false, _): action = "Keep closed"
+        }
+
+        if isCurrent {
+            return "\(action) → \(timeLabel(window.end))"
+        }
+        return "\(action) \(timeLabel(window.start)) → \(timeLabel(window.end))"
+    }
+
+    private func timeLabel(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDate(date, inSameDayAs: day),
+           date == calendar.startOfDay(for: day) {
+            return "12 AM"
+        }
+        if let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: day)),
+           date == nextDay {
+            return "12 AM"
+        }
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+}
+
+private struct DayStatusBar: View {
+    let windows: [RecommendationWindow]
+    let day: Date
+
+    private let barHeight: CGFloat = 22
+
+    var body: some View {
+        VStack(spacing: 8) {
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.12))
+
+                    ForEach(windows) { window in
+                        Rectangle()
+                            .fill(window.status.color)
+                            .frame(
+                                width: proxy.size.width * widthFraction(for: window),
+                                height: barHeight
+                            )
+                            .offset(x: proxy.size.width * startFraction(for: window))
+                            .overlay(alignment: .leading) {
+                                if startFraction(for: window) > 0 {
+                                    Rectangle()
+                                        .fill(Color(uiColor: .systemBackground))
+                                        .frame(width: 1)
+                                }
+                            }
+                    }
+                }
+                .clipShape(.capsule)
+                .overlay {
+                    Capsule()
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilitySummary)
+            }
+            .frame(height: barHeight)
+
+            HStack(spacing: 0) {
+                Text("12 AM")
+                Spacer()
+                Text("6 AM")
+                Spacer()
+                Text("12 PM")
+                Spacer()
+                Text("6 PM")
+                Spacer()
+                Text("12 AM")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private func startFraction(for window: RecommendationWindow) -> Double {
+        fraction(for: window.start)
+    }
+
+    private func widthFraction(for window: RecommendationWindow) -> Double {
+        max(0, fraction(for: window.end) - fraction(for: window.start))
+    }
+
+    private func fraction(for date: Date) -> Double {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: day)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return 0 }
+        let dayDuration = end.timeIntervalSince(start)
+        guard dayDuration > 0 else { return 0 }
+        return min(max(date.timeIntervalSince(start) / dayDuration, 0), 1)
+    }
+
+    private var accessibilitySummary: String {
+        windows.map {
+            "\($0.status.shortTitle) from \($0.start.formatted(date: .omitted, time: .shortened)) to \($0.end.formatted(date: .omitted, time: .shortened))"
+        }
+        .joined(separator: ". ")
     }
 }
 
