@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppStore.self) private var store
     @State private var query = ""
+    @State private var isChoosingCurrentLocation = false
 
     var body: some View {
         @Bindable var store = store
@@ -13,15 +14,42 @@ struct SettingsView: View {
                 Section("Location") {
                     if let place = store.savedPlace {
                         LabeledContent("Selected city", value: place.name)
-                        Button("Use Current Location") {
-                            store.useCurrentLocation()
-                            store.requestLocationPermission()
+                        Button {
+                            Task { await chooseCurrentLocation() }
+                        } label: {
+                            if isChoosingCurrentLocation {
+                                Label("Finding Location", systemImage: "location.fill")
+                            } else {
+                                Label("Use Current Location", systemImage: "location.fill")
+                            }
                         }
+                        .disabled(isChoosingCurrentLocation)
                     } else {
-                        LabeledContent("Source", value: "Current location")
+                        LabeledContent("Current city", value: currentLocationName)
+                        Button {
+                            Task { await chooseCurrentLocation() }
+                        } label: {
+                            if isChoosingCurrentLocation {
+                                Label("Refreshing Location", systemImage: "location.fill")
+                            } else {
+                                Label("Refresh Current Location", systemImage: "location.fill")
+                            }
+                        }
+                        .disabled(isChoosingCurrentLocation)
+                    }
+                    if isChoosingCurrentLocation {
+                        ProgressView()
+                    }
+                    if let searchError = store.searchError {
+                        Text(searchError)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
                     }
                     TextField("Search another city", text: $query)
                         .onSubmit { Task { await store.searchPlaces(query) } }
+                        .task(id: query) {
+                            await searchAfterDebounce()
+                        }
                     ForEach(store.searchResults.prefix(4)) { place in
                         Button(place.name) {
                             store.choose(place: place)
@@ -140,5 +168,30 @@ struct SettingsView: View {
         case .denied: "Denied"
         default: "Not requested"
         }
+    }
+
+    private var currentLocationName: String {
+        guard case .loaded(let snapshot, _, _) = store.loadState else {
+            return "Current location"
+        }
+        return snapshot.locationName
+    }
+
+    private func searchAfterDebounce() async {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedQuery.count >= 2 else {
+            store.clearSearchResults()
+            return
+        }
+
+        try? await Task.sleep(for: .milliseconds(300))
+        guard !Task.isCancelled else { return }
+        await store.searchPlaces(trimmedQuery)
+    }
+
+    private func chooseCurrentLocation() async {
+        isChoosingCurrentLocation = true
+        _ = await store.useCurrentLocation()
+        isChoosingCurrentLocation = false
     }
 }

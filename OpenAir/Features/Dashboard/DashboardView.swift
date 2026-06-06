@@ -82,10 +82,10 @@ struct DashboardView: View {
             systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
         )
         .font(.footnote.weight(.medium))
-        .foregroundStyle(OpenAirColor.amber)
+        .foregroundStyle(.openAirAmber)
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(OpenAirColor.amber.opacity(0.12), in: .rect(cornerRadius: 14))
+        .background(.openAirAmber.opacity(0.12), in: .rect(cornerRadius: 14))
     }
 
     private var attribution: some View {

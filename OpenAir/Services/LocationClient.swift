@@ -48,7 +48,11 @@ final class LocationClient: NSObject, LocationProviding, @preconcurrency CLLocat
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation?.resume(throwing: CancellationError())
             self.continuation = continuation
-            manager.requestLocation()
+            if authorizationStatus == .notDetermined {
+                manager.requestWhenInUseAuthorization()
+            } else {
+                manager.requestLocation()
+            }
         }
     }
 

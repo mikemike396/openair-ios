@@ -88,6 +88,13 @@ final class AppStore {
     }
 
     func searchPlaces(_ query: String) async {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            searchResults = []
+            searchError = nil
+            return
+        }
+
         isSearching = true
         defer { isSearching = false }
         do {
@@ -101,13 +108,30 @@ final class AppStore {
         }
     }
 
+    func clearSearchResults() {
+        searchResults = []
+        searchError = nil
+    }
+
     func choose(place: SavedPlace) {
         savedPlace = place
         searchResults = []
     }
 
-    func useCurrentLocation() {
+    func useCurrentLocation() async -> Bool {
         savedPlace = nil
+        searchResults = []
+        do {
+            _ = try await location.requestLocation()
+            searchError = nil
+            if hasCompletedOnboarding {
+                await refresh()
+            }
+            return true
+        } catch {
+            searchError = error.localizedDescription
+            return false
+        }
     }
 
     func refresh() async {

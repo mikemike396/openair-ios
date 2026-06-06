@@ -67,6 +67,38 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(snapshot.locationName, "Current Location")
     }
 
+    func testUseCurrentLocationRefreshesLoadedManualPlace() async {
+        let place = SavedPlace(
+            name: "Philadelphia, PA",
+            coordinate: .init(latitude: 39.9526, longitude: -75.1652)
+        )
+        let location = LocationStub(
+            result: .success(.init(latitude: 39.7391, longitude: -75.5398)),
+            placename: "Wilmington, DE"
+        )
+        let weather = WeatherSpy(snapshots: [
+            Self.snapshot(fetchedAt: Date()),
+            Self.snapshot(fetchedAt: Date())
+        ])
+        let store = makeStore(weather: weather, location: location)
+        store.choose(place: place)
+
+        await store.completeOnboarding()
+
+        guard case .loaded(let manualSnapshot, _, _) = store.loadState else {
+            return XCTFail("Expected loaded manual city")
+        }
+        XCTAssertEqual(manualSnapshot.locationName, "Philadelphia, PA")
+
+        let switchedToCurrentLocation = await store.useCurrentLocation()
+        XCTAssertTrue(switchedToCurrentLocation)
+
+        guard case .loaded(let currentSnapshot, _, _) = store.loadState else {
+            return XCTFail("Expected loaded current location")
+        }
+        XCTAssertEqual(currentSnapshot.locationName, "Wilmington, DE")
+    }
+
     func testPreferencesPersist() {
         let store = makeStore()
         var preferences = store.preferences

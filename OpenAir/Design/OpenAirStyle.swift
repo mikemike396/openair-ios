@@ -1,20 +1,10 @@
 import SwiftUI
 
-enum OpenAirColor {
-    static let navy = Color(red: 0.05, green: 0.16, blue: 0.28)
-    static let teal = Color(red: 0.05, green: 0.55, blue: 0.60)
-    static let mint = Color(red: 0.26, green: 0.84, blue: 0.68)
-    static let green = Color(red: 0.05, green: 0.50, blue: 0.29)
-    static let blue = Color(red: 0.10, green: 0.51, blue: 0.79)
-    static let amber = Color(red: 0.86, green: 0.55, blue: 0.12)
-    static let gray = Color(red: 0.42, green: 0.48, blue: 0.54)
-}
-
 extension RecommendationStatus {
     var color: Color {
         switch self {
-        case .open: OpenAirColor.green
-        case .keepClosed: OpenAirColor.gray
+        case .open: .openAirGreen
+        case .keepClosed: .openAirGray
         }
     }
 
@@ -27,17 +17,31 @@ extension RecommendationStatus {
 }
 
 struct AppBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         LinearGradient(
-            colors: [
-                Color(uiColor: .systemBackground),
-                OpenAirColor.teal.opacity(0.10),
-                OpenAirColor.mint.opacity(0.08)
-            ],
+            colors: colors,
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
         .ignoresSafeArea()
+    }
+
+    private var colors: [Color] {
+        if colorScheme == .dark {
+            [
+                Color(red: 0.04, green: 0.08, blue: 0.11),
+                Color(red: 0.05, green: 0.18, blue: 0.19),
+                Color(red: 0.07, green: 0.13, blue: 0.18)
+            ]
+        } else {
+            [
+                Color(uiColor: .systemBackground),
+                Color.openAirTeal.opacity(0.10),
+                Color.openAirMint.opacity(0.08)
+            ]
+        }
     }
 }
 
@@ -56,7 +60,7 @@ struct WeatherCard<Content: View>: View {
                 RoundedRectangle(cornerRadius: 24)
                     .stroke(.white.opacity(0.5), lineWidth: 0.5)
             }
-            .shadow(color: OpenAirColor.navy.opacity(0.08), radius: 14, y: 6)
+            .shadow(color: .openAirNavy.opacity(0.08), radius: 14, y: 6)
     }
 }
 
