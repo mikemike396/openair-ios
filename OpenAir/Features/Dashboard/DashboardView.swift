@@ -197,12 +197,16 @@ private struct TodayPlanCard: View {
         let dayStart = calendar.startOfDay(for: day)
         guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return [] }
 
-        return windows.compactMap { window in
+        var clipped: [RecommendationWindow] = windows.compactMap { window in
             let start = max(window.start, dayStart)
             let end = min(window.end, dayEnd)
             guard start < end else { return nil }
             return RecommendationWindow(start: start, end: end, status: window.status)
         }
+        if let first = clipped.first, first.start > dayStart {
+            clipped[0] = RecommendationWindow(start: dayStart, end: first.end, status: first.status)
+        }
+        return clipped
     }
 
     private func windowLabel(_ window: RecommendationWindow, index: Int) -> String {
