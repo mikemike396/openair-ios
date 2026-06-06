@@ -336,8 +336,15 @@ private struct HourlyList: View {
                                 .frame(width: 62, alignment: .leading)
                             StatusPill(status: item.recommendation.status)
                             Spacer()
-                            Text("\(unit.display(item.weather.temperatureFahrenheit))\(unit.symbol)")
+                            Text(
+                                "\(unit.display(item.weather.temperatureFahrenheit))° / DP \(unit.display(item.weather.dewPointFahrenheit))°"
+                            )
                                 .fontWeight(.semibold)
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .accessibilityLabel(
+                                    "Temperature \(unit.display(item.weather.temperatureFahrenheit))\(unit.symbol), dew point \(unit.display(item.weather.dewPointFahrenheit))\(unit.symbol)"
+                                )
                             Image(systemName: "chevron.right")
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
