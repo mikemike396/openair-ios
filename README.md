@@ -1,6 +1,27 @@
 # OpenAir
 
+<img src="Project-Resources/Icon/openair_icon_exports/openair_app_store_icon_1024.png" alt="OpenAir app icon" width="160" />
+
+**Know when to open your windows.**
+
+Window weather & dew point alerts.
+
 OpenAir is an iOS 26 SwiftUI app that recommends when outdoor temperature, dew point, rain, and wind are suitable for opening windows.
+
+## Features
+
+- Window open/close recommendations based on outdoor conditions.
+- Dew point aware comfort checks.
+- Rain and wind safety checks.
+- Local alerts when conditions change.
+- Demo weather mode for unsigned simulator builds.
+
+## Requirements
+
+- Xcode 26
+- iOS 26 simulator or device
+- Apple Developer account with WeatherKit enabled
+- Bundle ID: `com.mikemike396.OpenAir`
 
 ## Run
 
@@ -11,6 +32,18 @@ OpenAir is an iOS 26 SwiftUI app that recommends when outdoor temperature, dew p
 
 Unsigned simulator builds can use **Use Demo Weather** when WeatherKit authentication is unavailable.
 
+## Recommendation Logic
+
+OpenAir considers:
+
+- Outdoor temperature
+- Dew point
+- Rain
+- Wind speed
+- Current window state
+
+The recommendation engine is deterministic and covered by unit tests.
+
 ## Architecture
 
 - `Domain`: weather models and the deterministic recommendation engine.
@@ -18,4 +51,6 @@ Unsigned simulator builds can use **Use Demo Weather** when WeatherKit authentic
 - `Features`: onboarding, dashboard, schedule, hour detail, and settings.
 - `OpenAirTests`: recommendation boundaries, windows, notification transitions, persistence, and location fallback behavior.
 
-Alerts are local and best-effort. iOS can delay or skip background refreshes.
+## Privacy
+
+OpenAir uses location to fetch local weather conditions. Alerts are local and best-effort. iOS can delay or skip background refreshes.
