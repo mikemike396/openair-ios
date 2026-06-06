@@ -165,7 +165,8 @@ final class AppStore {
             return (savedPlace.coordinate, savedPlace.name)
         }
         let coordinate = try await location.requestLocation()
-        return (coordinate, "Current Location")
+        let name = await location.placename(for: coordinate) ?? "Current Location"
+        return (coordinate, name)
     }
 
     private func recalculate() {

@@ -1,11 +1,13 @@
 import CoreLocation
 import Foundation
+@preconcurrency import MapKit
 
 @MainActor
 protocol LocationProviding: AnyObject {
     var authorizationStatus: CLAuthorizationStatus { get }
     func requestAuthorization()
     func requestLocation() async throws -> Coordinate
+    func placename(for coordinate: Coordinate) async -> String?
 }
 
 enum LocationError: LocalizedError {
@@ -48,6 +50,17 @@ final class LocationClient: NSObject, LocationProviding, @preconcurrency CLLocat
             self.continuation = continuation
             manager.requestLocation()
         }
+    }
+
+    func placename(for coordinate: Coordinate) async -> String? {
+        guard let request = MKReverseGeocodingRequest(location: coordinate.clLocation),
+              let mapItem = try? await request.mapItems.first else {
+            return nil
+        }
+        return mapItem.addressRepresentations?.cityWithContext(.short)
+            ?? mapItem.addressRepresentations?.cityName
+            ?? mapItem.address?.shortAddress
+            ?? mapItem.address?.fullAddress
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
