@@ -18,9 +18,7 @@ struct NotificationTransitionPlanner: Sendable {
         plan.hourly.dropFirst().enumerated().compactMap { offset, item in
             let previous = plan.hourly[offset].recommendation.status
             guard item.recommendation.status != previous else { return nil }
-            let isOpen = item.recommendation.status == .open || item.recommendation.status == .good
-            let wasOpen = previous == .open || previous == .good
-            guard isOpen != wasOpen, item.weather.date > now else { return nil }
+            guard item.weather.date > now else { return nil }
             return NotificationTransition(date: item.weather.date, status: item.recommendation.status)
         }
     }
@@ -52,8 +50,8 @@ struct NotificationClient: NotificationScheduling {
             let date = transition.date
             let status = transition.status
             let content = UNMutableNotificationContent()
-            let favorable = status == .open || status == .good
-            content.title = favorable ? "Good time to open your windows" : "Time to close your windows"
+            let favorable = status == .open
+            content.title = favorable ? "Open your windows" : "Keep your windows closed"
             content.body = favorable
                 ? "Outdoor conditions in \(locationName) are favorable."
                 : "Outdoor conditions in \(locationName) are expected to worsen."

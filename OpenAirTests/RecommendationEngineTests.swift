@@ -14,9 +14,9 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(engine.evaluate(weather(wind: 15), preferences: preferences).status, .open)
     }
 
-    func testRainThresholdIsMarginal() {
+    func testRainThresholdClosesWindows() {
         let result = engine.evaluate(weather(rain: 0.20), preferences: preferences)
-        XCTAssertEqual(result.status, .good)
+        XCTAssertEqual(result.status, .keepClosed)
         XCTAssertTrue(result.reasons.contains(.rainRisk))
     }
 
@@ -29,9 +29,11 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(engine.evaluate(weather(dewPoint: 68.1), preferences: preferences).status, .keepClosed)
     }
 
-    func testMultipleMissesDegradeCategory() {
-        XCTAssertEqual(engine.evaluate(weather(temp: 80), preferences: preferences).status, .good)
-        XCTAssertEqual(engine.evaluate(weather(temp: 80, dewPoint: 64), preferences: preferences).status, .marginal)
+    func testAnyComfortThresholdMissClosesWindows() {
+        XCTAssertEqual(engine.evaluate(weather(temp: 80), preferences: preferences).status, .keepClosed)
+        XCTAssertEqual(engine.evaluate(weather(dewPoint: 64), preferences: preferences).status, .keepClosed)
+        XCTAssertEqual(engine.evaluate(weather(rain: 0.20), preferences: preferences).status, .keepClosed)
+        XCTAssertEqual(engine.evaluate(weather(wind: 16), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(temp: 80, dewPoint: 64, wind: 20), preferences: preferences).status, .keepClosed)
     }
 

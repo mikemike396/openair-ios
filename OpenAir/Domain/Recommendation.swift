@@ -2,15 +2,11 @@ import Foundation
 
 enum RecommendationStatus: String, Codable, CaseIterable, Sendable {
     case open
-    case good
-    case marginal
     case keepClosed
 
     var title: String {
         switch self {
         case .open: "Open Now"
-        case .good: "Good"
-        case .marginal: "Marginal"
         case .keepClosed: "Keep Closed"
         }
     }
@@ -18,8 +14,6 @@ enum RecommendationStatus: String, Codable, CaseIterable, Sendable {
     var shortTitle: String {
         switch self {
         case .open: "Open"
-        case .good: "Good"
-        case .marginal: "Marginal"
         case .keepClosed: "Closed"
         }
     }
@@ -30,7 +24,7 @@ enum RecommendationReason: String, Codable, Hashable, Sendable {
     case lowDewPoint
     case noRain
     case lightWind
-    case temperatureMarginal
+    case temperatureOutsideRange
     case humid
     case rainRisk
     case windy
@@ -46,7 +40,7 @@ enum RecommendationReason: String, Codable, Hashable, Sendable {
         case .lowDewPoint: "Lower moisture"
         case .noRain: "No rain soon"
         case .lightWind: "Light wind"
-        case .temperatureMarginal: "Temperature is borderline"
+        case .temperatureOutsideRange: "Temperature is outside your preferred range"
         case .humid: "Air is humid"
         case .rainRisk: "Rain is possible"
         case .windy: "Wind is elevated"
@@ -60,7 +54,7 @@ enum RecommendationReason: String, Codable, Hashable, Sendable {
 
     var symbol: String {
         switch self {
-        case .comfortableTemperature, .temperatureMarginal, .extremeTemperature: "thermometer.medium"
+        case .comfortableTemperature, .temperatureOutsideRange, .extremeTemperature: "thermometer.medium"
         case .lowDewPoint, .humid, .extremeHumidity: "drop"
         case .noRain, .rainRisk, .activePrecipitation: "cloud.rain"
         case .lightWind, .windy, .dangerousGusts: "wind"

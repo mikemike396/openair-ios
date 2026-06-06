@@ -14,8 +14,6 @@ extension RecommendationStatus {
     var color: Color {
         switch self {
         case .open: OpenAirColor.green
-        case .good: OpenAirColor.blue
-        case .marginal: OpenAirColor.amber
         case .keepClosed: OpenAirColor.gray
         }
     }
@@ -23,8 +21,6 @@ extension RecommendationStatus {
     var symbol: String {
         switch self {
         case .open: "window.vertical.open"
-        case .good: "wind"
-        case .marginal: "exclamationmark.triangle"
         case .keepClosed: "window.vertical.closed"
         }
     }

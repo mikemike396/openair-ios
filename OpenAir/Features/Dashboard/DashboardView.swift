@@ -156,8 +156,6 @@ private struct RecommendationCard: View {
     private var summary: String {
         switch plan.current.status {
         case .open: "Outdoor conditions are comfortable."
-        case .good: "Mostly favorable outdoor conditions."
-        case .marginal: "Conditions are borderline."
         case .keepClosed: "Outdoor conditions are unfavorable."
         }
     }
@@ -234,10 +232,6 @@ private struct HourlyList: View {
     DashboardPreview.loaded(status: .open)
 }
 
-#Preview("Marginal") {
-    DashboardPreview.loaded(status: .marginal)
-}
-
 #Preview("Closed") {
     DashboardPreview.loaded(status: .keepClosed)
 }
@@ -277,12 +271,8 @@ private struct DashboardPreview: View {
         switch status {
         case .open:
             current = base.current
-        case .good:
-            current = replacing(base.current, temperature: 80, dewPoint: 55)
-        case .marginal:
-            current = replacing(base.current, temperature: 80, dewPoint: 64)
         case .keepClosed:
-            current = replacing(base.current, temperature: 86, dewPoint: 69)
+            current = replacing(base.current, temperature: 80, dewPoint: 64)
         }
         let snapshot = WeatherSnapshot(
             locationName: base.locationName,

@@ -4,7 +4,7 @@ import XCTest
 final class NotificationTransitionPlannerTests: XCTestCase {
     func testOnlyOpenClosedBoundaryChangesProduceNotifications() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let statuses: [RecommendationStatus] = [.open, .good, .marginal, .keepClosed, .open]
+        let statuses: [RecommendationStatus] = [.open, .open, .keepClosed, .keepClosed, .open]
         let hourly = statuses.enumerated().map { index, status in
             (
                 weather: HourlyWeather(
@@ -30,7 +30,7 @@ final class NotificationTransitionPlannerTests: XCTestCase {
 
         let transitions = NotificationTransitionPlanner().transitions(in: plan, after: now)
 
-        XCTAssertEqual(transitions.map(\.status), [.marginal, .open])
+        XCTAssertEqual(transitions.map(\.status), [.keepClosed, .open])
     }
 
     func testPastTransitionsAreIgnored() {

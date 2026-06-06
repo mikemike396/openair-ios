@@ -29,7 +29,7 @@ struct RecommendationEngine: RecommendationEvaluating {
         if (preferences.idealMinimumFahrenheit...preferences.idealMaximumFahrenheit).contains(weather.temperatureFahrenheit) {
             positive.append(.comfortableTemperature)
         } else {
-            negative.append(.temperatureMarginal)
+            negative.append(.temperatureOutsideRange)
         }
 
         if weather.dewPointFahrenheit <= preferences.maximumDewPointFahrenheit {
@@ -50,14 +50,10 @@ struct RecommendationEngine: RecommendationEvaluating {
             negative.append(.windy)
         }
 
-        let status: RecommendationStatus
-        switch negative.count {
-        case 0: status = .open
-        case 1: status = .good
-        case 2: status = .marginal
-        default: status = .keepClosed
-        }
-        return Recommendation(status: status, reasons: negative.isEmpty ? positive : negative + positive.prefix(2))
+        return Recommendation(
+            status: negative.isEmpty ? .open : .keepClosed,
+            reasons: negative.isEmpty ? positive : negative
+        )
     }
 
     func plan(snapshot: WeatherSnapshot, preferences: ComfortPreferences) -> RecommendationPlan {
