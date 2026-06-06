@@ -24,9 +24,9 @@ struct OnboardingView: View {
             GeometryReader { proxy in
                 ScrollViewReader { scrollProxy in
                     ScrollView {
-                        VStack(spacing: page == 0 ? 34 : 24) {
+                        VStack(spacing: page == 0 ? 44 : 34) {
                             Color.clear
-                                .frame(height: 12)
+                                .frame(height: focusedField == .citySearch ? 12 : 32)
 
                             if page == 0 && focusedField != .citySearch {
                                 Image("AppIconPreview")
@@ -97,7 +97,7 @@ struct OnboardingView: View {
     }
 
     private var welcome: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 28) {
             Text("OpenAir")
                 .font(.system(size: 42, weight: .bold, design: .rounded))
                 .foregroundStyle(.openAirBrandText)
@@ -118,7 +118,7 @@ struct OnboardingView: View {
     }
 
     private var location: some View {
-        VStack(spacing: focusedField == .citySearch ? 12 : 18) {
+        VStack(spacing: focusedField == .citySearch ? 12 : 24) {
             Image(systemName: "location.circle.fill")
                 .font(.system(size: focusedField == .citySearch ? 40 : 56))
                 .foregroundStyle(.openAirTeal)
@@ -241,7 +241,7 @@ struct OnboardingView: View {
     }
 
     private var notifications: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 24) {
             Image(systemName: "bell.badge.fill")
                 .font(.system(size: 56))
                 .foregroundStyle(.openAirTeal)

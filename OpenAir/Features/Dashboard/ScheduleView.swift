@@ -7,7 +7,7 @@ struct ScheduleView: View {
 
     var body: some View {
         List {
-            Section("Recommendation windows") {
+            Section("Open/Closed periods") {
                 ForEach(plan.windows) { window in
                     HStack {
                         StatusPill(status: window.status)
