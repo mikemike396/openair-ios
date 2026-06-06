@@ -327,12 +327,12 @@ private struct HourlyList: View {
                 Text("Next few hours")
                     .font(.title3.bold())
                     .padding(.bottom, 10)
-                ForEach(plan.hourly.prefix(8), id: \.weather.id) { item in
+                ForEach(Array(plan.hourly.prefix(8).enumerated()), id: \.element.weather.id) { index, item in
                     NavigationLink {
                         HourDetailView(weather: item.weather, recommendation: item.recommendation, unit: unit)
                     } label: {
                         HStack {
-                            Text(item.weather.date, format: .dateTime.hour())
+                            Text(index == 0 ? "Now" : item.weather.date.formatted(date: .omitted, time: .shortened))
                                 .frame(width: 62, alignment: .leading)
                             StatusPill(status: item.recommendation.status)
                             Spacer()
