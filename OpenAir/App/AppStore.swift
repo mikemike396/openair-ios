@@ -200,7 +200,7 @@ final class AppStore {
             return
         case .loaded(let snapshot, _, _):
             guard now.timeIntervalSince(snapshot.fetchedAt) >= Self.foregroundRefreshInterval else { return }
-            await refresh()
+            await refresh(preservingLoadedState: true)
         }
     }
 

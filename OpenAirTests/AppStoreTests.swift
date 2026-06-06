@@ -172,6 +172,29 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(fetchCount, 2)
     }
 
+    func testForegroundRefreshKeepsOldForecastVisibleWhilePending() async {
+        let now = Date()
+        let cached = Self.snapshot(fetchedAt: now.addingTimeInterval(-60 * 16))
+        WeatherCache(url: cacheURL).save(cached)
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+        let weather = SuspendedWeatherProvider()
+        let store = makeStore(weather: weather)
+
+        let refreshTask = Task { await store.refreshIfNeeded(now: now) }
+        await weather.waitUntilFetchStarts()
+
+        XCTAssertTrue(store.isRefreshing)
+        guard case .loaded(let snapshot, _, _) = store.loadState else {
+            refreshTask.cancel()
+            return XCTFail("Expected old forecast to remain visible during foreground refresh")
+        }
+        XCTAssertEqual(snapshot, cached)
+
+        await weather.resume(returning: Self.snapshot(fetchedAt: now))
+        await refreshTask.value
+        XCTAssertFalse(store.isRefreshing)
+    }
+
     func testCachedWeatherIsLoadedImmediatelyAfterInitialization() {
         let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
         WeatherCache(url: cacheURL).save(cached)
