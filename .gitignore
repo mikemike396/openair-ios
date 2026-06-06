@@ -1,0 +1,7 @@
+.DS_Store
+.derivedData/
+.derivedData-device/
+.swift-module-cache/
+.xcodebuildmcp-derived/
+xcuserdata/
+*.xcresult
