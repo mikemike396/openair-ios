@@ -352,9 +352,6 @@ private struct HourlyList: View {
                         .padding(.vertical, 10)
                     }
                     .buttonStyle(.plain)
-                    if item.weather.id != plan.hourly.prefix(8).last?.weather.id {
-                        Divider()
-                    }
                 }
             }
         }

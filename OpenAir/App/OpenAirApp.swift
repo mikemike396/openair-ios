@@ -5,6 +5,7 @@ import SwiftUI
 struct OpenAirApp: App {
     static let refreshTaskIdentifier = "com.mikemike396.OpenAir.refresh"
 
+    @Environment(\.scenePhase) private var scenePhase
     @State private var store: AppStore
 
     init() {
@@ -33,6 +34,10 @@ struct OpenAirApp: App {
             RootView()
                 .environment(store)
                 .task { await store.start() }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+                    Task { await store.refreshIfNeeded() }
+                }
         }
     }
 }

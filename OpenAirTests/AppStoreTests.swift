@@ -74,17 +74,58 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(store.preferences.maximumRainChance, 0.35)
     }
 
+    func testForegroundRefreshSkipsFreshForecast() async {
+        let now = Date()
+        let weather = WeatherSpy(snapshots: [Self.snapshot(fetchedAt: now.addingTimeInterval(-60 * 14))])
+        let store = makeStore(weather: weather)
+        store.hasCompletedOnboarding = true
+
+        await store.refresh()
+        await store.refreshIfNeeded(now: now)
+
+        let fetchCount = await weather.fetchCount
+        XCTAssertEqual(fetchCount, 1)
+    }
+
+    func testForegroundRefreshReloadsOldForecast() async {
+        let now = Date()
+        let weather = WeatherSpy(snapshots: [
+            Self.snapshot(fetchedAt: now.addingTimeInterval(-60 * 16)),
+            Self.snapshot(fetchedAt: now)
+        ])
+        let store = makeStore(weather: weather)
+        store.hasCompletedOnboarding = true
+
+        await store.refresh()
+        await store.refreshIfNeeded(now: now)
+
+        let fetchCount = await weather.fetchCount
+        XCTAssertEqual(fetchCount, 2)
+    }
+
     private func makeStore(
+        weather: any WeatherProviding = PreviewWeatherClient(),
         location: any LocationProviding = LocationStub(result: .success(.init(latitude: 0, longitude: 0)))
     ) -> AppStore {
         AppStore(
-            weather: PreviewWeatherClient(),
+            weather: weather,
             location: location,
             places: PlaceSearchStub(),
             evaluator: RecommendationEngine(),
             notifications: NotificationStub(),
             cache: WeatherCache(url: cacheURL),
             defaults: defaults
+        )
+    }
+
+    private static func snapshot(fetchedAt: Date) -> WeatherSnapshot {
+        let base = WeatherSnapshot.preview
+        return WeatherSnapshot(
+            locationName: base.locationName,
+            coordinate: base.coordinate,
+            fetchedAt: fetchedAt,
+            current: base.current,
+            hourly: base.hourly
         )
     }
 }
@@ -109,6 +150,27 @@ private final class LocationStub: LocationProviding {
 
 private struct PlaceSearchStub: PlaceSearching {
     func search(query: String) async throws -> [SavedPlace] { [] }
+}
+
+private actor WeatherSpy: WeatherProviding {
+    private let snapshots: [WeatherSnapshot]
+    private(set) var fetchCount = 0
+
+    init(snapshots: [WeatherSnapshot]) {
+        self.snapshots = snapshots
+    }
+
+    func fetchWeather(for coordinate: Coordinate, locationName: String) async throws -> WeatherSnapshot {
+        let snapshot = snapshots[min(fetchCount, snapshots.count - 1)]
+        fetchCount += 1
+        return WeatherSnapshot(
+            locationName: locationName,
+            coordinate: coordinate,
+            fetchedAt: snapshot.fetchedAt,
+            current: snapshot.current,
+            hourly: snapshot.hourly
+        )
+    }
 }
 
 @MainActor

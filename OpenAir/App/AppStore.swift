@@ -14,6 +14,8 @@ enum DashboardLoadState {
 @MainActor
 @Observable
 final class AppStore {
+    private static let foregroundRefreshInterval: TimeInterval = 60 * 15
+
     private let weather: any WeatherProviding
     let location: any LocationProviding
     private let places: any PlaceSearching
@@ -135,6 +137,20 @@ final class AppStore {
             } else {
                 loadState = .failed(message: error.localizedDescription, cached: nil)
             }
+        }
+    }
+
+    func refreshIfNeeded(now: Date = .now) async {
+        guard hasCompletedOnboarding else { return }
+
+        switch loadState {
+        case .idle, .failed:
+            await refresh()
+        case .loading:
+            return
+        case .loaded(let snapshot, _, _):
+            guard now.timeIntervalSince(snapshot.fetchedAt) >= Self.foregroundRefreshInterval else { return }
+            await refresh()
         }
     }
 
