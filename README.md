@@ -40,6 +40,16 @@ OpenAir is an iOS 26 SwiftUI app that recommends when outdoor temperature, dew p
 
 Unsigned simulator builds can use **Use Demo Weather** when WeatherKit authentication is unavailable.
 
+## Background Refresh Debugging
+
+To manually trigger the `BGAppRefreshTask` handler while the app is running from Xcode, paste this into the LLDB console:
+
+```lldb
+(lldb) e -l objc -- (void)[[BGTaskScheduler sharedScheduler] _simulateLaunchForTaskWithIdentifier:@"com.openairapp.openair.refresh"]
+```
+
+This tests the registered background refresh handler only. It does not prove iOS will run background refresh on a predictable schedule.
+
 ## Recommendation Logic
 
 OpenAir considers:
