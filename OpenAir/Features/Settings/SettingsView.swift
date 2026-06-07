@@ -48,7 +48,7 @@ struct SettingsView: View {
                     TextField("Search another city", text: $query)
                         .onSubmit { Task { await store.searchPlaces(query) } }
                         .task(id: query) {
-                            await searchAfterDebounce()
+                            await store.searchPlacesAfterDebounce(query)
                         }
                     ForEach(store.searchResults.prefix(4)) { place in
                         Button(place.name) {
@@ -108,6 +108,9 @@ struct SettingsView: View {
                 Section("About") {
                     Link(destination: URL.openAirSupportEmail) {
                         LabeledContent("Support", value: String.openAirSupportEmail)
+                    }
+                    Link(destination: URL(string: "https://github.com/mikemike396/openair-ios")!) {
+                        LabeledContent("Open source / contribute", value: "GitHub")
                     }
                     LabeledContent("Version", value: "\(appVersion) (\(buildNumber))")
                     LabeledContent("Weather data", value: "Apple Weather")
@@ -191,18 +194,6 @@ struct SettingsView: View {
 
     private var buildNumber: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
-    }
-
-    private func searchAfterDebounce() async {
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedQuery.count >= 2 else {
-            store.clearSearchResults()
-            return
-        }
-
-        try? await Task.sleep(for: .milliseconds(300))
-        guard !Task.isCancelled else { return }
-        await store.searchPlaces(trimmedQuery)
     }
 
     private func chooseCurrentLocation() async {

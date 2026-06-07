@@ -168,7 +168,7 @@ struct OnboardingView: View {
                     Task { await store.searchPlaces(query) }
                 }
                 .task(id: query) {
-                    await searchAfterDebounce()
+                    await store.searchPlacesAfterDebounce(query)
                 }
                 .accessibilityIdentifier("citySearchField")
 
@@ -310,21 +310,6 @@ struct OnboardingView: View {
         default:
             "You can change this later"
         }
-    }
-
-    private func searchAfterDebounce() async {
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard trimmedQuery.count >= 2 else {
-            store.clearSearchResults()
-            return
-        }
-
-        try? await Task.sleep(for: .milliseconds(300))
-
-        guard !Task.isCancelled else { return }
-
-        await store.searchPlaces(trimmedQuery)
     }
 
     private func chooseCurrentLocation() async {

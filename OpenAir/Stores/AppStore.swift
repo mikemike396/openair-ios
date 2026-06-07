@@ -78,10 +78,6 @@ final class AppStore {
         await refresh(preservingLoadedState: true)
     }
 
-    func requestLocationPermission() {
-        location.requestAuthorization()
-    }
-
     func requestNotificationPermission() async {
         _ = try? await notifications.requestAuthorization()
         notificationStatus = await notifications.authorizationStatus()
@@ -111,6 +107,19 @@ final class AppStore {
             searchError = error.localizedDescription
             searchResults = []
         }
+    }
+
+    func searchPlacesAfterDebounce(_ query: String) async {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedQuery.count >= 2 else {
+            clearSearchResults()
+            return
+        }
+
+        try? await Task.sleep(for: .milliseconds(300))
+        guard !Task.isCancelled else { return }
+
+        await searchPlaces(trimmedQuery)
     }
 
     func clearSearchResults() {
@@ -237,6 +246,8 @@ final class AppStore {
         request.earliestBeginDate = Date(timeIntervalSinceNow: 60 * 60)
         try? BGTaskScheduler.shared.submit(request)
     }
+    
+    // TODO: Break this into a UserPreferenceStore
 
     private func encode<T: Encodable>(_ value: T?, key: String) {
         defaults.set(try? JSONEncoder().encode(value), forKey: key)

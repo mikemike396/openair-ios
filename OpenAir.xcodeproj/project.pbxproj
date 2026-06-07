@@ -17,6 +17,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		643EBCAA2FD5CB6000F90702 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A00000000000000000000001 /* OpenAir.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = OpenAir.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000002 /* OpenAirTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = OpenAirTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -68,6 +69,7 @@
 		A00000000000000000000020 = {
 			isa = PBXGroup;
 			children = (
+				643EBCAA2FD5CB6000F90702 /* README.md */,
 				A00000000000000000000003 /* OpenAir */,
 				A00000000000000000000004 /* OpenAirTests */,
 				A00000000000000000000021 /* Products */,
@@ -262,7 +264,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = OpenAir/OpenAir.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAir/Resources/Info.plist;
@@ -287,7 +289,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = OpenAir/OpenAir.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAir/Resources/Info.plist;
