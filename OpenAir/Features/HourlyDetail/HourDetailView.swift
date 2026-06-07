@@ -13,7 +13,7 @@ struct HourDetailView: View {
                     Image(systemName: weather.symbolName)
                         .font(.system(size: 72))
                         .foregroundStyle(recommendation.status.color)
-                    StatusPill(status: recommendation.status)
+                    StatusView(status: recommendation.status)
                     WeatherCard {
                         VStack(spacing: 12) {
                             LabeledContent("Temperature", value: "\(unit.display(weather.temperatureFahrenheit))\(unit.symbol)")
@@ -42,3 +42,18 @@ struct HourDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+private struct StatusView: View {
+    let status: RecommendationStatus
+
+    var body: some View {
+        Label(status.shortTitle, systemImage: status.symbol)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(status.color)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(status.color.opacity(0.12), in: .capsule)
+            .accessibilityLabel("Recommendation: \(status.shortTitle)")
+    }
+}
+

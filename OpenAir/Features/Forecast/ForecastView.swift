@@ -21,5 +21,6 @@ struct ForecastView: View {
             }
         }
         .navigationTitle("Forecast")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

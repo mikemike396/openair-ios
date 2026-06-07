@@ -9,12 +9,27 @@ struct DashboardView: View {
             AppBackground()
             content
         }
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: 6) {
+                    Text(navigationTitle)
+                        .lineLimit(1)
+                        .layoutPriority(1)
+                    Image(systemName: "location")
+                        .font(.caption.weight(.semibold))
+                }
+                .font(.headline)
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Settings", systemImage: "gearshape") {
+                Button {
                     showingSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
                 }
                 .buttonStyle(.glass)
+                .accessibilityLabel("Settings")
             }
         }
         .sheet(isPresented: $showingSettings) {
@@ -43,7 +58,6 @@ struct DashboardView: View {
         case .loaded(let snapshot, let plan, let isOffline):
             ScrollView {
                 LazyVStack(spacing: 18) {
-                    locationHeader(snapshot)
                     if isOffline || snapshot.isStale {
                         staleBanner(snapshot)
                     }
@@ -63,20 +77,11 @@ struct DashboardView: View {
         }
     }
 
-    private func locationHeader(_ snapshot: WeatherSnapshot) -> some View {
-        HStack {
-            Label(snapshot.locationName, systemImage: "location")
-                .font(.headline)
-            Spacer()
-            HStack(spacing: 6) {
-                if store.isRefreshing {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-                Text("Updated: \(snapshot.fetchedAt, style: .relative) ago")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+    private var navigationTitle: String {
+        if case .loaded(let snapshot, _, _) = store.loadState {
+            snapshot.locationName
+        } else {
+            ""
         }
     }
 

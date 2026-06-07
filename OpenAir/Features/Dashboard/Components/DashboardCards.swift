@@ -42,12 +42,15 @@ struct RecommendationCard: View {
                         ForEach(plan.current.reasons, id: \.self) { reason in
                             Label(reason.label, systemImage: reason.symbol)
                                 .font(.caption.weight(.medium))
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 8)
-                                .background(.thinMaterial, in: .capsule)
+                                .chip()
                         }
                     }
                 }
+
+                Text("Updated: \(snapshot.fetchedAt, style: .relative) ago")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
         .accessibilityElement(children: .combine)

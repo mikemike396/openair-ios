@@ -65,7 +65,7 @@ struct WeatherCard<Content: View>: View {
     }
 
     private var cardOpacity: Double {
-        colorScheme == .dark ? 0.94 : 0.96
+        colorScheme == .dark ? 0.94 : 0.91
     }
 
     private var shadowColor: Color {
@@ -83,7 +83,7 @@ struct WeatherCard<Content: View>: View {
     private var borderColor: Color {
         colorScheme == .dark
             ? .white.opacity(0.65)
-            : .white.opacity(0.45)
+            : .white.opacity(0.32)
     }
 
     private var borderWidth: CGFloat {
@@ -91,16 +91,71 @@ struct WeatherCard<Content: View>: View {
     }
 }
 
-struct StatusPill: View {
-    let status: RecommendationStatus
+private struct ChipStyle: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
 
-    var body: some View {
-        Label(status.shortTitle, systemImage: status.symbol)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(status.color)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(status.color.opacity(0.12), in: .capsule)
-            .accessibilityLabel("Recommendation: \(status.shortTitle)")
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8)
+            .background(fill, in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(stroke, lineWidth: 0.5)
+            }
+    }
+
+    private var fill: Color {
+        colorScheme == .dark
+            ? .white.opacity(0.10)
+            : .openAirNavy.opacity(0.07)
+    }
+
+    private var stroke: Color {
+        colorScheme == .dark
+            ? .white.opacity(0.12)
+            : .openAirNavy.opacity(0.06)
+    }
+}
+
+private struct PanelStyle: ViewModifier {
+    let cornerRadius: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .background(fill, in: .rect(cornerRadius: cornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(stroke, lineWidth: 0.5)
+            }
+    }
+
+    private var fill: Color {
+        colorScheme == .dark
+            ? .white.opacity(0.08)
+            : .openAirNavy.opacity(0.06)
+    }
+
+    private var stroke: Color {
+        colorScheme == .dark
+            ? .white.opacity(0.10)
+            : .openAirNavy.opacity(0.05)
+    }
+}
+
+extension View {
+    func chip() -> some View {
+        modifier(
+            ChipStyle()
+        )
+    }
+
+    func panel(cornerRadius: CGFloat) -> some View {
+        modifier(
+            PanelStyle(
+                cornerRadius: cornerRadius
+            )
+        )
     }
 }

@@ -27,7 +27,7 @@ struct ForecastSelectionReadout: View {
         .monospacedDigit()
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(.thinMaterial, in: .rect(cornerRadius: 12))
+        .panel(cornerRadius: 12)
     }
 }
 
