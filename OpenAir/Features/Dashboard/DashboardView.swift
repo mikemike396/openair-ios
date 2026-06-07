@@ -49,7 +49,7 @@ struct DashboardView: View {
                     }
                     RecommendationCard(snapshot: snapshot, plan: plan, unit: store.preferences.temperatureUnit)
                     TodayPlanCard(windows: plan.windows)
-                    HourlyList(plan: plan, unit: store.preferences.temperatureUnit)
+                    HourlyList(snapshot: snapshot, plan: plan, unit: store.preferences.temperatureUnit)
                     NavigationLink {
                         ScheduleView(snapshot: snapshot, plan: plan, unit: store.preferences.temperatureUnit)
                     } label: {
@@ -337,6 +337,7 @@ private struct DayStatusBar: View {
 }
 
 private struct HourlyList: View {
+    let snapshot: WeatherSnapshot
     let plan: RecommendationPlan
     let unit: TemperatureUnit
 
@@ -350,7 +351,7 @@ private struct HourlyList: View {
                     HStack(spacing: 18) {
                         ForEach(Array(plan.hourly.prefix(16).enumerated()), id: \.element.weather.id) { index, item in
                             NavigationLink {
-                                HourDetailView(weather: item.weather, recommendation: item.recommendation, unit: unit)
+                                ScheduleView(snapshot: snapshot, plan: plan, unit: unit)
                             } label: {
                                 HourlyTile(item: item, index: index, unit: unit)
                             }
