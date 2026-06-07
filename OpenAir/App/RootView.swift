@@ -17,7 +17,10 @@ struct RootView: View {
 
 #Preview("Dashboard") {
     let defaults = UserDefaults(suiteName: "RootPreview")!
-    defaults.set(true, forKey: "hasCompletedOnboarding")
+    let userPreferences = UserPreferenceStore(userDefaults: defaults)
+    userPreferences.hasCompletedOnboarding = true
     return RootView()
-        .environment(AppStore(weather: PreviewWeatherClient(), defaults: defaults))
+        .environment(
+            AppStore(weather: PreviewWeatherClient(), userPreferences: userPreferences)
+        )
 }

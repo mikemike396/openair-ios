@@ -23,7 +23,7 @@ final class AppStore {
     private let evaluator: any RecommendationEvaluating
     private let notifications: any NotificationScheduling
     private let cache: WeatherCache
-    private let defaults: UserDefaults
+    private let userPreferences: UserPreferenceStore
 
     var loadState: DashboardLoadState = .idle
     private(set) var isRefreshing = false
@@ -33,29 +33,41 @@ final class AppStore {
     var notificationStatus: UNAuthorizationStatus = .notDetermined
 
     var hasCompletedOnboarding: Bool {
-        didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.onboarding) }
+        get {
+            userPreferences.hasCompletedOnboarding
+        }
+        set {
+            userPreferences.hasCompletedOnboarding = newValue
+        }
     }
 
     var savedPlace: SavedPlace? {
-        didSet { encode(savedPlace, key: Keys.place) }
+        get {
+            userPreferences.savedPlace
+        }
+        set {
+            userPreferences.savedPlace = newValue
+        }
     }
 
     var preferences: ComfortPreferences {
-        didSet {
-            encode(preferences, key: Keys.preferences)
+        get {
+            userPreferences.preferences
+        }
+        set {
+            userPreferences.preferences = newValue
             recalculate()
         }
     }
 
     init(
-        weather: any WeatherProviding = WeatherKitClient(),
-        location: any LocationProviding = LocationClient(),
-        places: any PlaceSearching = MapKitPlaceSearchClient(),
-        evaluator: any RecommendationEvaluating = RecommendationEngine(),
-        notifications: any NotificationScheduling = NotificationClient(),
+        weather: WeatherProviding = WeatherKitClient(),
+        location: LocationProviding = LocationClient(),
+        places: PlaceSearching = MapKitPlaceSearchClient(),
+        evaluator: RecommendationEvaluating = RecommendationEngine(),
+        notifications: NotificationScheduling = NotificationClient(),
         cache: WeatherCache = WeatherCache(),
-        defaults: UserDefaults = .standard,
-        locale: Locale = .autoupdatingCurrent
+        userPreferences: UserPreferenceStore = UserPreferenceStore()
     ) {
         self.weather = weather
         self.location = location
@@ -63,11 +75,7 @@ final class AppStore {
         self.evaluator = evaluator
         self.notifications = notifications
         self.cache = cache
-        self.defaults = defaults
-        hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarding)
-        savedPlace = Self.decode(SavedPlace.self, key: Keys.place, defaults: defaults)
-        preferences = Self.decode(ComfortPreferences.self, key: Keys.preferences, defaults: defaults) ?? .default(for: locale)
-        encode(preferences, key: Keys.preferences)
+        self.userPreferences = userPreferences
         if hasCompletedOnboarding, let cached = cache.load() {
             let plan = evaluator.plan(snapshot: cached, preferences: preferences)
             loadState = .loaded(snapshot: cached, plan: plan, isOffline: false)
@@ -252,22 +260,5 @@ final class AppStore {
         } catch {
             Logger().debug("Failed to schedule background refresh: \(error)")
         }
-    }
-    
-    // TODO: Break this into a UserPreferenceStore
-
-    private func encode<T: Encodable>(_ value: T?, key: String) {
-        defaults.set(try? JSONEncoder().encode(value), forKey: key)
-    }
-
-    private static func decode<T: Decodable>(_ type: T.Type, key: String, defaults: UserDefaults) -> T? {
-        guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(type, from: data)
-    }
-
-    private enum Keys {
-        static let onboarding = "hasCompletedOnboarding"
-        static let place = "savedPlace"
-        static let preferences = "comfortPreferences"
     }
 }

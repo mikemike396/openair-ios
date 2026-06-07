@@ -158,7 +158,7 @@ final class AppStoreTests: XCTestCase {
     func testSavedTemperatureUnitOverridesLocaleDefault() {
         var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
         preferences.temperatureUnit = .fahrenheit
-        defaults.set(try? JSONEncoder().encode(preferences), forKey: "comfortPreferences")
+        makeUserPreferences(locale: Locale(identifier: "en_US")).preferences = preferences
 
         let store = makeStore(locale: Locale(identifier: "ja_JP"))
 
@@ -198,7 +198,7 @@ final class AppStoreTests: XCTestCase {
         let now = Date()
         let cached = Self.snapshot(fetchedAt: now.addingTimeInterval(-60 * 16))
         WeatherCache(url: cacheURL).save(cached)
-        defaults.set(true, forKey: "hasCompletedOnboarding")
+        markOnboardingCompleted()
         let weather = SuspendedWeatherProvider()
         let store = makeStore(weather: weather)
 
@@ -220,7 +220,7 @@ final class AppStoreTests: XCTestCase {
     func testCachedWeatherIsLoadedImmediatelyAfterInitialization() {
         let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
         WeatherCache(url: cacheURL).save(cached)
-        defaults.set(true, forKey: "hasCompletedOnboarding")
+        markOnboardingCompleted()
 
         let store = makeStore()
 
@@ -235,7 +235,7 @@ final class AppStoreTests: XCTestCase {
         let cached = Self.snapshot(fetchedAt: Date())
         let refreshed = Self.snapshot(fetchedAt: Date().addingTimeInterval(60))
         WeatherCache(url: cacheURL).save(cached)
-        defaults.set(true, forKey: "hasCompletedOnboarding")
+        markOnboardingCompleted()
         let weather = WeatherSpy(snapshots: [refreshed])
         let store = makeStore(weather: weather)
 
@@ -253,7 +253,7 @@ final class AppStoreTests: XCTestCase {
     func testStartKeepsCachedWeatherVisibleWhileRefreshIsPending() async {
         let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
         WeatherCache(url: cacheURL).save(cached)
-        defaults.set(true, forKey: "hasCompletedOnboarding")
+        markOnboardingCompleted()
         let weather = SuspendedWeatherProvider()
         let store = makeStore(weather: weather)
 
@@ -275,7 +275,7 @@ final class AppStoreTests: XCTestCase {
     func testStartFailurePreservesCachedWeatherAsOffline() async {
         let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
         WeatherCache(url: cacheURL).save(cached)
-        defaults.set(true, forKey: "hasCompletedOnboarding")
+        markOnboardingCompleted()
         let store = makeStore(weather: FailingWeatherProvider())
 
         await store.start()
@@ -292,7 +292,7 @@ final class AppStoreTests: XCTestCase {
         let current = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
         let weather = SuspendedWeatherProvider()
         WeatherCache(url: cacheURL).save(current)
-        defaults.set(true, forKey: "hasCompletedOnboarding")
+        markOnboardingCompleted()
         let restoredStore = makeStore(weather: weather)
 
         let refreshTask = Task { await restoredStore.refreshPreservingLoadedState() }
@@ -313,7 +313,7 @@ final class AppStoreTests: XCTestCase {
     func testPreservingRefreshFailureKeepsLoadedWeatherOffline() async {
         let current = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
         WeatherCache(url: cacheURL).save(current)
-        defaults.set(true, forKey: "hasCompletedOnboarding")
+        markOnboardingCompleted()
         let store = makeStore(weather: FailingWeatherProvider())
 
         await store.refreshPreservingLoadedState()
@@ -326,7 +326,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testStartWithoutCacheShowsLoadingThenFailure() async {
-        defaults.set(true, forKey: "hasCompletedOnboarding")
+        markOnboardingCompleted()
         let weather = SuspendedWeatherProvider()
         let store = makeStore(weather: weather)
 
@@ -349,7 +349,7 @@ final class AppStoreTests: XCTestCase {
     func testConcurrentLaunchRefreshesOnlyFetchOnce() async {
         let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60 * 20))
         WeatherCache(url: cacheURL).save(cached)
-        defaults.set(true, forKey: "hasCompletedOnboarding")
+        markOnboardingCompleted()
         let weather = SuspendedWeatherProvider()
         let store = makeStore(weather: weather)
 
@@ -376,9 +376,16 @@ final class AppStoreTests: XCTestCase {
             evaluator: RecommendationEngine(),
             notifications: NotificationStub(),
             cache: WeatherCache(url: cacheURL),
-            defaults: defaults,
-            locale: locale
+            userPreferences: makeUserPreferences(locale: locale)
         )
+    }
+
+    private func makeUserPreferences(locale: Locale = Locale(identifier: "en_US")) -> UserPreferenceStore {
+        UserPreferenceStore(userDefaults: defaults, locale: locale)
+    }
+
+    private func markOnboardingCompleted() {
+        makeUserPreferences().hasCompletedOnboarding = true
     }
 
     private static func snapshot(fetchedAt: Date) -> WeatherSnapshot {

@@ -67,12 +67,12 @@ struct SettingsView: View {
                         }
                     }
                     temperatureSlider(
-                        title: "Ideal minimum",
+                        title: "Minimum temperature",
                         keyPath: \.idealMinimumFahrenheit,
                         range: 45...70
                     )
                     temperatureSlider(
-                        title: "Ideal maximum",
+                        title: "Maximum temperature",
                         keyPath: \.idealMaximumFahrenheit,
                         range: 65...85
                     )
@@ -106,13 +106,13 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
-                    Link(destination: URL.openAirSupportEmail) {
+                    Link(destination: .openAirSupportEmail) {
                         LabeledContent("Support", value: String.openAirSupportEmail)
                     }
-                    Link(destination: URL(string: "https://github.com/mikemike396/openair-ios")!) {
+                    Link(destination: .githubRepo) {
                         LabeledContent("Open source / contribute", value: "GitHub")
                     }
-                    LabeledContent("Version", value: "\(appVersion) (\(buildNumber))")
+                    LabeledContent("Version", value: "\(String.appVersion) (\(String.buildNumber))")
                     LabeledContent("Weather data", value: "Apple Weather")
                     Text("OpenAir uses outdoor conditions only. It does not measure indoor temperature, humidity, air quality, or safety hazards.")
                         .font(.footnote)
@@ -187,14 +187,6 @@ struct SettingsView: View {
             return "Current location"
         }
         return snapshot.locationName
-    }
-
-    private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
-    }
-
-    private var buildNumber: String {
-        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
     }
 
     private func chooseCurrentLocation() async {

@@ -57,7 +57,7 @@ private struct DashboardPreview: View {
             current: current,
             hourly: [current] + Array(base.hourly.dropFirst())
         )
-        let plan = RecommendationEngine().plan(snapshot: snapshot, preferences: .default)
+        let plan = RecommendationEngine().plan(snapshot: snapshot, preferences: .default(for: .autoupdatingCurrent))
         return DashboardPreview(state: .loaded(snapshot: snapshot, plan: plan, isOffline: isOffline))
     }
 
@@ -81,7 +81,8 @@ private struct DashboardPreview: View {
 
     private static func makeStore() -> AppStore {
         let defaults = UserDefaults(suiteName: "DashboardPreview.\(UUID().uuidString)")!
-        defaults.set(true, forKey: "hasCompletedOnboarding")
-        return AppStore(weather: PreviewWeatherClient(), defaults: defaults)
+        let userPreferences = UserPreferenceStore(userDefaults: defaults)
+        userPreferences.hasCompletedOnboarding = true
+        return AppStore(weather: PreviewWeatherClient(), userPreferences: userPreferences)
     }
 }
