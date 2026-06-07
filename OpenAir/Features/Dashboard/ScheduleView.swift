@@ -5,13 +5,18 @@ struct ScheduleView: View {
     let snapshot: WeatherSnapshot
     let plan: RecommendationPlan
     let unit: TemperatureUnit
+    var initialSelectedDate: Date? = nil
 
     var body: some View {
         ZStack {
             AppBackground()
             ScrollView {
                 VStack(spacing: 18) {
-                    ForecastTimelineCard(items: plan.hourly, unit: unit)
+                    ForecastTimelineCard(
+                        items: plan.hourly,
+                        unit: unit,
+                        initialSelectedDate: initialSelectedDate
+                    )
                     HourlyDetailsCard(items: plan.hourly, unit: unit)
                 }
                 .padding()
@@ -24,6 +29,7 @@ struct ScheduleView: View {
 private struct ForecastTimelineCard: View {
     let items: [(weather: HourlyWeather, recommendation: Recommendation)]
     let unit: TemperatureUnit
+    let initialSelectedDate: Date?
     @State private var selectedItem: ForecastTimelineItem?
 
     private var chartItems: [ForecastTimelineItem] {
@@ -70,7 +76,7 @@ private struct ForecastTimelineCard: View {
         }
         .onAppear {
             guard selectedItem == nil else { return }
-            selectedItem = chartItems.nearest(to: Date())
+            selectedItem = chartItems.nearest(to: initialSelectedDate ?? Date())
         }
     }
 }

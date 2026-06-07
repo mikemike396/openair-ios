@@ -351,7 +351,12 @@ private struct HourlyList: View {
                     HStack(spacing: 18) {
                         ForEach(Array(plan.hourly.prefix(16).enumerated()), id: \.element.weather.id) { index, item in
                             NavigationLink {
-                                ScheduleView(snapshot: snapshot, plan: plan, unit: unit)
+                                ScheduleView(
+                                    snapshot: snapshot,
+                                    plan: plan,
+                                    unit: unit,
+                                    initialSelectedDate: item.weather.date
+                                )
                             } label: {
                                 HourlyTile(item: item, index: index, unit: unit)
                             }
