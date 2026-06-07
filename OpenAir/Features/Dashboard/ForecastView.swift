@@ -1,7 +1,7 @@
 import Charts
 import SwiftUI
 
-struct ScheduleView: View {
+struct ForecastView: View {
     let snapshot: WeatherSnapshot
     let plan: RecommendationPlan
     let unit: TemperatureUnit
