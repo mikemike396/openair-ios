@@ -54,3 +54,7 @@ The recommendation engine is deterministic and covered by unit tests.
 ## Privacy
 
 OpenAir uses location to fetch local weather conditions. Alerts are local and best-effort. iOS can delay or skip background refreshes.
+
+## Support
+
+[openairappsupport@gmail.com](mailto:openairappsupport@gmail.com)

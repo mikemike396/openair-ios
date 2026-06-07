@@ -106,6 +106,9 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
+                    Link(destination: URL.openAirSupportEmail) {
+                        LabeledContent("Support", value: String.openAirSupportEmail)
+                    }
                     LabeledContent("Version", value: "\(appVersion) (\(buildNumber))")
                     LabeledContent("Weather data", value: "Apple Weather")
                     Text("OpenAir uses outdoor conditions only. It does not measure indoor temperature, humidity, air quality, or safety hazards.")
