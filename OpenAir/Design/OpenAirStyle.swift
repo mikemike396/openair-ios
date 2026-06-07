@@ -37,9 +37,9 @@ struct AppBackground: View {
             ]
         } else {
             [
-                Color(red: 0.94, green: 0.98, blue: 0.98),
-                Color.openAirTeal.opacity(0.12),
-                Color.openAirMint.opacity(0.10)
+                Color(red: 0.95, green: 0.99, blue: 0.98),
+                Color.openAirTeal.opacity(0.11),
+                Color.openAirMint.opacity(0.08)
             ]
         }
     }
@@ -47,20 +47,47 @@ struct AppBackground: View {
 
 struct WeatherCard<Content: View>: View {
     @ViewBuilder let content: Content
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         content
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                Color(uiColor: .secondarySystemBackground).opacity(0.94),
+                Color(uiColor: .secondarySystemBackground).opacity(cardOpacity),
                 in: .rect(cornerRadius: 24)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 24)
-                    .stroke(.white.opacity(0.5), lineWidth: 0.5)
+                    .stroke(borderColor, lineWidth: borderWidth)
             }
-            .shadow(color: .openAirNavy.opacity(0.08), radius: 14, y: 6)
+            .shadow(color: shadowColor, radius: shadowRadius, y: shadowYOffset)
+    }
+
+    private var cardOpacity: Double {
+        colorScheme == .dark ? 0.94 : 0.96
+    }
+
+    private var shadowColor: Color {
+        .openAirNavy.opacity(colorScheme == .dark ? 0.08 : 0.18)
+    }
+
+    private var shadowRadius: CGFloat {
+        colorScheme == .dark ? 14 : 18
+    }
+
+    private var shadowYOffset: CGFloat {
+        colorScheme == .dark ? 6 : 9
+    }
+
+    private var borderColor: Color {
+        colorScheme == .dark
+            ? .white.opacity(0.65)
+            : .white.opacity(0.45)
+    }
+
+    private var borderWidth: CGFloat {
+        colorScheme == .dark ? 0.75 : 0.5
     }
 }
 
