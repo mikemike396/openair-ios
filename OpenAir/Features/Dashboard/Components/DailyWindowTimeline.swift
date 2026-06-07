@@ -44,12 +44,16 @@ struct DailyWindowTimeline {
         }
     }
 
-    func label(for window: RecommendationWindow, calendar: Calendar = .current) -> String {
+    func label(
+        for window: RecommendationWindow,
+        calendar: Calendar = .current,
+        locale: Locale = .autoupdatingCurrent
+    ) -> String {
         let action = actionLabel(for: window)
         if window.start <= now && now < window.end {
-            return "\(action) → \(timeLabel(window.end, calendar: calendar))"
+            return "\(action) → \(timeLabel(window.end, calendar: calendar, locale: locale))"
         }
-        return "\(action) \(timeLabel(window.start, calendar: calendar)) → \(timeLabel(window.end, calendar: calendar))"
+        return "\(action) \(timeLabel(window.start, calendar: calendar, locale: locale)) → \(timeLabel(window.end, calendar: calendar, locale: locale))"
     }
 
     private func actionLabel(for window: RecommendationWindow) -> String {
@@ -65,22 +69,17 @@ struct DailyWindowTimeline {
         return base
     }
 
-    private func timeLabel(_ date: Date, calendar: Calendar) -> String {
-        if date == calendar.startOfDay(for: date) {
-            return "12 AM"
-        }
-
+    private func timeLabel(_ date: Date, calendar: Calendar, locale: Locale) -> String {
         let components = calendar.dateComponents([.hour, .minute], from: date)
-        guard let hour = components.hour else {
+        guard let minute = components.minute else {
             return date.formatted(date: .omitted, time: .shortened)
         }
 
-        let period = hour < 12 ? "AM" : "PM"
-        let displayHour = hour % 12 == 0 ? 12 : hour % 12
-
-        if let minute = components.minute, minute > 0 {
-            return String(format: "%d:%02d %@", displayHour, minute, period)
-        }
-        return "\(displayHour) \(period)"
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = locale
+        formatter.timeZone = calendar.timeZone
+        formatter.setLocalizedDateFormatFromTemplate(minute > 0 ? "jmm" : "j")
+        return formatter.string(from: date)
     }
 }

@@ -48,7 +48,10 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(timeline.label(for: window, calendar: calendar), "Open now → 12 PM")
+        XCTAssertEqual(
+            normalizedTimeSpacing(timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_US"))),
+            "Open now → 12 PM"
+        )
     }
 
     func testFutureWindowLabelIsPlainStatusAndRange() throws {
@@ -59,7 +62,38 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(timeline.label(for: window, calendar: calendar), "Keep closed 6 PM → 12 AM")
+        XCTAssertEqual(
+            normalizedTimeSpacing(timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_US"))),
+            "Keep closed 6 PM → 12 AM"
+        )
+    }
+
+    func testLabelsSupportTwentyFourHourLocale() throws {
+        let window = window(startHour: 18, endHour: 24, status: .keepClosed)
+        let timeline = DailyWindowTimeline(
+            windows: [window],
+            now: try date(hour: 10),
+            calendar: calendar
+        )
+
+        XCTAssertEqual(
+            timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_GB")),
+            "Keep closed 18 → 00"
+        )
+    }
+
+    func testCurrentWindowLabelSupportsTwentyFourHourLocale() throws {
+        let window = window(startHour: 8, endHour: 12, status: .open)
+        let timeline = DailyWindowTimeline(
+            windows: [window],
+            now: try date(hour: 10),
+            calendar: calendar
+        )
+
+        XCTAssertEqual(
+            timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_GB")),
+            "Open now → 12"
+        )
     }
 
     private func window(
@@ -84,5 +118,9 @@ final class DailyWindowTimelineTests: XCTestCase {
         )
         let startOfDay = try XCTUnwrap(calendar.date(from: startOfDayComponents))
         return try XCTUnwrap(calendar.date(byAdding: .hour, value: hour, to: startOfDay))
+    }
+
+    private func normalizedTimeSpacing(_ label: String) -> String {
+        label.replacingOccurrences(of: "\u{202F}", with: " ")
     }
 }
