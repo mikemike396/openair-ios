@@ -34,7 +34,6 @@ struct DashboardView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
-                .environment(store)
         }
         .refreshable { await store.refreshPreservingLoadedState() }
     }
