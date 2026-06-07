@@ -57,7 +57,6 @@ struct DashboardView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.glassProminent)
-                    attribution
                 }
                 .padding()
             }
@@ -93,16 +92,6 @@ struct DashboardView: View {
         .background(.openAirAmber.opacity(0.12), in: .rect(cornerRadius: 14))
     }
 
-    private var attribution: some View {
-        VStack(spacing: 4) {
-            Text("Weather data provided by Apple Weather")
-            Text("Alerts are best-effort and may be delayed by iOS.")
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
-        .padding(.vertical, 8)
-    }
 }
 
 private struct RecommendationCard: View {

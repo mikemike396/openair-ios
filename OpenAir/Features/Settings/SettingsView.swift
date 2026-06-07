@@ -105,9 +105,12 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Data") {
-                    Text("Weather data provided by Apple Weather.")
+                Section("About") {
+                    LabeledContent("Version", value: "\(appVersion) (\(buildNumber))")
+                    LabeledContent("Weather data", value: "Apple Weather")
                     Text("OpenAir uses outdoor conditions only. It does not measure indoor temperature, humidity, air quality, or safety hazards.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Settings")
@@ -177,6 +180,14 @@ struct SettingsView: View {
             return "Current location"
         }
         return snapshot.locationName
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
     }
 
     private func searchAfterDebounce() async {
