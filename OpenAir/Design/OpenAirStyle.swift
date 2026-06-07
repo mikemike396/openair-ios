@@ -37,9 +37,9 @@ struct AppBackground: View {
             ]
         } else {
             [
-                Color(uiColor: .systemBackground),
-                Color.openAirTeal.opacity(0.10),
-                Color.openAirMint.opacity(0.08)
+                Color(red: 0.94, green: 0.98, blue: 0.98),
+                Color.openAirTeal.opacity(0.12),
+                Color.openAirMint.opacity(0.10)
             ]
         }
     }
