@@ -21,13 +21,13 @@ OpenAir is an iOS 26 SwiftUI app that recommends when outdoor temperature, dew p
 - Xcode 26
 - iOS 26 simulator or device
 - Apple Developer account with WeatherKit enabled
-- Bundle ID: `com.mikemike396.OpenAir`
+- Bundle ID: `com.openairapp.openair`
 
 ## Run
 
 1. Open `OpenAir.xcodeproj`.
 2. Select a development team for the `OpenAir` target.
-3. Enable WeatherKit for the bundle ID `com.mikemike396.OpenAir` in the Apple Developer portal.
+3. Enable WeatherKit for the bundle ID `com.openairapp.openair` in the Apple Developer portal.
 4. Build on an iOS 26 simulator or device.
 
 Unsigned simulator builds can use **Use Demo Weather** when WeatherKit authentication is unavailable.
@@ -54,6 +54,7 @@ The recommendation engine is deterministic and covered by unit tests.
 ## Privacy
 
 OpenAir uses location to fetch local weather conditions. Alerts are local and best-effort. iOS can delay or skip background refreshes.
+Weather and location data are used only for the app's window-opening recommendations.
 
 ## Support
 
