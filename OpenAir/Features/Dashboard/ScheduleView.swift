@@ -110,6 +110,9 @@ private struct ForecastTimelineCharts: View {
 
             ForecastStatusBand(items: items, xDomain: xDomain)
                 .frame(height: 16)
+
+            ForecastDayAxis(xDomain: xDomain)
+                .frame(height: 22)
         }
     }
 }
@@ -164,13 +167,7 @@ private struct ForecastLineChart: View {
             }
             .chartXScale(domain: xDomain)
             .chartYScale(domain: yDomain)
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .hour, count: 6)) {
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel(format: .dateTime.hour())
-                }
-            }
+            .chartXAxis(.hidden)
             .chartYAxis {
                 AxisMarks(position: .leading) { value in
                     AxisGridLine()
@@ -273,6 +270,74 @@ private struct ForecastStatusBand: View {
                 status: item.status
             )
         }
+    }
+}
+
+private struct ForecastDayAxis: View {
+    let xDomain: ClosedRange<Date>
+
+    var body: some View {
+        Chart {
+            PointMark(
+                x: .value("Start", xDomain.lowerBound),
+                y: .value("Axis", 0)
+            )
+            .foregroundStyle(.clear)
+        }
+        .chartXScale(domain: xDomain)
+        .chartYScale(domain: 0...1)
+        .chartXAxis {
+            AxisMarks(values: dayAxisValues) { value in
+                AxisTick()
+                if let date = value.as(Date.self) {
+                    AxisValueLabel {
+                        Text(dayAxisLabel(for: date))
+                    }
+                }
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0]) {
+                AxisTick().foregroundStyle(.clear)
+                AxisValueLabel {
+                    Text("000\(TemperatureUnit.fahrenheit.symbol)")
+                        .frame(width: ForecastAxisMetrics.yLabelWidth, alignment: .trailing)
+                        .hidden()
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var dayAxisValues: [Date] {
+        let calendar = Calendar.current
+        var values = [xDomain.lowerBound]
+        var nextDay = calendar.startOfDay(for: xDomain.lowerBound)
+
+        if nextDay <= xDomain.lowerBound {
+            nextDay = calendar.date(byAdding: .day, value: 1, to: nextDay) ?? xDomain.upperBound
+        }
+
+        while nextDay < xDomain.upperBound {
+            values.append(nextDay)
+            guard let followingDay = calendar.date(byAdding: .day, value: 1, to: nextDay) else { break }
+            nextDay = followingDay
+        }
+
+        return values
+    }
+
+    private func dayAxisLabel(for date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return "Today"
+        }
+
+        if calendar.isDateInTomorrow(date) {
+            return "Tomorrow"
+        }
+
+        return date.formatted(.dateTime.weekday(.abbreviated))
     }
 }
 
