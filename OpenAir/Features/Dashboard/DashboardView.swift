@@ -53,7 +53,7 @@ struct DashboardView: View {
                     NavigationLink {
                         ScheduleView(snapshot: snapshot, plan: plan, unit: store.preferences.temperatureUnit)
                     } label: {
-                        Label("View full schedule", systemImage: "calendar")
+                        Label("View forecast", systemImage: "chart.xyaxis.line")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.glassProminent)
