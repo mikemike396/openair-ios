@@ -3,41 +3,47 @@ import SwiftUI
 
 @main
 struct OpenAirApp: App {
-    static let refreshTaskIdentifier = "com.openairapp.openair.refresh"
-
     @Environment(\.scenePhase) private var scenePhase
-    @State private var store: AppStore
+    @State private var store = AppStore()
 
     init() {
-        let store = AppStore()
-        _store = State(initialValue: store)
-        BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: Self.refreshTaskIdentifier,
-            using: nil
-        ) { task in
-            guard let refreshTask = task as? BGAppRefreshTask else {
-                task.setTaskCompleted(success: false)
-                return
-            }
-            let work = Task {
-                await store.refresh()
-                refreshTask.setTaskCompleted(success: true)
-            }
-            refreshTask.expirationHandler = {
-                work.cancel()
-            }
-        }
+        BGAppRefreshTask.registerBackgroundRefresh(store: store)
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(store)
-                .task { await store.start() }
+                .task {
+                    await store.start()
+                }
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
-                    Task { await store.refreshIfNeeded() }
+                    Task {
+                        await store.refreshIfNeeded()
+                    }
                 }
+        }
+    }
+}
+
+extension BGAppRefreshTask: @unchecked @retroactive Sendable {
+    static func registerBackgroundRefresh(store: AppStore) {
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: String.backgroundRefreshTaskIdentifier,
+            using: nil
+        ) { task in
+            guard let refreshTask = task as? BGAppRefreshTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
+            let work = Task { @MainActor in
+                await store.refresh()
+                refreshTask.setTaskCompleted(success: !Task.isCancelled)
+            }
+            refreshTask.expirationHandler = {
+                work.cancel()
+            }
         }
     }
 }

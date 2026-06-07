@@ -2,6 +2,7 @@ import BackgroundTasks
 import CoreLocation
 import Foundation
 import Observation
+import OSLog
 import UserNotifications
 
 enum DashboardLoadState {
@@ -243,9 +244,14 @@ final class AppStore {
     }
 
     private func scheduleBackgroundRefresh() {
-        let request = BGAppRefreshTaskRequest(identifier: OpenAirApp.refreshTaskIdentifier)
+        let request = BGAppRefreshTaskRequest(identifier: String.backgroundRefreshTaskIdentifier)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 60 * 60)
-        try? BGTaskScheduler.shared.submit(request)
+
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            Logger().debug("Failed to schedule background refresh: \(error)")
+        }
     }
     
     // TODO: Break this into a UserPreferenceStore
