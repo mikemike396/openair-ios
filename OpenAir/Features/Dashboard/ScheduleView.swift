@@ -532,14 +532,14 @@ private enum ForecastMetric {
 
     var color: Color {
         switch self {
-        case .temperature: Color.openAirAmber.opacity(0.75)
+        case .temperature: Color.openAirAmber
         case .dewPoint: Color.openAirBlue
         }
     }
 
     var lineWidth: CGFloat {
         switch self {
-        case .temperature: 1.5
+        case .temperature: 2.25
         case .dewPoint: 3.5
         }
     }
