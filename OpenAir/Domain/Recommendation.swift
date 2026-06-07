@@ -99,5 +99,13 @@ struct ComfortPreferences: Codable, Sendable, Equatable {
     var alertsEnabled = true
     var temperatureUnit: TemperatureUnit = .fahrenheit
 
-    static let `default` = ComfortPreferences()
+    static var `default`: ComfortPreferences {
+        Self.default(for: .autoupdatingCurrent)
+    }
+
+    static func `default`(for locale: Locale) -> ComfortPreferences {
+        var preferences = ComfortPreferences()
+        preferences.temperatureUnit = locale.measurementSystem == .us ? .fahrenheit : .celsius
+        return preferences
+    }
 }

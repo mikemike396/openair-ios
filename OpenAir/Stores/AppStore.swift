@@ -53,7 +53,8 @@ final class AppStore {
         evaluator: any RecommendationEvaluating = RecommendationEngine(),
         notifications: any NotificationScheduling = NotificationClient(),
         cache: WeatherCache = WeatherCache(),
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        locale: Locale = .autoupdatingCurrent
     ) {
         self.weather = weather
         self.location = location
@@ -64,7 +65,7 @@ final class AppStore {
         self.defaults = defaults
         hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarding)
         savedPlace = Self.decode(SavedPlace.self, key: Keys.place, defaults: defaults)
-        preferences = Self.decode(ComfortPreferences.self, key: Keys.preferences, defaults: defaults) ?? .default
+        preferences = Self.decode(ComfortPreferences.self, key: Keys.preferences, defaults: defaults) ?? .default(for: locale)
         encode(preferences, key: Keys.preferences)
         if hasCompletedOnboarding, let cached = cache.load() {
             let plan = evaluator.plan(snapshot: cached, preferences: preferences)

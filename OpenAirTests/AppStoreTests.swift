@@ -143,6 +143,28 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(restored.preferences.maximumWindMPH, 12)
     }
 
+    func testFirstLaunchDefaultsTemperatureUnitFromMetricLocale() {
+        let store = makeStore(locale: Locale(identifier: "ja_JP"))
+
+        XCTAssertEqual(store.preferences.temperatureUnit, .celsius)
+    }
+
+    func testFirstLaunchDefaultsTemperatureUnitFromUSLocale() {
+        let store = makeStore(locale: Locale(identifier: "en_US"))
+
+        XCTAssertEqual(store.preferences.temperatureUnit, .fahrenheit)
+    }
+
+    func testSavedTemperatureUnitOverridesLocaleDefault() {
+        var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
+        preferences.temperatureUnit = .fahrenheit
+        defaults.set(try? JSONEncoder().encode(preferences), forKey: "comfortPreferences")
+
+        let store = makeStore(locale: Locale(identifier: "ja_JP"))
+
+        XCTAssertEqual(store.preferences.temperatureUnit, .fahrenheit)
+    }
+
     func testForegroundRefreshSkipsFreshForecast() async {
         let now = Date()
         let weather = WeatherSpy(snapshots: [Self.snapshot(fetchedAt: now.addingTimeInterval(-60 * 14))])
@@ -344,7 +366,8 @@ final class AppStoreTests: XCTestCase {
 
     private func makeStore(
         weather: any WeatherProviding = PreviewWeatherClient(),
-        location: any LocationProviding = LocationStub(result: .success(.init(latitude: 0, longitude: 0)))
+        location: any LocationProviding = LocationStub(result: .success(.init(latitude: 0, longitude: 0))),
+        locale: Locale = Locale(identifier: "en_US")
     ) -> AppStore {
         AppStore(
             weather: weather,
@@ -353,7 +376,8 @@ final class AppStoreTests: XCTestCase {
             evaluator: RecommendationEngine(),
             notifications: NotificationStub(),
             cache: WeatherCache(url: cacheURL),
-            defaults: defaults
+            defaults: defaults,
+            locale: locale
         )
     }
 
