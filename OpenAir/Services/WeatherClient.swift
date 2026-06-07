@@ -10,9 +10,11 @@ struct WeatherKitClient: WeatherProviding {
     private let service = WeatherService.shared
 
     func fetchWeather(for coordinate: Coordinate, locationName: String) async throws -> WeatherSnapshot {
+        let startDate = Date()
+        let endDate = Calendar.current.date(byAdding: .hour, value: 48, to: startDate) ?? startDate.addingTimeInterval(48 * 60 * 60)
         let weather = try await service.weather(
             for: coordinate.clLocation,
-            including: .current, .hourly
+            including: .current, .hourly(startDate: startDate, endDate: endDate)
         )
         let current = map(
             date: weather.0.date,
