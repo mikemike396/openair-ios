@@ -75,7 +75,7 @@ struct TodayPlanCard: View {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(timeline.windows.enumerated()), id: \.element.id) { index, window in
                         Label {
-                            Text(windowLabel(window, index: index, now: timeline.start))
+                            Text(windowLabel(window, index: index, now: timeline.now))
                         } icon: {
                             Circle()
                                 .fill(window.status.color)
@@ -95,16 +95,18 @@ struct TodayPlanCard: View {
         let calendar = Calendar.current
         let dayStart = calendar.startOfDay(for: now)
         guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else {
-            return TimelinePlan(start: now, end: now, windows: [])
+            return TimelinePlan(now: now, start: now, end: now, windows: [])
         }
 
-        let clipped: [RecommendationWindow] = windows.compactMap { window in
+        let visibleWindows = windows.filter { now < $0.end && $0.start < dayEnd }
+        let clipped: [RecommendationWindow] = visibleWindows.enumerated().compactMap { index, window in
             let start = max(window.start, now)
+            let displayStart = index == visibleWindows.startIndex ? dayStart : max(window.start, dayStart)
             let end = min(window.end, dayEnd)
-            guard start < end else { return nil }
-            return RecommendationWindow(start: start, end: end, status: window.status)
+            guard displayStart < end, start < end else { return nil }
+            return RecommendationWindow(start: displayStart, end: end, status: window.status)
         }
-        return TimelinePlan(start: now, end: dayEnd, windows: clipped)
+        return TimelinePlan(now: now, start: dayStart, end: dayEnd, windows: clipped)
     }
 
     private func windowLabel(_ window: RecommendationWindow, index: Int, now: Date) -> String {
@@ -133,6 +135,7 @@ struct TodayPlanCard: View {
     }
 
     private struct TimelinePlan {
+        let now: Date
         let start: Date
         let end: Date
         let windows: [RecommendationWindow]

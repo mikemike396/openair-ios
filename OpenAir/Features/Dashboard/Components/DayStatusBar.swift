@@ -5,7 +5,7 @@ struct DayStatusBar: View {
     let start: Date
     let end: Date
 
-    private let barHeight: CGFloat = 22
+    private let barHeight: CGFloat = 12
     private let edgeOverscan: CGFloat = 1
 
     var body: some View {
@@ -25,11 +25,11 @@ struct DayStatusBar: View {
                             .offset(x: segmentOffset(for: window, in: proxy.size.width))
                     }
 
-                    ForEach(visibleDividerMarks(in: proxy.size.width)) { mark in
+                    ForEach(segmentDividers(in: proxy.size.width)) { mark in
                         Rectangle()
-                            .fill(.white.opacity(0.22))
-                            .frame(width: 1, height: barHeight)
-                            .offset(x: mark.xPosition)
+                            .fill(Color.white.opacity(0.92))
+                            .frame(width: 2, height: barHeight)
+                            .offset(x: mark.tickPosition - 1)
                     }
                 }
                 .clipShape(.capsule)
@@ -43,18 +43,23 @@ struct DayStatusBar: View {
             .frame(height: barHeight)
 
             GeometryReader { proxy in
-                ZStack(alignment: .leading) {
+                ZStack(alignment: .topLeading) {
                     ForEach(axisMarks(in: proxy.size.width)) { mark in
+                        Rectangle()
+                            .fill(Color.secondary.opacity(0.28))
+                            .frame(width: 1, height: 9)
+                            .position(x: mark.tickPosition, y: 4)
+
                         Text(mark.label)
                             .frame(width: 56, alignment: mark.alignment)
                             .position(
-                                x: mark.xPosition,
-                                y: 8
+                                x: mark.labelPosition,
+                                y: 24
                             )
                     }
                 }
             }
-            .frame(height: 16)
+            .frame(height: 34)
             .font(.caption2)
             .foregroundStyle(.secondary)
         }
@@ -101,34 +106,37 @@ struct DayStatusBar: View {
         let calendar = Calendar.current
         let dayStart = calendar.startOfDay(for: start)
         return [6, 12, 18].compactMap {
-            calendar.date(bySettingHour: $0, minute: 0, second: 0, of: dayStart)
+            return calendar.date(bySettingHour: $0, minute: 0, second: 0, of: dayStart)
         }
         .filter { start < $0 && $0 < end }
     }
 
     private func axisMarks(in width: CGFloat) -> [AxisMark] {
-        let startMark = positionedAxisMark(date: start, label: "Now", alignment: .leading, width: width)
-        let endMark = positionedAxisMark(date: end, label: "12 AM", alignment: .trailing, width: width)
-        return [startMark] + visibleDividerMarks(in: width) + [endMark]
-    }
-
-    private func visibleDividerMarks(in width: CGFloat) -> [AxisMark] {
-        let startMark = positionedAxisMark(date: start, label: "Now", alignment: .leading, width: width)
-        let endMark = positionedAxisMark(date: end, label: "12 AM", alignment: .trailing, width: width)
-        let minimumSpacing: CGFloat = 64
         return dividerDates
             .map {
-                positionedAxisMark(
+                let fraction = fraction(for: $0)
+                return positionedAxisMark(
                     date: $0,
-                    label: $0.formatted(.dateTime.hour()),
-                    alignment: .center,
+                    label: timeMarkLabel(for: $0),
+                    alignment: axisAlignment(for: fraction),
                     width: width
                 )
             }
-            .filter {
-                abs($0.xPosition - startMark.xPosition) >= minimumSpacing &&
-                abs(endMark.xPosition - $0.xPosition) >= minimumSpacing
+    }
+
+    private func segmentDividers(in width: CGFloat) -> [AxisMark] {
+        windows
+            .dropFirst()
+            .map {
+                AxisMark(
+                    date: $0.start,
+                    label: "",
+                    alignment: .center,
+                    tickPosition: width * fraction(for: $0.start),
+                    labelPosition: width * fraction(for: $0.start)
+                )
             }
+            .filter { 0 < $0.tickPosition && $0.tickPosition < width }
     }
 
     private func positionedAxisMark(
@@ -141,15 +149,27 @@ struct DayStatusBar: View {
             date: date,
             label: label,
             alignment: alignment,
-            xPosition: min(max(width * fraction(for: date), 28), width - 28)
+            tickPosition: width * fraction(for: date),
+            labelPosition: min(max(width * fraction(for: date), 28), width - 28)
         )
+    }
+
+    private func timeMarkLabel(for date: Date) -> String {
+        date.formatted(.dateTime.hour())
+    }
+
+    private func axisAlignment(for fraction: Double) -> Alignment {
+        if fraction == 0 { return .leading }
+        if fraction == 1 { return .trailing }
+        return .center
     }
 
     private struct AxisMark: Identifiable {
         let date: Date
         let label: String
         let alignment: Alignment
-        let xPosition: CGFloat
+        let tickPosition: CGFloat
+        let labelPosition: CGFloat
 
         var id: Date { date }
     }
