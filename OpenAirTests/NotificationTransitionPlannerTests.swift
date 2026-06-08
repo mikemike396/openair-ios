@@ -58,4 +58,63 @@ final class NotificationTransitionPlannerTests: XCTestCase {
 
         XCTAssertTrue(NotificationTransitionPlanner().transitions(in: plan, after: now).isEmpty)
     }
+
+    func testOneHourChangeProducesNoNotifications() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let plan = plan(
+            now: now,
+            recommendations: [
+                .init(status: .open, reasons: []),
+                .init(status: .keepClosed, reasons: [.humid]),
+                .init(status: .open, reasons: [])
+            ]
+        )
+
+        XCTAssertTrue(NotificationTransitionPlanner().transitions(in: plan, after: now).isEmpty)
+    }
+
+    func testOneHourChangeKeepsCloseAndReopenNotifications() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let plan = plan(
+            now: now,
+            recommendations: [
+                .init(status: .open, reasons: []),
+                .init(status: .keepClosed, reasons: [.thunderstorm]),
+                .init(status: .open, reasons: [])
+            ]
+        )
+
+        let transitions = NotificationTransitionPlanner().transitions(in: plan, after: now)
+
+        XCTAssertEqual(transitions.map(\.status), [.keepClosed, .open])
+    }
+
+    private func plan(
+        now: Date,
+        recommendations: [Recommendation]
+    ) -> RecommendationPlan {
+        let hourly = recommendations.enumerated().map { index, recommendation in
+            (
+                weather: HourlyWeather(
+                    date: now.addingTimeInterval(Double(index + 1) * 3600),
+                    temperatureFahrenheit: 65,
+                    dewPointFahrenheit: 55,
+                    precipitationChance: 0,
+                    isPrecipitating: false,
+                    isThunderstorm: false,
+                    windMPH: 5,
+                    gustMPH: 7,
+                    symbolName: "sun.max"
+                ),
+                recommendation: recommendation
+            )
+        }
+
+        return RecommendationPlan(
+            current: recommendations[0],
+            hourly: hourly,
+            windows: [],
+            nextChange: nil
+        )
+    }
 }

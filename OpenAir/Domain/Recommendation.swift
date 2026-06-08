@@ -61,6 +61,15 @@ enum RecommendationReason: String, Codable, Hashable, Sendable {
         case .thunderstorm: "cloud.bolt.rain"
         }
     }
+
+    var allowsTransientSmoothing: Bool {
+        switch self {
+        case .activePrecipitation, .thunderstorm, .extremeTemperature, .extremeHumidity, .dangerousGusts:
+            false
+        case .comfortableTemperature, .lowDewPoint, .noRain, .lightWind, .temperatureOutsideRange, .humid, .rainRisk, .windy:
+            true
+        }
+    }
 }
 
 struct Recommendation: Codable, Sendable, Equatable {
@@ -72,7 +81,40 @@ struct RecommendationWindow: Codable, Identifiable, Sendable, Equatable {
     let start: Date
     let end: Date
     let status: RecommendationStatus
+    let reasons: [RecommendationReason]
+
     var id: Date { start }
+
+    private enum CodingKeys: String, CodingKey {
+        case start
+        case end
+        case status
+        case reasons
+    }
+
+    init(
+        start: Date,
+        end: Date,
+        status: RecommendationStatus,
+        reasons: [RecommendationReason] = []
+    ) {
+        self.start = start
+        self.end = end
+        self.status = status
+        self.reasons = reasons
+    }
+
+    var allowsTransientSmoothing: Bool {
+        reasons.allSatisfy(\.allowsTransientSmoothing)
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        start = try container.decode(Date.self, forKey: .start)
+        end = try container.decode(Date.self, forKey: .end)
+        status = try container.decode(RecommendationStatus.self, forKey: .status)
+        reasons = try container.decodeIfPresent([RecommendationReason].self, forKey: .reasons) ?? []
+    }
 }
 
 struct RecommendationPlan: Sendable, Equatable {
@@ -89,4 +131,3 @@ struct RecommendationPlan: Sendable, Equatable {
         lhs.hourly.map(\.recommendation) == rhs.hourly.map(\.recommendation)
     }
 }
-

@@ -95,6 +95,11 @@ struct SettingsView: View {
                         step: 1,
                         value: { "\(Int($0)) mph" }
                     )
+                    Button("Reset Comfort Defaults") {
+                        var preferences = store.preferences
+                        preferences.resetSliderDefaults(for: .autoupdatingCurrent)
+                        store.preferences = preferences.normalized
+                    }
                 }
 
                 Section("Alerts") {

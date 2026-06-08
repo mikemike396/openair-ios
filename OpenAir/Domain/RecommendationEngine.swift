@@ -108,16 +108,22 @@ struct RecommendationEngine: RecommendationEvaluating {
         var windows: [RecommendationWindow] = []
         var start = first.weather.date
         var status = first.recommendation.status
+        var reasons = first.recommendation.reasons
 
-        for index in 1..<hourly.count where hourly[index].recommendation.status != status {
-            let change = hourly[index]
-            windows.append(.init(start: start, end: change.weather.date, status: status))
-            start = change.weather.date
-            status = change.recommendation.status
+        for index in 1..<hourly.count {
+            let item = hourly[index]
+            if item.recommendation.status != status {
+                windows.append(.init(start: start, end: item.weather.date, status: status, reasons: reasons))
+                start = item.weather.date
+                status = item.recommendation.status
+                reasons = item.recommendation.reasons
+            } else {
+                reasons.append(contentsOf: item.recommendation.reasons.filter { !reasons.contains($0) })
+            }
         }
 
         let end = Calendar.current.date(byAdding: .hour, value: 1, to: hourly.last?.weather.date ?? start) ?? start
-        windows.append(.init(start: start, end: end, status: status))
+        windows.append(.init(start: start, end: end, status: status, reasons: reasons))
         return windows
     }
 }

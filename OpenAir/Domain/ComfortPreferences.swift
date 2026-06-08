@@ -15,6 +15,15 @@ struct ComfortPreferences: Codable, Sendable, Equatable {
         return preferences
     }
 
+    mutating func resetSliderDefaults(for locale: Locale) {
+        let defaults = Self.default(for: locale)
+        idealMinimumFahrenheit = defaults.idealMinimumFahrenheit
+        idealMaximumFahrenheit = defaults.idealMaximumFahrenheit
+        maximumDewPointFahrenheit = defaults.maximumDewPointFahrenheit
+        maximumRainChance = defaults.maximumRainChance
+        maximumWindMPH = defaults.maximumWindMPH
+    }
+
     var normalized: ComfortPreferences {
         var preferences = self
         if preferences.idealMinimumFahrenheit > preferences.idealMaximumFahrenheit {

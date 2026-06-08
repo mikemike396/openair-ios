@@ -53,6 +53,38 @@ final class DailyWindowTimelineTests: XCTestCase {
         XCTAssertEqual(timeline.windows, [])
     }
 
+    func testSmoothsOneHourValidReasonForDisplay() throws {
+        let timeline = DailyWindowTimeline(
+            windows: [
+                window(startHour: 10, endHour: 12, status: .open),
+                window(startHour: 12, endHour: 13, status: .keepClosed, reasons: [.humid]),
+                window(startHour: 13, endHour: 16, status: .open)
+            ],
+            now: try date(hour: 10),
+            calendar: calendar
+        )
+
+        XCTAssertEqual(timeline.windows, [
+            RecommendationWindow(start: try date(hour: 10), end: try date(hour: 16), status: .open)
+        ])
+    }
+
+    func testKeepsOneHourChangeForDisplay() throws {
+        let timeline = DailyWindowTimeline(
+            windows: [
+                window(startHour: 10, endHour: 12, status: .open),
+                window(startHour: 12, endHour: 13, status: .keepClosed, reasons: [.activePrecipitation]),
+                window(startHour: 13, endHour: 16, status: .open)
+            ],
+            now: try date(hour: 10),
+            calendar: calendar
+        )
+
+        XCTAssertEqual(timeline.windows.count, 3)
+        XCTAssertEqual(timeline.windows[1].status, .keepClosed)
+        XCTAssertEqual(timeline.windows[1].reasons, [.activePrecipitation])
+    }
+
     func testCurrentWindowLabelUsesNow() throws {
         let window = window(startHour: 8, endHour: 12, status: .open)
         let timeline = DailyWindowTimeline(
@@ -112,12 +144,14 @@ final class DailyWindowTimelineTests: XCTestCase {
     private func window(
         startHour: Int,
         endHour: Int,
-        status: RecommendationStatus
+        status: RecommendationStatus,
+        reasons: [RecommendationReason] = []
     ) -> RecommendationWindow {
         RecommendationWindow(
             start: try! date(hour: startHour),
             end: try! date(hour: endHour),
-            status: status
+            status: status,
+            reasons: reasons
         )
     }
 

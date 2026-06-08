@@ -37,9 +37,11 @@ struct DailyWindowTimeline {
             return RecommendationWindow(
                 start: displayStart,
                 end: displayEnd,
-                status: window.status
+                status: window.status,
+                reasons: window.reasons
             )
         }
+        .smoothedForDisplay()
     }
 
     func label(
