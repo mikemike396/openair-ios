@@ -46,13 +46,13 @@ struct RecommendationEngine: RecommendationEvaluating {
             negative.append(.humid)
         }
 
-        if weather.precipitationChance < preferences.maximumRainChance {
+        if weather.precipitationChance <= preferences.maximumRainChance {
             positive.append(.noRain)
         } else {
             negative.append(.rainRisk)
         }
 
-        if weather.windMPH <= preferences.maximumWindMPH {
+        if roundedDisplayValue(weather.windMPH, isAtMost: preferences.maximumWindMPH) {
             positive.append(.lightWind)
         } else {
             negative.append(.windy)
@@ -90,6 +90,13 @@ struct RecommendationEngine: RecommendationEvaluating {
         unit: TemperatureUnit
     ) -> Bool {
         unit.display(value) <= unit.display(maximum)
+    }
+
+    private func roundedDisplayValue(
+        _ value: Double,
+        isAtMost maximum: Double
+    ) -> Bool {
+        Int(value.rounded()) <= Int(maximum.rounded())
     }
 
     private func makeWindows(

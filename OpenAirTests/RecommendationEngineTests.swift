@@ -14,13 +14,14 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(engine.evaluate(weather(wind: 15), preferences: preferences).status, .open)
     }
 
-    func testRainThresholdClosesWindows() {
-        let result = engine.evaluate(weather(rain: 0.50), preferences: preferences)
+    func testRainAboveThresholdClosesWindows() {
+        let result = engine.evaluate(weather(rain: 0.501), preferences: preferences)
         XCTAssertEqual(result.status, .keepClosed)
         XCTAssertTrue(result.reasons.contains(.rainRisk))
     }
 
-    func testRainProbabilityBelowThresholdAllowsOpen() {
+    func testRainProbabilityAtOrBelowThresholdAllowsOpen() {
+        XCTAssertEqual(engine.evaluate(weather(rain: 0.50), preferences: preferences).status, .open)
         XCTAssertEqual(engine.evaluate(weather(rain: 0.499), preferences: preferences).status, .open)
     }
 
@@ -36,7 +37,7 @@ final class RecommendationEngineTests: XCTestCase {
     func testAnyComfortThresholdMissClosesWindows() {
         XCTAssertEqual(engine.evaluate(weather(temp: 80), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(dewPoint: 64), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(rain: 0.50), preferences: preferences).status, .keepClosed)
+        XCTAssertEqual(engine.evaluate(weather(rain: 0.501), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(wind: 16), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(temp: 80, dewPoint: 64, wind: 20), preferences: preferences).status, .keepClosed)
     }
@@ -47,6 +48,10 @@ final class RecommendationEngineTests: XCTestCase {
 
     func testDisplayedTemperatureAtMaximumAllowsOpenDespiteHiddenDecimal() {
         XCTAssertEqual(engine.evaluate(weather(temp: 78.49), preferences: preferences).status, .open)
+    }
+
+    func testDisplayedWindAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        XCTAssertEqual(engine.evaluate(weather(wind: 15.49), preferences: preferences).status, .open)
     }
 
     func testConsecutiveHoursMergeIntoWindows() {
