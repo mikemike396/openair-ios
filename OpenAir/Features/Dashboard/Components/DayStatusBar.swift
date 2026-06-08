@@ -103,12 +103,7 @@ struct DayStatusBar: View {
     }
 
     private var dividerDates: [Date] {
-        let calendar = Calendar.current
-        let dayStart = calendar.startOfDay(for: start)
-        return [6, 12, 18].compactMap {
-            return calendar.date(bySettingHour: $0, minute: 0, second: 0, of: dayStart)
-        }
-        .filter { start < $0 && $0 < end }
+        DayStatusBarAxis.markerDates(start: start, end: end)
     }
 
     private func axisMarks(in width: CGFloat) -> [AxisMark] {
@@ -172,5 +167,52 @@ struct DayStatusBar: View {
         let labelPosition: CGFloat
 
         var id: Date { date }
+    }
+}
+
+struct DayStatusBarAxis {
+    static func markerDates(
+        start: Date,
+        end: Date,
+        calendar: Calendar = .current
+    ) -> [Date] {
+        let duration = end.timeIntervalSince(start)
+        guard duration > 0 else { return [] }
+
+        let intervalHours: Int
+        if duration > 8 * 60 * 60 {
+            intervalHours = 4
+        } else if duration >= 3 * 60 * 60 {
+            intervalHours = 2
+        } else {
+            intervalHours = 1
+        }
+
+        var components = calendar.dateComponents([.year, .month, .day, .hour], from: start)
+        components.minute = 0
+        components.second = 0
+        components.nanosecond = 0
+
+        guard var marker = calendar.date(from: components) else { return [] }
+        if marker <= start {
+            guard let nextHour = calendar.date(byAdding: .hour, value: 1, to: marker) else { return [] }
+            marker = nextHour
+        }
+
+        while calendar.component(.hour, from: marker) % intervalHours != 0 {
+            guard let nextHour = calendar.date(byAdding: .hour, value: 1, to: marker) else { return [] }
+            marker = nextHour
+        }
+
+        var markers: [Date] = []
+        while marker < end {
+            markers.append(marker)
+            guard let nextMarker = calendar.date(byAdding: .hour, value: intervalHours, to: marker) else {
+                break
+            }
+            marker = nextMarker
+        }
+
+        return markers
     }
 }

@@ -21,17 +21,15 @@ struct DailyWindowTimeline {
             return
         }
 
-        self.start = dayStart
+        self.start = now
         self.end = dayEnd
 
         let visibleWindows = windows.filter {
             now < $0.end && $0.start < dayEnd
         }
 
-        self.windows = visibleWindows.enumerated().compactMap { index, window in
-            let displayStart = index == visibleWindows.startIndex
-                ? dayStart
-                : max(window.start, dayStart)
+        self.windows = visibleWindows.compactMap { window in
+            let displayStart = max(window.start, now)
             let displayEnd = min(window.end, dayEnd)
 
             guard displayStart < displayEnd else { return nil }

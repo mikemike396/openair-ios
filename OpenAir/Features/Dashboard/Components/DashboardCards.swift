@@ -72,7 +72,7 @@ struct TodayPlanCard: View {
 
         WeatherCard {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Today’s window plan")
+                Text("Rest of today")
                     .font(.title3.bold())
 
                 VStack(alignment: .leading, spacing: 10) {
