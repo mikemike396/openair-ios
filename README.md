@@ -6,6 +6,7 @@
 
 Window weather & dew point alerts.
 
+[Download on the App Store](https://apps.apple.com/us/app/openair-window-weather/id6777466080)
 
 OpenAir is an iOS 26 SwiftUI app that recommends when outdoor temperature, dew point, rain, and wind are suitable for opening windows.
 
@@ -72,11 +73,21 @@ The recommendation engine is deterministic and covered by unit tests.
 - `Features`: onboarding, dashboard, schedule, hour detail, and settings.
 - `OpenAirTests`: recommendation boundaries, windows, notification transitions, persistence, and location fallback behavior.
 
+## Contributing
+
+Contributions are welcome.
+
+Good first contributions include bug fixes, UI polish, accessibility improvements, documentation updates, and recommendation logic tests.
+
+Before opening a large pull request, please start a GitHub issue to discuss the change.
+
 ## Privacy
 
 OpenAir uses location to fetch local weather conditions. Alerts are local and best-effort. iOS can delay or skip background refreshes.
 Weather and location data are used only for the app's window-opening recommendations.
 
 ## Support
+
+[Leave a review on the App Store](https://apps.apple.com/app/id6777466080?action=write-review)
 
 [openairappsupport@gmail.com](mailto:openairappsupport@gmail.com)
