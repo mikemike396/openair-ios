@@ -19,11 +19,24 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(timeline.start, try date(hour: 0))
+        XCTAssertEqual(timeline.start, now)
         XCTAssertEqual(timeline.end, try date(hour: 24))
         XCTAssertEqual(timeline.windows, [
-            RecommendationWindow(start: try date(hour: 0), end: try date(hour: 12), status: .open),
+            RecommendationWindow(start: try date(hour: 10), end: try date(hour: 12), status: .open),
             RecommendationWindow(start: try date(hour: 12), end: try date(hour: 24), status: .keepClosed)
+        ])
+    }
+
+    func testCurrentWindowIsClippedToNow() throws {
+        let now = try date(hour: 10)
+        let timeline = DailyWindowTimeline(
+            windows: [window(startHour: 8, endHour: 12, status: .open)],
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(timeline.windows, [
+            RecommendationWindow(start: now, end: try date(hour: 12), status: .open)
         ])
     }
 
