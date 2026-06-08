@@ -54,6 +54,14 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(engine.evaluate(weather(wind: 15.49), preferences: preferences).status, .open)
     }
 
+    func testInvertedTemperatureRangeDoesNotCrashRecommendation() {
+        var preferences = preferences
+        preferences.idealMinimumFahrenheit = 70
+        preferences.idealMaximumFahrenheit = 65
+
+        XCTAssertNoThrow(engine.evaluate(weather(temp: 70), preferences: preferences))
+    }
+
     func testConsecutiveHoursMergeIntoWindows() {
         let hours = [
             weather(date: start, temp: 65),

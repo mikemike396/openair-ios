@@ -20,7 +20,7 @@ final class AppStoreTests: XCTestCase {
         await store.completeOnboarding()
 
         XCTAssertTrue(store.hasCompletedOnboarding)
-        guard case .loaded(let snapshot, _, _) = store.loadState else {
+        guard case .loaded(let snapshot, _) = store.loadState else {
             return XCTFail("Expected loaded dashboard state")
         }
         XCTAssertEqual(snapshot.locationName, place.name)
@@ -50,7 +50,7 @@ final class AppStoreTests: XCTestCase {
 
         await store.completeOnboarding()
 
-        guard case .loaded(let snapshot, _, _) = store.loadState else {
+        guard case .loaded(let snapshot, _) = store.loadState else {
             return XCTFail("Expected loaded dashboard state")
         }
         XCTAssertEqual(snapshot.locationName, "Wilmington, DE")
@@ -61,7 +61,7 @@ final class AppStoreTests: XCTestCase {
 
         await store.completeOnboarding()
 
-        guard case .loaded(let snapshot, _, _) = store.loadState else {
+        guard case .loaded(let snapshot, _) = store.loadState else {
             return XCTFail("Expected loaded dashboard state")
         }
         XCTAssertEqual(snapshot.locationName, "Current Location")
@@ -85,7 +85,7 @@ final class AppStoreTests: XCTestCase {
 
         await store.completeOnboarding()
 
-        guard case .loaded(let manualSnapshot, _, _) = store.loadState else {
+        guard case .loaded(let manualSnapshot, _) = store.loadState else {
             return XCTFail("Expected loaded manual city")
         }
         XCTAssertEqual(manualSnapshot.locationName, "Philadelphia, PA")
@@ -93,7 +93,7 @@ final class AppStoreTests: XCTestCase {
         let switchedToCurrentLocation = await store.useCurrentLocation()
         XCTAssertTrue(switchedToCurrentLocation)
 
-        guard case .loaded(let currentSnapshot, _, _) = store.loadState else {
+        guard case .loaded(let currentSnapshot, _) = store.loadState else {
             return XCTFail("Expected loaded current location")
         }
         XCTAssertEqual(currentSnapshot.locationName, "Wilmington, DE")
@@ -117,14 +117,14 @@ final class AppStoreTests: XCTestCase {
 
         await store.completeOnboarding()
 
-        guard case .loaded(let initialSnapshot, _, _) = store.loadState else {
+        guard case .loaded(let initialSnapshot, _) = store.loadState else {
             return XCTFail("Expected loaded initial city")
         }
         XCTAssertEqual(initialSnapshot.locationName, "Philadelphia, PA")
 
         await store.chooseAndRefresh(place: newPlace)
 
-        guard case .loaded(let refreshedSnapshot, _, _) = store.loadState else {
+        guard case .loaded(let refreshedSnapshot, _) = store.loadState else {
             return XCTFail("Expected refreshed manual city")
         }
         XCTAssertEqual(refreshedSnapshot.locationName, "Wilmington, DE")
@@ -206,7 +206,7 @@ final class AppStoreTests: XCTestCase {
         await weather.waitUntilFetchStarts()
 
         XCTAssertTrue(store.isRefreshing)
-        guard case .loaded(let snapshot, _, _) = store.loadState else {
+        guard case .loaded(let snapshot, _) = store.loadState else {
             refreshTask.cancel()
             return XCTFail("Expected old forecast to remain visible during foreground refresh")
         }
@@ -224,11 +224,10 @@ final class AppStoreTests: XCTestCase {
 
         let store = makeStore()
 
-        guard case .loaded(let snapshot, _, let isOffline) = store.loadState else {
+        guard case .loaded(let snapshot, _) = store.loadState else {
             return XCTFail("Expected cached dashboard state")
         }
         XCTAssertEqual(snapshot, cached)
-        XCTAssertFalse(isOffline)
     }
 
     func testStartRefreshesFreshCachedWeather() async {
@@ -243,11 +242,10 @@ final class AppStoreTests: XCTestCase {
 
         let fetchCount = await weather.fetchCount
         XCTAssertEqual(fetchCount, 1)
-        guard case .loaded(let snapshot, _, let isOffline) = store.loadState else {
+        guard case .loaded(let snapshot, _) = store.loadState else {
             return XCTFail("Expected refreshed dashboard state")
         }
         XCTAssertEqual(snapshot.fetchedAt, refreshed.fetchedAt)
-        XCTAssertFalse(isOffline)
     }
 
     func testStartKeepsCachedWeatherVisibleWhileRefreshIsPending() async {
@@ -261,7 +259,7 @@ final class AppStoreTests: XCTestCase {
         await weather.waitUntilFetchStarts()
 
         XCTAssertTrue(store.isRefreshing)
-        guard case .loaded(let snapshot, _, _) = store.loadState else {
+        guard case .loaded(let snapshot, _) = store.loadState else {
             refreshTask.cancel()
             return XCTFail("Expected cached dashboard state during refresh")
         }
@@ -270,22 +268,6 @@ final class AppStoreTests: XCTestCase {
         await weather.resume(returning: Self.snapshot(fetchedAt: Date()))
         await refreshTask.value
         XCTAssertFalse(store.isRefreshing)
-    }
-
-    func testStartFailurePreservesCachedWeatherAsOffline() async {
-        let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
-        WeatherCache(url: cacheURL).save(cached)
-        markOnboardingCompleted()
-        let store = makeStore(weather: FailingWeatherProvider())
-
-        await store.start()
-
-        XCTAssertFalse(store.isRefreshing)
-        guard case .loaded(let snapshot, _, let isOffline) = store.loadState else {
-            return XCTFail("Expected cached dashboard state")
-        }
-        XCTAssertEqual(snapshot, cached)
-        XCTAssertTrue(isOffline)
     }
 
     func testPreservingRefreshKeepsLoadedWeatherVisibleWhilePending() async {
@@ -299,7 +281,7 @@ final class AppStoreTests: XCTestCase {
         await weather.waitUntilFetchStarts()
 
         XCTAssertTrue(restoredStore.isRefreshing)
-        guard case .loaded(let snapshot, _, _) = restoredStore.loadState else {
+        guard case .loaded(let snapshot, _) = restoredStore.loadState else {
             refreshTask.cancel()
             return XCTFail("Expected loaded weather during preserving refresh")
         }
@@ -308,21 +290,6 @@ final class AppStoreTests: XCTestCase {
         await weather.resume(returning: Self.snapshot(fetchedAt: Date()))
         await refreshTask.value
         XCTAssertFalse(restoredStore.isRefreshing)
-    }
-
-    func testPreservingRefreshFailureKeepsLoadedWeatherOffline() async {
-        let current = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
-        WeatherCache(url: cacheURL).save(current)
-        markOnboardingCompleted()
-        let store = makeStore(weather: FailingWeatherProvider())
-
-        await store.refreshPreservingLoadedState()
-
-        guard case .loaded(let snapshot, _, let isOffline) = store.loadState else {
-            return XCTFail("Expected loaded weather after failed preserving refresh")
-        }
-        XCTAssertEqual(snapshot, current)
-        XCTAssertTrue(isOffline)
     }
 
     func testStartWithoutCacheShowsLoadingThenFailure() async {

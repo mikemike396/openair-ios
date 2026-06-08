@@ -7,19 +7,21 @@ protocol RecommendationEvaluating: Sendable {
 
 struct RecommendationEngine: RecommendationEvaluating {
     func evaluate(_ weather: HourlyWeather, preferences: ComfortPreferences) -> Recommendation {
+        let preferences = preferences.normalized
         if weather.isThunderstorm {
             return .init(status: .keepClosed, reasons: [.thunderstorm])
         }
         if weather.isPrecipitating {
             return .init(status: .keepClosed, reasons: [.activePrecipitation])
         }
-        if weather.gustMPH ?? 0 >= 25 {
+        if weather.gustMPH ?? 0 >= .hardMaximumGustMPH {
             return .init(status: .keepClosed, reasons: [.dangerousGusts])
         }
-        if weather.temperatureFahrenheit < 45 || weather.temperatureFahrenheit > 85 {
+        if weather.temperatureFahrenheit < .hardMinimumTemperatureFahrenheit ||
+            weather.temperatureFahrenheit > .hardMaximumTemperatureFahrenheit {
             return .init(status: .keepClosed, reasons: [.extremeTemperature])
         }
-        if weather.dewPointFahrenheit > 68 {
+        if weather.dewPointFahrenheit > .hardMaximumDewPointFahrenheit {
             return .init(status: .keepClosed, reasons: [.extremeHumidity])
         }
 

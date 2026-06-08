@@ -58,7 +58,7 @@ private struct DashboardPreview: View {
             hourly: [current] + Array(base.hourly.dropFirst())
         )
         let plan = RecommendationEngine().plan(snapshot: snapshot, preferences: .default(for: .autoupdatingCurrent))
-        return DashboardPreview(state: .loaded(snapshot: snapshot, plan: plan, isOffline: isOffline))
+        return DashboardPreview(state: .loaded(snapshot: snapshot, plan: plan))
     }
 
     private static func replacing(
