@@ -3,7 +3,7 @@ import XCTest
 
 final class RecommendationEngineTests: XCTestCase {
     private let engine = RecommendationEngine()
-    private let preferences = ComfortPreferences.default(for: .autoupdatingCurrent)
+    private let preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
     private let start = Date(timeIntervalSince1970: 1_800_000_000)
 
     func testIdealBoundariesAreOpen() {
@@ -39,6 +39,14 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(engine.evaluate(weather(rain: 0.50), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(wind: 16), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(temp: 80, dewPoint: 64, wind: 20), preferences: preferences).status, .keepClosed)
+    }
+
+    func testDisplayedDewPointAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        XCTAssertEqual(engine.evaluate(weather(dewPoint: 62.49), preferences: preferences).status, .open)
+    }
+
+    func testDisplayedTemperatureAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        XCTAssertEqual(engine.evaluate(weather(temp: 78.49), preferences: preferences).status, .open)
     }
 
     func testConsecutiveHoursMergeIntoWindows() {

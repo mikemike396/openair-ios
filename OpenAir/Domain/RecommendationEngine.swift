@@ -26,13 +26,21 @@ struct RecommendationEngine: RecommendationEvaluating {
         var positive: [RecommendationReason] = []
         var negative: [RecommendationReason] = []
 
-        if (preferences.idealMinimumFahrenheit...preferences.idealMaximumFahrenheit).contains(weather.temperatureFahrenheit) {
+        if roundedDisplayValue(
+            weather.temperatureFahrenheit,
+            within: preferences.idealMinimumFahrenheit...preferences.idealMaximumFahrenheit,
+            unit: preferences.temperatureUnit
+        ) {
             positive.append(.comfortableTemperature)
         } else {
             negative.append(.temperatureOutsideRange)
         }
 
-        if weather.dewPointFahrenheit <= preferences.maximumDewPointFahrenheit {
+        if roundedDisplayValue(
+            weather.dewPointFahrenheit,
+            isAtMost: preferences.maximumDewPointFahrenheit,
+            unit: preferences.temperatureUnit
+        ) {
             positive.append(.lowDewPoint)
         } else {
             negative.append(.humid)
@@ -65,6 +73,23 @@ struct RecommendationEngine: RecommendationEvaluating {
         let windows = makeWindows(from: evaluated)
         let nextChange = upcoming.first { $0.1.status != current.status }?.0.date
         return RecommendationPlan(current: current, hourly: evaluated, windows: windows, nextChange: nextChange)
+    }
+
+    private func roundedDisplayValue(
+        _ value: Double,
+        within range: ClosedRange<Double>,
+        unit: TemperatureUnit
+    ) -> Bool {
+        let displayedValue = unit.display(value)
+        return (unit.display(range.lowerBound)...unit.display(range.upperBound)).contains(displayedValue)
+    }
+
+    private func roundedDisplayValue(
+        _ value: Double,
+        isAtMost maximum: Double,
+        unit: TemperatureUnit
+    ) -> Bool {
+        unit.display(value) <= unit.display(maximum)
     }
 
     private func makeWindows(
