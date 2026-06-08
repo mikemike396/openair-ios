@@ -11,6 +11,7 @@ struct ForecastTimelineCard: View {
             ForecastTimelineItem(
                 weather: $0.weather,
                 status: $0.recommendation.status,
+                reasons: $0.recommendation.reasons,
                 unit: unit
             )
         }

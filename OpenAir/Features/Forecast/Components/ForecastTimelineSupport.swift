@@ -89,6 +89,7 @@ private struct StatusLegendItem: View {
 struct ForecastTimelineItem: Identifiable {
     let weather: HourlyWeather
     let status: RecommendationStatus
+    let reasons: [RecommendationReason]
     let unit: TemperatureUnit
 
     var id: Date { weather.date }
@@ -101,6 +102,7 @@ struct ForecastStatusSegment: Identifiable {
     let start: Date
     let end: Date
     let status: RecommendationStatus
+    let reasons: [RecommendationReason]
 
     var id: Date { start }
 
@@ -110,28 +112,40 @@ struct ForecastStatusSegment: Identifiable {
         var segments: [ForecastStatusSegment] = []
         var segmentStart = first.date
         var status = first.status
+        var reasons = first.reasons
 
-        for index in items.indices.dropFirst() where items[index].status != status {
-            segments.append(
-                ForecastStatusSegment(
-                    start: segmentStart,
-                    end: items[index].date,
-                    status: status
+        for index in items.indices.dropFirst() {
+            if items[index].status != status {
+                segments.append(
+                    ForecastStatusSegment(
+                        start: segmentStart,
+                        end: items[index].date,
+                        status: status,
+                        reasons: reasons
+                    )
                 )
-            )
-            segmentStart = items[index].date
-            status = items[index].status
+                segmentStart = items[index].date
+                status = items[index].status
+                reasons = items[index].reasons
+            } else {
+                reasons.append(contentsOf: items[index].reasons.filter { !reasons.contains($0) })
+            }
         }
 
         segments.append(
             ForecastStatusSegment(
                 start: segmentStart,
                 end: items.dropFirst().last?.date.addingTimeInterval(60 * 60) ?? first.date.addingTimeInterval(60 * 60),
-                status: status
+                status: status,
+                reasons: reasons
             )
         )
 
-        return segments
+        return segments.smoothedForDisplay()
+    }
+
+    var allowsTransientSmoothing: Bool {
+        reasons.allSatisfy(\.allowsTransientSmoothing)
     }
 }
 
@@ -317,5 +331,79 @@ extension Array where Element == ForecastTimelineItem {
         self.min {
             abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
         }
+    }
+}
+
+private extension Array where Element == ForecastStatusSegment {
+    func smoothedForDisplay() -> [ForecastStatusSegment] {
+        guard count >= 3 else { return self }
+
+        var smoothed: [ForecastStatusSegment] = []
+        var index = startIndex
+
+        while index < endIndex {
+            if index > startIndex,
+               index < self.index(before: endIndex),
+               self[index].end.timeIntervalSince(self[index].start) <= 60 * 60,
+               self[index].allowsTransientSmoothing,
+               self[self.index(before: index)].status == self[self.index(after: index)].status {
+                let previous = smoothed.removeLast()
+                let next = self[self.index(after: index)]
+                smoothed.append(
+                    ForecastStatusSegment(
+                        start: previous.start,
+                        end: next.end,
+                        status: previous.status,
+                        reasons: previous.reasons.merging(next.reasons)
+                    )
+                )
+                index = self.index(index, offsetBy: 2)
+            } else {
+                smoothed.append(self[index])
+                index = self.index(after: index)
+            }
+        }
+
+        return smoothed
+    }
+}
+
+extension Array where Element == RecommendationWindow {
+    func smoothedForDisplay() -> [RecommendationWindow] {
+        guard count >= 3 else { return self }
+
+        var smoothed: [RecommendationWindow] = []
+        var index = startIndex
+
+        while index < endIndex {
+            if index > startIndex,
+               index < self.index(before: endIndex),
+               self[index].end.timeIntervalSince(self[index].start) <= 60 * 60,
+               self[index].allowsTransientSmoothing,
+               self[self.index(before: index)].status == self[self.index(after: index)].status {
+                let previous = smoothed.removeLast()
+                let next = self[self.index(after: index)]
+                smoothed.append(
+                    RecommendationWindow(
+                        start: previous.start,
+                        end: next.end,
+                        status: previous.status,
+                        reasons: previous.reasons.merging(next.reasons)
+                    )
+                )
+                index = self.index(index, offsetBy: 2)
+            } else {
+                smoothed.append(self[index])
+                index = self.index(after: index)
+            }
+        }
+
+        return smoothed
+    }
+}
+
+private extension Array where Element == RecommendationReason {
+    func merging(_ other: [RecommendationReason]) -> [RecommendationReason] {
+        self + other.filter { !contains($0) }
     }
 }

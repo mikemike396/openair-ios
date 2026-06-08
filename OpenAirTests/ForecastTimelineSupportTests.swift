@@ -46,6 +46,36 @@ final class ForecastTimelineSupportTests: XCTestCase {
         XCTAssertEqual(segments[0].status, .open)
     }
 
+    func testStatusSegmentsSmoothOneHourValidReason() throws {
+        let items = [
+            try item(hour: 10, status: .open),
+            try item(hour: 11, status: .keepClosed, reasons: [.humid]),
+            try item(hour: 12, status: .open)
+        ]
+
+        let segments = ForecastStatusSegment.segments(for: items)
+
+        XCTAssertEqual(segments.count, 1)
+        XCTAssertEqual(segments[0].start, try date(hour: 10))
+        XCTAssertEqual(segments[0].end, try date(hour: 13))
+        XCTAssertEqual(segments[0].status, .open)
+    }
+
+    func testStatusSegmentsKeepOneHourChange() throws {
+        let items = [
+            try item(hour: 10, status: .open),
+            try item(hour: 11, status: .keepClosed, reasons: [.thunderstorm]),
+            try item(hour: 12, status: .open)
+        ]
+
+        let segments = ForecastStatusSegment.segments(for: items)
+
+        XCTAssertEqual(segments.count, 3)
+        XCTAssertEqual(segments[1].start, try date(hour: 11))
+        XCTAssertEqual(segments[1].end, try date(hour: 12))
+        XCTAssertEqual(segments[1].status, .keepClosed)
+    }
+
     func testDayAxisLabelsDropTooNarrowLeadingDay() throws {
         let start = try date(hour: 23, minute: 50)
         let end = try XCTUnwrap(calendar.date(byAdding: .hour, value: 48, to: start))
@@ -105,7 +135,12 @@ final class ForecastTimelineSupportTests: XCTestCase {
         XCTAssertEqual(boundaries[1].position, 280)
     }
 
-    private func item(hour: Int, minute: Int = 0, status: RecommendationStatus) throws -> ForecastTimelineItem {
+    private func item(
+        hour: Int,
+        minute: Int = 0,
+        status: RecommendationStatus,
+        reasons: [RecommendationReason] = []
+    ) throws -> ForecastTimelineItem {
         ForecastTimelineItem(
             weather: HourlyWeather(
                 date: try date(hour: hour, minute: minute),
@@ -119,6 +154,7 @@ final class ForecastTimelineSupportTests: XCTestCase {
                 symbolName: "sun.max"
             ),
             status: status,
+            reasons: reasons,
             unit: .fahrenheit
         )
     }

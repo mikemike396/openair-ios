@@ -15,12 +15,56 @@ struct NotificationTransition: Equatable, Sendable {
 
 struct NotificationTransitionPlanner: Sendable {
     func transitions(in plan: RecommendationPlan, after now: Date = .now) -> [NotificationTransition] {
-        plan.hourly.dropFirst().enumerated().compactMap { offset, item in
-            let previous = plan.hourly[offset].recommendation.status
-            guard item.recommendation.status != previous else { return nil }
-            guard item.weather.date > now else { return nil }
-            return NotificationTransition(date: item.weather.date, status: item.recommendation.status)
+        guard let first = plan.hourly.first else { return [] }
+
+        var transitions: [NotificationTransition] = []
+        var effectiveStatus = first.recommendation.status
+        var index = 1
+
+        while index < plan.hourly.count {
+            let item = plan.hourly[index]
+
+            if shouldSuppressOneHourChange(
+                at: index,
+                in: plan.hourly,
+                surroundingStatus: effectiveStatus
+            ) {
+                index += 2
+                continue
+            }
+
+            if item.recommendation.status != effectiveStatus {
+                effectiveStatus = item.recommendation.status
+                if item.weather.date > now {
+                    transitions.append(
+                        NotificationTransition(
+                            date: item.weather.date,
+                            status: item.recommendation.status
+                        )
+                    )
+                }
+            }
+
+            index += 1
         }
+
+        return transitions
+    }
+
+    private func shouldSuppressOneHourChange(
+        at index: Int,
+        in hourly: [(weather: HourlyWeather, recommendation: Recommendation)],
+        surroundingStatus: RecommendationStatus
+    ) -> Bool {
+        guard index + 1 < hourly.count else { return false }
+
+        let item = hourly[index]
+        let next = hourly[index + 1]
+
+        return item.recommendation.status != surroundingStatus &&
+            next.recommendation.status == surroundingStatus &&
+            next.weather.date.timeIntervalSince(item.weather.date) <= 60 * 60 &&
+            item.recommendation.reasons.allSatisfy(\.allowsTransientSmoothing)
     }
 }
 
