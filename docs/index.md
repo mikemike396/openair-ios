@@ -8,6 +8,7 @@ It checks outdoor temperature, humidity, dew point, rain, and wind, then gives y
 
 ## Links
 
+- [Download on the App Store](https://apps.apple.com/us/app/openair-window-weather/id6777466080)
 - [Privacy Policy](privacy-policy)
 - [Open Source Repository](https://github.com/mikemike396/openair-ios)
 
