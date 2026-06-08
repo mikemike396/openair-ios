@@ -7,7 +7,7 @@
 OpenAir is an iOS 26 SwiftUI app that recommends when outdoor temperature, dew point, rain, and wind are suitable for opening windows.
 
 <a href="https://apps.apple.com/us/app/openair-window-weather/id6777466080">
-  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="48" />
+  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="55" />
 </a>
 
 ## Screenshots
