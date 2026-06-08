@@ -3,7 +3,7 @@ import XCTest
 
 final class RecommendationEngineTests: XCTestCase {
     private let engine = RecommendationEngine()
-    private let preferences = ComfortPreferences.default
+    private let preferences = ComfortPreferences.default(for: .autoupdatingCurrent)
     private let start = Date(timeIntervalSince1970: 1_800_000_000)
 
     func testIdealBoundariesAreOpen() {
@@ -64,6 +64,43 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(plan.windows[0].end, hours[2].date)
         XCTAssertEqual(plan.windows[1].status, .keepClosed)
         XCTAssertEqual(plan.nextChange, hours[2].date)
+    }
+
+    func testPlanStartsWithCurrentConditionsAndSkipsElapsedHourlyBuckets() {
+        let current = weather(date: start.addingTimeInterval(50 * 60), temp: 70)
+        let elapsedHour = weather(date: start, temp: 55)
+        let nextHour = weather(date: start.addingTimeInterval(3600), temp: 72)
+        let followingHour = weather(date: start.addingTimeInterval(7200), temp: 74)
+        let snapshot = WeatherSnapshot(
+            locationName: "Test",
+            coordinate: .init(latitude: 0, longitude: 0),
+            fetchedAt: current.date,
+            current: current,
+            hourly: [elapsedHour, nextHour, followingHour]
+        )
+
+        let plan = engine.plan(snapshot: snapshot, preferences: preferences)
+
+        XCTAssertEqual(plan.hourly.map(\.weather), [current, nextHour, followingHour])
+    }
+
+    func testNextChangeUsesUpcomingForecastAfterCurrentConditions() {
+        let current = weather(date: start.addingTimeInterval(50 * 60), temp: 70)
+        let elapsedClosedHour = weather(date: start, temp: 86)
+        let nextOpenHour = weather(date: start.addingTimeInterval(3600), temp: 72)
+        let followingClosedHour = weather(date: start.addingTimeInterval(7200), temp: 86)
+        let snapshot = WeatherSnapshot(
+            locationName: "Test",
+            coordinate: .init(latitude: 0, longitude: 0),
+            fetchedAt: current.date,
+            current: current,
+            hourly: [elapsedClosedHour, nextOpenHour, followingClosedHour]
+        )
+
+        let plan = engine.plan(snapshot: snapshot, preferences: preferences)
+
+        XCTAssertEqual(plan.current.status, .open)
+        XCTAssertEqual(plan.nextChange, followingClosedHour.date)
     }
 
     private func weather(

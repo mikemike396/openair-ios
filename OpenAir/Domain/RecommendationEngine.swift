@@ -57,10 +57,13 @@ struct RecommendationEngine: RecommendationEvaluating {
     }
 
     func plan(snapshot: WeatherSnapshot, preferences: ComfortPreferences) -> RecommendationPlan {
-        let evaluated = snapshot.hourly.map { ($0, evaluate($0, preferences: preferences)) }
         let current = evaluate(snapshot.current, preferences: preferences)
+        let upcoming = snapshot.hourly
+            .filter { $0.date > snapshot.current.date }
+            .map { ($0, evaluate($0, preferences: preferences)) }
+        let evaluated = [(snapshot.current, current)] + upcoming
         let windows = makeWindows(from: evaluated)
-        let nextChange = evaluated.first { $0.0.date > snapshot.current.date && $0.1.status != current.status }?.0.date
+        let nextChange = upcoming.first { $0.1.status != current.status }?.0.date
         return RecommendationPlan(current: current, hourly: evaluated, windows: windows, nextChange: nextChange)
     }
 
