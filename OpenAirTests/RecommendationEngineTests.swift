@@ -3,7 +3,7 @@ import XCTest
 
 final class RecommendationEngineTests: XCTestCase {
     private let engine = RecommendationEngine()
-    private let preferences = ComfortPreferences.default
+    private let preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
     private let start = Date(timeIntervalSince1970: 1_800_000_000)
 
     func testIdealBoundariesAreOpen() {
@@ -14,13 +14,14 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(engine.evaluate(weather(wind: 15), preferences: preferences).status, .open)
     }
 
-    func testRainThresholdClosesWindows() {
-        let result = engine.evaluate(weather(rain: 0.50), preferences: preferences)
+    func testRainAboveThresholdClosesWindows() {
+        let result = engine.evaluate(weather(rain: 0.501), preferences: preferences)
         XCTAssertEqual(result.status, .keepClosed)
         XCTAssertTrue(result.reasons.contains(.rainRisk))
     }
 
-    func testRainProbabilityBelowThresholdAllowsOpen() {
+    func testRainProbabilityAtOrBelowThresholdAllowsOpen() {
+        XCTAssertEqual(engine.evaluate(weather(rain: 0.50), preferences: preferences).status, .open)
         XCTAssertEqual(engine.evaluate(weather(rain: 0.499), preferences: preferences).status, .open)
     }
 
@@ -36,9 +37,29 @@ final class RecommendationEngineTests: XCTestCase {
     func testAnyComfortThresholdMissClosesWindows() {
         XCTAssertEqual(engine.evaluate(weather(temp: 80), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(dewPoint: 64), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(rain: 0.50), preferences: preferences).status, .keepClosed)
+        XCTAssertEqual(engine.evaluate(weather(rain: 0.501), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(wind: 16), preferences: preferences).status, .keepClosed)
         XCTAssertEqual(engine.evaluate(weather(temp: 80, dewPoint: 64, wind: 20), preferences: preferences).status, .keepClosed)
+    }
+
+    func testDisplayedDewPointAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        XCTAssertEqual(engine.evaluate(weather(dewPoint: 62.49), preferences: preferences).status, .open)
+    }
+
+    func testDisplayedTemperatureAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        XCTAssertEqual(engine.evaluate(weather(temp: 78.49), preferences: preferences).status, .open)
+    }
+
+    func testDisplayedWindAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        XCTAssertEqual(engine.evaluate(weather(wind: 15.49), preferences: preferences).status, .open)
+    }
+
+    func testInvertedTemperatureRangeDoesNotCrashRecommendation() {
+        var preferences = preferences
+        preferences.idealMinimumFahrenheit = 70
+        preferences.idealMaximumFahrenheit = 65
+
+        XCTAssertNoThrow(engine.evaluate(weather(temp: 70), preferences: preferences))
     }
 
     func testConsecutiveHoursMergeIntoWindows() {
@@ -64,6 +85,43 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(plan.windows[0].end, hours[2].date)
         XCTAssertEqual(plan.windows[1].status, .keepClosed)
         XCTAssertEqual(plan.nextChange, hours[2].date)
+    }
+
+    func testPlanStartsWithCurrentConditionsAndSkipsElapsedHourlyBuckets() {
+        let current = weather(date: start.addingTimeInterval(50 * 60), temp: 70)
+        let elapsedHour = weather(date: start, temp: 55)
+        let nextHour = weather(date: start.addingTimeInterval(3600), temp: 72)
+        let followingHour = weather(date: start.addingTimeInterval(7200), temp: 74)
+        let snapshot = WeatherSnapshot(
+            locationName: "Test",
+            coordinate: .init(latitude: 0, longitude: 0),
+            fetchedAt: current.date,
+            current: current,
+            hourly: [elapsedHour, nextHour, followingHour]
+        )
+
+        let plan = engine.plan(snapshot: snapshot, preferences: preferences)
+
+        XCTAssertEqual(plan.hourly.map(\.weather), [current, nextHour, followingHour])
+    }
+
+    func testNextChangeUsesUpcomingForecastAfterCurrentConditions() {
+        let current = weather(date: start.addingTimeInterval(50 * 60), temp: 70)
+        let elapsedClosedHour = weather(date: start, temp: 86)
+        let nextOpenHour = weather(date: start.addingTimeInterval(3600), temp: 72)
+        let followingClosedHour = weather(date: start.addingTimeInterval(7200), temp: 86)
+        let snapshot = WeatherSnapshot(
+            locationName: "Test",
+            coordinate: .init(latitude: 0, longitude: 0),
+            fetchedAt: current.date,
+            current: current,
+            hourly: [elapsedClosedHour, nextOpenHour, followingClosedHour]
+        )
+
+        let plan = engine.plan(snapshot: snapshot, preferences: preferences)
+
+        XCTAssertEqual(plan.current.status, .open)
+        XCTAssertEqual(plan.nextChange, followingClosedHour.date)
     }
 
     private func weather(

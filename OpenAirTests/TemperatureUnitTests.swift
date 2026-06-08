@@ -24,4 +24,13 @@ final class TemperatureUnitTests: XCTestCase {
             .celsius
         )
     }
+
+    func testNormalizedPreferencesPreventInvertedTemperatureRange() {
+        var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
+        preferences.idealMinimumFahrenheit = 70
+        preferences.idealMaximumFahrenheit = 65
+
+        XCTAssertEqual(preferences.normalized.idealMinimumFahrenheit, 70)
+        XCTAssertEqual(preferences.normalized.idealMaximumFahrenheit, 70)
+    }
 }

@@ -7,44 +7,54 @@ protocol RecommendationEvaluating: Sendable {
 
 struct RecommendationEngine: RecommendationEvaluating {
     func evaluate(_ weather: HourlyWeather, preferences: ComfortPreferences) -> Recommendation {
+        let preferences = preferences.normalized
         if weather.isThunderstorm {
             return .init(status: .keepClosed, reasons: [.thunderstorm])
         }
         if weather.isPrecipitating {
             return .init(status: .keepClosed, reasons: [.activePrecipitation])
         }
-        if weather.gustMPH ?? 0 >= 25 {
+        if weather.gustMPH ?? 0 >= .hardMaximumGustMPH {
             return .init(status: .keepClosed, reasons: [.dangerousGusts])
         }
-        if weather.temperatureFahrenheit < 45 || weather.temperatureFahrenheit > 85 {
+        if weather.temperatureFahrenheit < .hardMinimumTemperatureFahrenheit ||
+            weather.temperatureFahrenheit > .hardMaximumTemperatureFahrenheit {
             return .init(status: .keepClosed, reasons: [.extremeTemperature])
         }
-        if weather.dewPointFahrenheit > 68 {
+        if weather.dewPointFahrenheit > .hardMaximumDewPointFahrenheit {
             return .init(status: .keepClosed, reasons: [.extremeHumidity])
         }
 
         var positive: [RecommendationReason] = []
         var negative: [RecommendationReason] = []
 
-        if (preferences.idealMinimumFahrenheit...preferences.idealMaximumFahrenheit).contains(weather.temperatureFahrenheit) {
+        if roundedDisplayValue(
+            weather.temperatureFahrenheit,
+            within: preferences.idealMinimumFahrenheit...preferences.idealMaximumFahrenheit,
+            unit: preferences.temperatureUnit
+        ) {
             positive.append(.comfortableTemperature)
         } else {
             negative.append(.temperatureOutsideRange)
         }
 
-        if weather.dewPointFahrenheit <= preferences.maximumDewPointFahrenheit {
+        if roundedDisplayValue(
+            weather.dewPointFahrenheit,
+            isAtMost: preferences.maximumDewPointFahrenheit,
+            unit: preferences.temperatureUnit
+        ) {
             positive.append(.lowDewPoint)
         } else {
             negative.append(.humid)
         }
 
-        if weather.precipitationChance < preferences.maximumRainChance {
+        if weather.precipitationChance <= preferences.maximumRainChance {
             positive.append(.noRain)
         } else {
             negative.append(.rainRisk)
         }
 
-        if weather.windMPH <= preferences.maximumWindMPH {
+        if roundedDisplayValue(weather.windMPH, isAtMost: preferences.maximumWindMPH) {
             positive.append(.lightWind)
         } else {
             negative.append(.windy)
@@ -57,11 +67,38 @@ struct RecommendationEngine: RecommendationEvaluating {
     }
 
     func plan(snapshot: WeatherSnapshot, preferences: ComfortPreferences) -> RecommendationPlan {
-        let evaluated = snapshot.hourly.map { ($0, evaluate($0, preferences: preferences)) }
         let current = evaluate(snapshot.current, preferences: preferences)
+        let upcoming = snapshot.hourly
+            .filter { $0.date > snapshot.current.date }
+            .map { ($0, evaluate($0, preferences: preferences)) }
+        let evaluated = [(snapshot.current, current)] + upcoming
         let windows = makeWindows(from: evaluated)
-        let nextChange = evaluated.first { $0.0.date > snapshot.current.date && $0.1.status != current.status }?.0.date
+        let nextChange = upcoming.first { $0.1.status != current.status }?.0.date
         return RecommendationPlan(current: current, hourly: evaluated, windows: windows, nextChange: nextChange)
+    }
+
+    private func roundedDisplayValue(
+        _ value: Double,
+        within range: ClosedRange<Double>,
+        unit: TemperatureUnit
+    ) -> Bool {
+        let displayedValue = unit.display(value)
+        return (unit.display(range.lowerBound)...unit.display(range.upperBound)).contains(displayedValue)
+    }
+
+    private func roundedDisplayValue(
+        _ value: Double,
+        isAtMost maximum: Double,
+        unit: TemperatureUnit
+    ) -> Bool {
+        unit.display(value) <= unit.display(maximum)
+    }
+
+    private func roundedDisplayValue(
+        _ value: Double,
+        isAtMost maximum: Double
+    ) -> Bool {
+        Int(value.rounded()) <= Int(maximum.rounded())
     }
 
     private func makeWindows(

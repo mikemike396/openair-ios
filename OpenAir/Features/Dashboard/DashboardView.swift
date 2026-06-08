@@ -54,10 +54,10 @@ struct DashboardView: View {
                 Button("Use Demo Weather") { Task { await store.usePreviewWeather() } }
                     .buttonStyle(.glass)
             }
-        case .loaded(let snapshot, let plan, let isOffline):
+        case .loaded(let snapshot, let plan):
             ScrollView {
                 LazyVStack(spacing: 18) {
-                    if isOffline || snapshot.isStale {
+                    if snapshot.isStale {
                         staleBanner(snapshot)
                     }
                     RecommendationCard(snapshot: snapshot, plan: plan, unit: store.preferences.temperatureUnit)
@@ -77,7 +77,7 @@ struct DashboardView: View {
     }
 
     private var navigationTitle: String {
-        if case .loaded(let snapshot, _, _) = store.loadState {
+        if case .loaded(let snapshot, _) = store.loadState {
             snapshot.locationName
         } else {
             ""

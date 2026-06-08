@@ -8,7 +8,7 @@ import UserNotifications
 enum DashboardLoadState {
     case idle
     case loading
-    case loaded(snapshot: WeatherSnapshot, plan: RecommendationPlan, isOffline: Bool)
+    case loaded(snapshot: WeatherSnapshot, plan: RecommendationPlan)
     case failed(message: String, cached: WeatherSnapshot?)
 }
 
@@ -78,7 +78,7 @@ final class AppStore {
         self.userPreferences = userPreferences
         if hasCompletedOnboarding, let cached = cache.load() {
             let plan = evaluator.plan(snapshot: cached, preferences: preferences)
-            loadState = .loaded(snapshot: cached, plan: plan, isOffline: false)
+            loadState = .loaded(snapshot: cached, plan: plan)
         }
     }
 
@@ -180,7 +180,7 @@ final class AppStore {
 
         let existingSnapshot: WeatherSnapshot?
         if preservingLoadedState,
-           case .loaded(let snapshot, _, _) = loadState {
+           case .loaded(let snapshot, _) = loadState {
             existingSnapshot = snapshot
         } else {
             existingSnapshot = nil
@@ -192,7 +192,7 @@ final class AppStore {
             let snapshot = try await weather.fetchWeather(for: target.coordinate, locationName: target.name)
             cache.save(snapshot)
             let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
-            loadState = .loaded(snapshot: snapshot, plan: plan, isOffline: false)
+            loadState = .loaded(snapshot: snapshot, plan: plan)
             await notifications.replaceNotifications(
                 plan: plan,
                 locationName: snapshot.locationName,
@@ -202,7 +202,7 @@ final class AppStore {
         } catch {
             if let cached = existingSnapshot ?? cache.load() {
                 let plan = evaluator.plan(snapshot: cached, preferences: preferences)
-                loadState = .loaded(snapshot: cached, plan: plan, isOffline: true)
+                loadState = .loaded(snapshot: cached, plan: plan)
             } else {
                 loadState = .failed(message: error.localizedDescription, cached: nil)
             }
@@ -217,7 +217,7 @@ final class AppStore {
             await refresh()
         case .loading:
             return
-        case .loaded(let snapshot, _, _):
+        case .loaded(let snapshot, _):
             guard now.timeIntervalSince(snapshot.fetchedAt) >= Self.foregroundRefreshInterval else { return }
             await refresh(preservingLoadedState: true)
         }
@@ -226,7 +226,7 @@ final class AppStore {
     func usePreviewWeather() async {
         let snapshot = WeatherSnapshot.preview
         let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
-        loadState = .loaded(snapshot: snapshot, plan: plan, isOffline: true)
+        loadState = .loaded(snapshot: snapshot, plan: plan)
     }
 
     private func weatherTarget() async throws -> (coordinate: Coordinate, name: String) {
@@ -239,9 +239,9 @@ final class AppStore {
     }
 
     private func recalculate() {
-        guard case .loaded(let snapshot, _, let isOffline) = loadState else { return }
+        guard case .loaded(let snapshot, _) = loadState else { return }
         let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
-        loadState = .loaded(snapshot: snapshot, plan: plan, isOffline: isOffline)
+        loadState = .loaded(snapshot: snapshot, plan: plan)
         Task {
             await notifications.replaceNotifications(
                 plan: plan,
