@@ -1,6 +1,6 @@
 # OpenAir
 
-<img src="project-resources/icon/openair_icon_exports/openair_app_store_icon_1024.png" alt="OpenAir app icon" width="160" />
+<img src="docs/assets/openair-icon.png" alt="OpenAir app icon" width="160" />
 
 **Know when to open your windows.**
 
@@ -12,11 +12,11 @@ OpenAir is an iOS 26 SwiftUI app that recommends when outdoor temperature, dew p
 ## Screenshots
 
 <p>
-  <img src="docs/resources/openair-dashboard.png" alt="OpenAir dashboard showing current window recommendation" width="300" />
-  <img src="docs/resources/openair-forecast.png" alt="OpenAir forecast showing 48-hour window outlook" width="300" />
-  <img src="docs/resources/openair-hourly-detail.png" alt="OpenAir showing hourly detail" width="300" />
-  <img src="docs/resources/openair-settings-1.png" alt="OpenAir settings 1" width="300" />
-  <img src="docs/resources/openair-settings-2.png" alt="OpenAir settings 2" width="300" />
+  <img src="docs/assets/openair-dashboard.png" alt="OpenAir dashboard showing current window recommendation" width="300" />
+  <img src="docs/assets/openair-forecast.png" alt="OpenAir forecast showing 48-hour window outlook" width="300" />
+  <img src="docs/assets/openair-hourly-detail.png" alt="OpenAir showing hourly detail" width="300" />
+  <img src="docs/assets/openair-settings-1.png" alt="OpenAir settings 1" width="300" />
+  <img src="docs/assets/openair-settings-2.png" alt="OpenAir settings 2" width="300" />
 </p>
 
 ## Features
