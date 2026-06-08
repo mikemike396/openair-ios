@@ -142,18 +142,28 @@ struct ForecastStatusBand: View {
                 .background(Color.secondary.opacity(0.12), in: .capsule)
                 .clipShape(.capsule)
         }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrame = proxy.plotFrame {
+                    let plotArea = geometry[plotFrame]
+                    ForEach(ForecastDayBoundary.boundaries(for: xDomain, width: plotArea.width)) { boundary in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.8))
+                            .frame(width: 1, height: plotArea.height)
+                            .position(
+                                x: plotArea.minX + boundary.position,
+                                y: plotArea.midY
+                            )
+                    }
+                }
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Open and closed recommendation status over the forecast period")
     }
 
     private var statusSegments: [ForecastStatusSegment] {
-        items.enumerated().map { index, item in
-            ForecastStatusSegment(
-                start: item.date,
-                end: items[safe: index + 1]?.date ?? item.date.addingTimeInterval(60 * 60),
-                status: item.status
-            )
-        }
+        ForecastStatusSegment.segments(for: items)
     }
 }
 
@@ -170,16 +180,7 @@ struct ForecastDayAxis: View {
         }
         .chartXScale(domain: xDomain)
         .chartYScale(domain: 0...1)
-        .chartXAxis {
-            AxisMarks(values: dayAxisValues) { value in
-                AxisTick()
-                if let date = value.as(Date.self) {
-                    AxisValueLabel {
-                        Text(dayAxisLabel(for: date))
-                    }
-                }
-            }
-        }
+        .chartXAxis(.hidden)
         .chartYAxis {
             AxisMarks(position: .leading, values: [0]) {
                 AxisTick().foregroundStyle(.clear)
@@ -190,43 +191,23 @@ struct ForecastDayAxis: View {
                 }
             }
         }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrame = proxy.plotFrame {
+                    let plotArea = geometry[plotFrame]
+                    ForEach(ForecastDayAxisLabel.labels(for: xDomain, width: plotArea.width)) { label in
+                        Text(label.text)
+                            .frame(width: 44)
+                            .position(
+                                x: plotArea.minX + label.position,
+                                y: plotArea.midY
+                            )
+                    }
+                }
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
         .accessibilityHidden(true)
-    }
-
-    private var dayAxisValues: [Date] {
-        let calendar = Calendar.current
-        var values = [xDomain.lowerBound]
-        var nextDay = calendar.startOfDay(for: xDomain.lowerBound)
-
-        if nextDay <= xDomain.lowerBound {
-            nextDay = calendar.date(byAdding: .day, value: 1, to: nextDay) ?? xDomain.upperBound
-        }
-
-        while nextDay < xDomain.upperBound {
-            values.append(nextDay)
-            guard let followingDay = calendar.date(byAdding: .day, value: 1, to: nextDay) else { break }
-            nextDay = followingDay
-        }
-
-        return values
-    }
-
-    private func dayAxisLabel(for date: Date) -> String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) {
-            return "Today"
-        }
-
-        if calendar.isDateInTomorrow(date) {
-            return "Tomorrow"
-        }
-
-        return date.formatted(.dateTime.weekday(.abbreviated))
-    }
-}
-
-private extension Array {
-    subscript(safe index: Index) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }
