@@ -8,15 +8,17 @@ struct ForecastLineChart: View {
     @Binding var selectedItem: ForecastTimelineItem?
     let xDomain: ClosedRange<Date>
     let unit: TemperatureUnit
+    let preferences: ComfortPreferences
+
+    private var referenceLines: [ForecastReferenceLine] {
+        metric.referenceLines(for: preferences, unit: unit)
+    }
 
     private var yDomain: ClosedRange<Double> {
-        let values = items.map { metric.value(for: $0) }
-        guard let minimum = values.min(), let maximum = values.max() else {
-            return 40...80
-        }
-
-        let padding = max((maximum - minimum) * 0.18, 6)
-        return (minimum - padding)...(maximum + padding)
+        ForecastChartScale.domain(
+            values: items.map { metric.value(for: $0) },
+            referenceValues: referenceLines.map(\.value)
+        )
     }
 
     var body: some View {
@@ -26,6 +28,12 @@ struct ForecastLineChart: View {
                 .foregroundStyle(.secondary)
 
             Chart {
+                ForEach(referenceLines) { referenceLine in
+                    RuleMark(y: .value("Comfort threshold", referenceLine.value))
+                        .foregroundStyle(metric.color.opacity(0.65))
+                        .lineStyle(.init(lineWidth: 1.25, dash: [4, 3]))
+                }
+
                 ForEach(items) { item in
                     LineMark(
                         x: .value("Time", item.date),
@@ -104,7 +112,12 @@ struct ForecastLineChart: View {
             return "\(title) forecast chart unavailable"
         }
 
-        return "\(title) forecast chart from \(first.date.formatted(date: .omitted, time: .shortened)) to \(last.date.formatted(date: .abbreviated, time: .shortened))."
+        let thresholds = referenceLines.map {
+            "\($0.accessibilityLabel) \(Int($0.value.rounded()))\(unit.symbol)"
+        }
+        .joined(separator: ", ")
+
+        return "\(title) forecast chart from \(first.date.formatted(date: .omitted, time: .shortened)) to \(last.date.formatted(date: .abbreviated, time: .shortened)). Comfort thresholds: \(thresholds)."
     }
 }
 

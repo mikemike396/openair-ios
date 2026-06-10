@@ -2,8 +2,12 @@ import SwiftUI
 
 struct ForecastView: View {
     let plan: RecommendationPlan
-    let unit: TemperatureUnit
+    let preferences: ComfortPreferences
     var initialSelectedDate: Date? = nil
+
+    private var unit: TemperatureUnit {
+        preferences.temperatureUnit
+    }
 
     var body: some View {
         ZStack {
@@ -13,6 +17,7 @@ struct ForecastView: View {
                     ForecastTimelineCard(
                         items: plan.hourly,
                         unit: unit,
+                        preferences: preferences,
                         initialSelectedDate: initialSelectedDate
                     )
                     HourlyDetailsCard(items: plan.hourly, unit: unit)
