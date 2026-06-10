@@ -4,6 +4,7 @@ struct RecommendationCard: View {
     let snapshot: WeatherSnapshot
     let plan: RecommendationPlan
     let unit: TemperatureUnit
+    let isRefreshing: Bool
 
     var body: some View {
         WeatherCard {
@@ -47,10 +48,19 @@ struct RecommendationCard: View {
                     }
                 }
 
-                Text("Updated: \(snapshot.fetchedAt, style: .relative) ago")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                HStack(spacing: 4) {
+                    Text("Updated:")
+                    if isRefreshing {
+                        ProgressView()
+                            .controlSize(.small)
+                            .accessibilityLabel("Updating weather")
+                    } else {
+                        Text("\(snapshot.fetchedAt, style: .relative) ago")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
         .accessibilityElement(children: .combine)
