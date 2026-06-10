@@ -2,8 +2,12 @@ import SwiftUI
 
 struct HourlyList: View {
     let plan: RecommendationPlan
-    let unit: TemperatureUnit
+    let preferences: ComfortPreferences
     private let cardHorizontalPadding: CGFloat = 20
+
+    private var unit: TemperatureUnit {
+        preferences.temperatureUnit
+    }
 
     var body: some View {
         WeatherCard {
@@ -17,7 +21,7 @@ struct HourlyList: View {
                             NavigationLink {
                                 ForecastView(
                                     plan: plan,
-                                    unit: unit,
+                                    preferences: preferences,
                                     initialSelectedDate: item.weather.date
                                 )
                             } label: {

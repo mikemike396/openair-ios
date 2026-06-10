@@ -48,6 +48,8 @@ struct ForecastTimelineLegend: View {
     private var legendItems: some View {
         LineLegendItem(label: "Temperature", color: .openAirAmber, lineWidth: 2)
         LineLegendItem(label: "Dew point", color: .openAirBlue, lineWidth: 5)
+        ReferenceLegendItem(label: "Temperature comfort range", color: .openAirAmber)
+        ReferenceLegendItem(label: "Maximum dew point", color: .openAirBlue)
         StatusLegendItem(label: "Open window", status: .open)
         StatusLegendItem(label: "Keep closed", status: .keepClosed)
     }
@@ -65,6 +67,25 @@ private struct LineLegendItem: View {
             Capsule()
                 .fill(color)
                 .frame(width: 22, height: lineWidth)
+        }
+        .foregroundStyle(.secondary)
+    }
+}
+
+private struct ReferenceLegendItem: View {
+    let label: String
+    let color: Color
+
+    var body: some View {
+        Label {
+            Text(label)
+        } icon: {
+            Capsule()
+                .stroke(
+                    color.opacity(0.65),
+                    style: StrokeStyle(lineWidth: 1.25, dash: [4, 3])
+                )
+                .frame(width: 22, height: 2)
         }
         .foregroundStyle(.secondary)
     }
@@ -315,9 +336,57 @@ enum ForecastMetric {
         case .dewPoint: item.dewPoint
         }
     }
+
+    func referenceLines(
+        for preferences: ComfortPreferences,
+        unit: TemperatureUnit
+    ) -> [ForecastReferenceLine] {
+        switch self {
+        case .temperature:
+            [
+                ForecastReferenceLine(
+                    accessibilityLabel: "minimum comfort temperature",
+                    value: unit.chartValue(preferences.idealMinimumFahrenheit)
+                ),
+                ForecastReferenceLine(
+                    accessibilityLabel: "maximum comfort temperature",
+                    value: unit.chartValue(preferences.idealMaximumFahrenheit)
+                )
+            ]
+        case .dewPoint:
+            [
+                ForecastReferenceLine(
+                    accessibilityLabel: "maximum comfortable dew point",
+                    value: unit.chartValue(preferences.maximumDewPointFahrenheit)
+                )
+            ]
+        }
+    }
 }
 
-private extension TemperatureUnit {
+struct ForecastReferenceLine: Identifiable, Equatable {
+    let accessibilityLabel: String
+    let value: Double
+
+    var id: String { accessibilityLabel }
+}
+
+enum ForecastChartScale {
+    static func domain(
+        values: [Double],
+        referenceValues: [Double]
+    ) -> ClosedRange<Double> {
+        let plottedValues = values + referenceValues
+        guard let minimum = plottedValues.min(), let maximum = plottedValues.max() else {
+            return 40...80
+        }
+
+        let padding = max((maximum - minimum) * 0.18, 6)
+        return (minimum - padding)...(maximum + padding)
+    }
+}
+
+extension TemperatureUnit {
     func chartValue(_ fahrenheit: Double) -> Double {
         switch self {
         case .fahrenheit: fahrenheit

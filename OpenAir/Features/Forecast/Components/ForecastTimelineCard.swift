@@ -3,6 +3,7 @@ import SwiftUI
 struct ForecastTimelineCard: View {
     let items: [(weather: HourlyWeather, recommendation: Recommendation)]
     let unit: TemperatureUnit
+    let preferences: ComfortPreferences
     let initialSelectedDate: Date?
     @State private var selectedItem: ForecastTimelineItem?
 
@@ -36,7 +37,8 @@ struct ForecastTimelineCard: View {
                     ForecastTimelineCharts(
                         items: chartItems,
                         selectedItem: $selectedItem,
-                        unit: unit
+                        unit: unit,
+                        preferences: preferences
                     )
                     ForecastTimelineLegend()
                 } else {
@@ -60,6 +62,7 @@ struct ForecastTimelineCharts: View {
     let items: [ForecastTimelineItem]
     @Binding var selectedItem: ForecastTimelineItem?
     let unit: TemperatureUnit
+    let preferences: ComfortPreferences
 
     private var xDomain: ClosedRange<Date> {
         let first = items.first?.date ?? Date()
@@ -75,7 +78,8 @@ struct ForecastTimelineCharts: View {
                 items: items,
                 selectedItem: $selectedItem,
                 xDomain: xDomain,
-                unit: unit
+                unit: unit,
+                preferences: preferences
             )
             .frame(height: 132)
 
@@ -85,7 +89,8 @@ struct ForecastTimelineCharts: View {
                 items: items,
                 selectedItem: $selectedItem,
                 xDomain: xDomain,
-                unit: unit
+                unit: unit,
+                preferences: preferences
             )
             .frame(height: 132)
 

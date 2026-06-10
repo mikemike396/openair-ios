@@ -67,9 +67,9 @@ struct DashboardView: View {
                         isRefreshing: store.refreshState == .refreshing
                     )
                     TodayPlanCard(windows: plan.windows)
-                    HourlyList(plan: plan, unit: store.preferences.temperatureUnit)
+                    HourlyList(plan: plan, preferences: store.preferences)
                     NavigationLink {
-                        ForecastView(plan: plan, unit: store.preferences.temperatureUnit)
+                        ForecastView(plan: plan, preferences: store.preferences)
                     } label: {
                         Label("View forecast", systemImage: "chart.xyaxis.line")
                             .frame(maxWidth: .infinity)
