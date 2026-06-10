@@ -28,7 +28,6 @@ struct DashboardView: View {
                 } label: {
                     Image(systemName: "gearshape")
                 }
-                .buttonStyle(.glass)
                 .accessibilityLabel("Settings")
             }
         }
