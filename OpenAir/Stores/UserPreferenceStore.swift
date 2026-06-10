@@ -7,7 +7,7 @@ fileprivate extension String {
     static let preferences = "comfortPreferences"
 }
 
-protocol UserPreferenceStoring: AnyObject {
+protocol UserPreferenceStoring {
     var hasCompletedOnboarding: Bool { get set }
     var savedPlace: SavedPlace? { get set }
     var preferences: ComfortPreferences { get set }

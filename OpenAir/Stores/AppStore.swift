@@ -34,7 +34,7 @@ final class AppStore {
     private let evaluator: any RecommendationEvaluating
     private let notifications: any NotificationScheduling
     private let cache: WeatherCache
-    private let userPreferences: any UserPreferenceStoring
+    private var userPreferences: any UserPreferenceStoring
 
     var loadState: DashboardLoadState = .idle
     private(set) var refreshState: RefreshState = .idle
@@ -97,7 +97,7 @@ final class AppStore {
     func start() async -> RefreshResult {
         notificationStatus = await notifications.authorizationStatus()
         guard hasCompletedOnboarding else { return .skipped }
-        return await refreshIfNeeded()
+        return await refresh()
     }
 
     func requestNotificationPermission() async {
