@@ -15,7 +15,6 @@ protocol RecommendationStatusInterval {
 }
 
 extension RecommendationWindow: RecommendationStatusInterval {}
-extension ForecastStatusSegment: RecommendationStatusInterval {}
 
 /// Utilities for presenting recommendation intervals without brief, low-risk
 /// status fluctuations that would create noisy guidance.
