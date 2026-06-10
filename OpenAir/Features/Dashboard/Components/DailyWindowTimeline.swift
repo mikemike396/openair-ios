@@ -41,7 +41,7 @@ struct DailyWindowTimeline {
                 reasons: window.reasons
             )
         }
-        .smoothedForDisplay()
+        .mergingTransientStatusChanges()
     }
 
     func label(

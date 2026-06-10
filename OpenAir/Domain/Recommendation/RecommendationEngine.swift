@@ -72,8 +72,10 @@ struct RecommendationEngine: RecommendationEvaluating {
             .filter { $0.date > snapshot.current.date }
             .map { ($0, evaluate($0, preferences: preferences)) }
         let evaluated = [(snapshot.current, current)] + upcoming
-        let windows = makeWindows(from: evaluated)
-        let nextChange = upcoming.first { $0.1.status != current.status }?.0.date
+        let windows = makeWindows(from: evaluated).mergingTransientStatusChanges()
+        let nextChange = windows.first {
+            $0.start > snapshot.current.date && $0.status != current.status
+        }?.start
         return RecommendationPlan(current: current, hourly: evaluated, windows: windows, nextChange: nextChange)
     }
 

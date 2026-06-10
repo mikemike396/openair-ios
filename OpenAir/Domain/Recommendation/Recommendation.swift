@@ -104,10 +104,6 @@ struct RecommendationWindow: Codable, Identifiable, Sendable, Equatable {
         self.reasons = reasons
     }
 
-    var allowsTransientSmoothing: Bool {
-        reasons.allSatisfy(\.allowsTransientSmoothing)
-    }
-
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         start = try container.decode(Date.self, forKey: .start)
@@ -129,5 +125,11 @@ struct RecommendationPlan: Sendable, Equatable {
         lhs.nextChange == rhs.nextChange &&
         lhs.hourly.map(\.weather) == rhs.hourly.map(\.weather) &&
         lhs.hourly.map(\.recommendation) == rhs.hourly.map(\.recommendation)
+    }
+}
+
+extension Array where Element == RecommendationReason {
+    func merging(_ other: [RecommendationReason]) -> [RecommendationReason] {
+        self + other.filter { !contains($0) }
     }
 }
