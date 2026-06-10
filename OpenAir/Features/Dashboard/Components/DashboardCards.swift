@@ -5,6 +5,7 @@ struct RecommendationCard: View {
     let plan: RecommendationPlan
     let unit: TemperatureUnit
     let isRefreshing: Bool
+    private let cardHorizontalPadding: CGFloat = 20
 
     var body: some View {
         WeatherCard {
@@ -46,7 +47,9 @@ struct RecommendationCard: View {
                                 .chip()
                         }
                     }
+                    .padding(.horizontal, cardHorizontalPadding)
                 }
+                .padding(.horizontal, -cardHorizontalPadding)
 
                 HStack(spacing: 4) {
                     Text("Updated:")
