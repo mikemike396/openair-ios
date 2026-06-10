@@ -1,6 +1,7 @@
 import XCTest
 @testable import OpenAir
 
+@MainActor
 final class TemperatureUnitTests: XCTestCase {
     func testFahrenheitDisplayRounds() {
         XCTAssertEqual(TemperatureUnit.fahrenheit.display(64.6), 65)

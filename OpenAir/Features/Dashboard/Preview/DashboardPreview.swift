@@ -20,7 +20,6 @@ import SwiftUI
     DashboardPreview(state: .failed(message: "Weather service is unavailable.", cached: nil))
 }
 
-@MainActor
 private struct DashboardPreview: View {
     @State private var store: AppStore
 

@@ -1,6 +1,7 @@
 import XCTest
 @testable import OpenAir
 
+@MainActor
 final class NotificationTransitionPlannerTests: XCTestCase {
     func testOnlyOpenClosedBoundaryChangesProduceNotifications() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)

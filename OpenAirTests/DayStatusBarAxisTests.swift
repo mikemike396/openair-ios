@@ -1,6 +1,7 @@
 import XCTest
 @testable import OpenAir
 
+@MainActor
 final class DayStatusBarAxisTests: XCTestCase {
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)

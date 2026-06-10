@@ -1,11 +1,11 @@
 import CoreLocation
-import UserNotifications
 import XCTest
+import UserNotifications
 @testable import OpenAir
 
 @MainActor
 final class AppStoreTests: XCTestCase {
-    private let defaults = UserDefaults(suiteName: "AppStoreTests.\(UUID().uuidString)")!
+    private let userPreferences = InMemoryUserPreferenceStore()
     private let cacheURL = FileManager.default.temporaryDirectory
         .appending(path: "openair-tests-\(UUID().uuidString).json")
 
@@ -130,7 +130,7 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(refreshedSnapshot.locationName, "Wilmington, DE")
     }
 
-    func testPreferencesPersist() {
+    func testPreferencesPersist() async {
         let store = makeStore()
         var preferences = store.preferences
         preferences.temperatureUnit = .celsius
@@ -143,19 +143,19 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(restored.preferences.maximumWindMPH, 12)
     }
 
-    func testFirstLaunchDefaultsTemperatureUnitFromMetricLocale() {
+    func testFirstLaunchDefaultsTemperatureUnitFromMetricLocale() async {
         let store = makeStore(locale: Locale(identifier: "ja_JP"))
 
         XCTAssertEqual(store.preferences.temperatureUnit, .celsius)
     }
 
-    func testFirstLaunchDefaultsTemperatureUnitFromUSLocale() {
+    func testFirstLaunchDefaultsTemperatureUnitFromUSLocale() async {
         let store = makeStore(locale: Locale(identifier: "en_US"))
 
         XCTAssertEqual(store.preferences.temperatureUnit, .fahrenheit)
     }
 
-    func testSavedTemperatureUnitOverridesLocaleDefault() {
+    func testSavedTemperatureUnitOverridesLocaleDefault() async {
         var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
         preferences.temperatureUnit = .fahrenheit
         makeUserPreferences(locale: Locale(identifier: "en_US")).preferences = preferences
@@ -307,7 +307,7 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(result, .succeeded)
     }
 
-    func testCachedWeatherIsLoadedImmediatelyAfterInitialization() {
+    func testCachedWeatherIsLoadedImmediatelyAfterInitialization() async {
         let cached = Self.snapshot(fetchedAt: Date().addingTimeInterval(-60))
         WeatherCache(url: cacheURL).save(cached)
         markOnboardingCompleted()
@@ -438,8 +438,11 @@ final class AppStoreTests: XCTestCase {
         )
     }
 
-    private func makeUserPreferences(locale: Locale = Locale(identifier: "en_US")) -> UserPreferenceStore {
-        UserPreferenceStore(userDefaults: defaults, locale: locale)
+    private func makeUserPreferences(
+        locale: Locale = Locale(identifier: "en_US")
+    ) -> InMemoryUserPreferenceStore {
+        userPreferences.applyDefaultPreferences(for: locale)
+        return userPreferences
     }
 
     private func markOnboardingCompleted() {
@@ -455,6 +458,28 @@ final class AppStoreTests: XCTestCase {
             current: base.current,
             hourly: base.hourly
         )
+    }
+}
+
+@MainActor
+private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
+    var hasCompletedOnboarding = false
+    var savedPlace: SavedPlace?
+    private var storedPreferences: ComfortPreferences?
+
+    var preferences: ComfortPreferences {
+        get {
+            storedPreferences ?? .default(for: Locale(identifier: "en_US"))
+        }
+        set {
+            storedPreferences = newValue
+        }
+    }
+
+    func applyDefaultPreferences(for locale: Locale) {
+        if storedPreferences == nil {
+            storedPreferences = .default(for: locale)
+        }
     }
 }
 
@@ -494,7 +519,7 @@ private actor WeatherSpy: WeatherProviding {
     func fetchWeather(for coordinate: Coordinate, locationName: String) async throws -> WeatherSnapshot {
         let snapshot = snapshots[min(fetchCount, snapshots.count - 1)]
         fetchCount += 1
-        return WeatherSnapshot(
+        return await WeatherSnapshot(
             locationName: locationName,
             coordinate: coordinate,
             fetchedAt: snapshot.fetchedAt,
@@ -527,7 +552,7 @@ private actor FailingThenSucceedingWeatherProvider: WeatherProviding {
         guard fetchCount > 0 else {
             throw WeatherProviderError.unavailable
         }
-        return WeatherSnapshot(
+        return await WeatherSnapshot(
             locationName: locationName,
             coordinate: coordinate,
             fetchedAt: snapshot.fetchedAt,
@@ -551,7 +576,7 @@ private actor FailingThenSuspendedWeatherProvider: WeatherProviding {
         secondFetchStartedContinuation?.resume()
         secondFetchStartedContinuation = nil
         let snapshot = try await withCheckedThrowingContinuation { continuation = $0 }
-        return WeatherSnapshot(
+        return await WeatherSnapshot(
             locationName: locationName,
             coordinate: coordinate,
             fetchedAt: snapshot.fetchedAt,
@@ -581,7 +606,7 @@ private actor SuspendedWeatherProvider: WeatherProviding {
         fetchStartedContinuation?.resume()
         fetchStartedContinuation = nil
         let snapshot = try await withCheckedThrowingContinuation { continuation = $0 }
-        return WeatherSnapshot(
+        return await WeatherSnapshot(
             locationName: locationName,
             coordinate: coordinate,
             fetchedAt: snapshot.fetchedAt,

@@ -1,7 +1,6 @@
 import Foundation
 import UserNotifications
 
-@MainActor
 protocol NotificationScheduling {
     func authorizationStatus() async -> UNAuthorizationStatus
     func requestAuthorization() async throws -> Bool
@@ -68,7 +67,6 @@ struct NotificationTransitionPlanner: Sendable {
     }
 }
 
-@MainActor
 struct NotificationClient: NotificationScheduling {
     private let center = UNUserNotificationCenter.current()
     private let prefix = "openair.transition."
