@@ -97,7 +97,7 @@ final class AppStore {
     func start() async -> RefreshResult {
         notificationStatus = await notifications.authorizationStatus()
         guard hasCompletedOnboarding else { return .skipped }
-        return await refresh()
+        return await refreshIfNeeded()
     }
 
     func requestNotificationPermission() async {
