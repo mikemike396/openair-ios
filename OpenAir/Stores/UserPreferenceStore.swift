@@ -7,8 +7,14 @@ fileprivate extension String {
     static let preferences = "comfortPreferences"
 }
 
+protocol UserPreferenceStoring {
+    var hasCompletedOnboarding: Bool { get set }
+    var savedPlace: SavedPlace? { get set }
+    var preferences: ComfortPreferences { get set }
+}
+
 @Observable
-final class UserPreferenceStore {
+final class UserPreferenceStore: UserPreferenceStoring {
     private let userDefaults: UserDefaults
     private let defaultPreferences: ComfortPreferences
 

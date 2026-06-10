@@ -1,6 +1,7 @@
 import XCTest
 @testable import OpenAir
 
+@MainActor
 final class RecommendationEngineTests: XCTestCase {
     private let engine = RecommendationEngine()
     private let preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))

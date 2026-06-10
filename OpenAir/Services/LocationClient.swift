@@ -2,7 +2,6 @@ import CoreLocation
 import Foundation
 @preconcurrency import MapKit
 
-@MainActor
 protocol LocationProviding: AnyObject {
     var authorizationStatus: CLAuthorizationStatus { get }
     func requestAuthorization()
@@ -22,7 +21,6 @@ enum LocationError: LocalizedError {
     }
 }
 
-@MainActor
 final class LocationClient: NSObject, LocationProviding, @preconcurrency CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<Coordinate, any Error>?

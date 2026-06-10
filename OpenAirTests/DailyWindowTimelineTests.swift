@@ -1,6 +1,7 @@
 import XCTest
 @testable import OpenAir
 
+@MainActor
 final class DailyWindowTimelineTests: XCTestCase {
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)

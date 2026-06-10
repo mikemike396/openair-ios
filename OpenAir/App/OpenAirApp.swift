@@ -28,7 +28,7 @@ struct OpenAirApp: App {
 }
 
 extension BGAppRefreshTask: @unchecked @retroactive Sendable {
-    static func registerBackgroundRefresh(store: AppStore) {
+    nonisolated static func registerBackgroundRefresh(store: AppStore) {
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: String.backgroundRefreshTaskIdentifier,
             using: nil

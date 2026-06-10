@@ -24,7 +24,6 @@ enum RefreshState: Equatable {
     case failed
 }
 
-@MainActor
 @Observable
 final class AppStore {
     private static let foregroundRefreshInterval: TimeInterval = 60 * 15
@@ -35,7 +34,7 @@ final class AppStore {
     private let evaluator: any RecommendationEvaluating
     private let notifications: any NotificationScheduling
     private let cache: WeatherCache
-    private let userPreferences: UserPreferenceStore
+    private var userPreferences: any UserPreferenceStoring
 
     var loadState: DashboardLoadState = .idle
     private(set) var refreshState: RefreshState = .idle
@@ -79,7 +78,7 @@ final class AppStore {
         evaluator: RecommendationEvaluating = RecommendationEngine(),
         notifications: NotificationScheduling = NotificationClient(),
         cache: WeatherCache = WeatherCache(),
-        userPreferences: UserPreferenceStore = UserPreferenceStore()
+        userPreferences: any UserPreferenceStoring = UserPreferenceStore()
     ) {
         self.weather = weather
         self.location = location

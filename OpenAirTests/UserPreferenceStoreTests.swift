@@ -1,45 +1,67 @@
-import XCTest
+import Foundation
+import Testing
 @testable import OpenAir
 
-final class UserPreferenceStoreTests: XCTestCase {
-    private let defaults = UserDefaults(suiteName: "UserPreferenceStoreTests.\(UUID().uuidString)")!
+@Suite
+@MainActor
+struct UserPreferenceStoreTests {
+    @Test
+    func defaultValues() async {
+        let fixture = UserPreferenceStoreFixture()
+        let store = fixture.makeStore(locale: Locale(identifier: "en_US"))
 
-    func testDefaultValues() {
-        let store = UserPreferenceStore(userDefaults: defaults, locale: Locale(identifier: "en_US"))
-
-        XCTAssertFalse(store.hasCompletedOnboarding)
-        XCTAssertNil(store.savedPlace)
-        XCTAssertEqual(store.preferences, .default(for: Locale(identifier: "en_US")))
+        #expect(!store.hasCompletedOnboarding)
+        #expect(store.savedPlace == nil)
+        #expect(store.preferences == .default(for: Locale(identifier: "en_US")))
     }
 
-    func testOnboardingPersists() {
-        UserPreferenceStore(userDefaults: defaults).hasCompletedOnboarding = true
+    @Test
+    func onboardingPersists() async {
+        let fixture = UserPreferenceStoreFixture()
+        fixture.makeStore().hasCompletedOnboarding = true
 
-        let restored = UserPreferenceStore(userDefaults: defaults)
+        let restored = fixture.makeStore()
 
-        XCTAssertTrue(restored.hasCompletedOnboarding)
+        #expect(restored.hasCompletedOnboarding)
     }
 
-    func testSavedPlacePersists() {
+    @Test
+    func savedPlacePersists() async {
+        let fixture = UserPreferenceStoreFixture()
         let place = SavedPlace(
             name: "Wilmington, DE",
             coordinate: .init(latitude: 39.7, longitude: -75.5)
         )
-        UserPreferenceStore(userDefaults: defaults).savedPlace = place
+        fixture.makeStore().savedPlace = place
 
-        let restored = UserPreferenceStore(userDefaults: defaults)
+        let restored = fixture.makeStore()
 
-        XCTAssertEqual(restored.savedPlace, place)
+        #expect(restored.savedPlace == place)
     }
 
-    func testPreferencesPersist() {
+    @Test
+    func preferencesPersist() async {
+        let fixture = UserPreferenceStoreFixture()
         var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
         preferences.temperatureUnit = .celsius
         preferences.maximumWindMPH = 12
-        UserPreferenceStore(userDefaults: defaults).preferences = preferences
+        fixture.makeStore().preferences = preferences
 
-        let restored = UserPreferenceStore(userDefaults: defaults)
+        let restored = fixture.makeStore()
 
-        XCTAssertEqual(restored.preferences, preferences)
+        #expect(restored.preferences == preferences)
+    }
+}
+
+@MainActor
+private final class UserPreferenceStoreFixture {
+    private let defaults: UserDefaults
+
+    init() {
+        defaults = UserDefaults(suiteName: "UserPreferenceStoreTests.\(UUID().uuidString)")!
+    }
+
+    func makeStore(locale: Locale = Locale(identifier: "en_US")) -> UserPreferenceStore {
+        UserPreferenceStore(userDefaults: defaults, locale: locale)
     }
 }
