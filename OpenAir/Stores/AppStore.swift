@@ -12,6 +12,18 @@ enum DashboardLoadState {
     case failed(message: String, cached: WeatherSnapshot?)
 }
 
+enum RefreshResult: Equatable {
+    case succeeded
+    case failed
+    case skipped
+}
+
+enum RefreshState: Equatable {
+    case idle
+    case refreshing
+    case failed
+}
+
 @MainActor
 @Observable
 final class AppStore {
@@ -26,7 +38,7 @@ final class AppStore {
     private let userPreferences: UserPreferenceStore
 
     var loadState: DashboardLoadState = .idle
-    private(set) var isRefreshing = false
+    private(set) var refreshState: RefreshState = .idle
     var searchResults: [SavedPlace] = []
     var isSearching = false
     var searchError: String?
@@ -82,10 +94,11 @@ final class AppStore {
         }
     }
 
-    func start() async {
+    @discardableResult
+    func start() async -> RefreshResult {
         notificationStatus = await notifications.authorizationStatus()
-        guard hasCompletedOnboarding else { return }
-        await refresh(preservingLoadedState: true)
+        guard hasCompletedOnboarding else { return .skipped }
+        return await refreshIfNeeded()
     }
 
     func requestNotificationPermission() async {
@@ -165,18 +178,19 @@ final class AppStore {
         }
     }
 
-    func refresh() async {
+    @discardableResult
+    func refresh() async -> RefreshResult {
         await refresh(preservingLoadedState: false)
     }
 
-    func refreshPreservingLoadedState() async {
+    @discardableResult
+    func refreshPreservingLoadedState() async -> RefreshResult {
         await refresh(preservingLoadedState: true)
     }
 
-    private func refresh(preservingLoadedState: Bool) async {
-        guard !isRefreshing else { return }
-        isRefreshing = true
-        defer { isRefreshing = false }
+    private func refresh(preservingLoadedState: Bool) async -> RefreshResult {
+        guard refreshState != .refreshing else { return .skipped }
+        refreshState = .refreshing
 
         let existingSnapshot: WeatherSnapshot?
         if preservingLoadedState,
@@ -199,6 +213,8 @@ final class AppStore {
                 enabled: preferences.alertsEnabled
             )
             scheduleBackgroundRefresh()
+            refreshState = .idle
+            return .succeeded
         } catch {
             if let cached = existingSnapshot ?? cache.load() {
                 let plan = evaluator.plan(snapshot: cached, preferences: preferences)
@@ -206,27 +222,38 @@ final class AppStore {
             } else {
                 loadState = .failed(message: error.localizedDescription, cached: nil)
             }
+            refreshState = .failed
+            return .failed
         }
     }
 
-    func refreshIfNeeded(now: Date = .now) async {
-        guard hasCompletedOnboarding else { return }
+    @discardableResult
+    func refreshIfNeeded(now: Date = .now) async -> RefreshResult {
+        guard hasCompletedOnboarding else { return .skipped }
 
         switch loadState {
         case .idle, .failed:
-            await refresh()
+            return await refresh()
         case .loading:
-            return
+            return .skipped
         case .loaded(let snapshot, _):
-            guard now.timeIntervalSince(snapshot.fetchedAt) >= Self.foregroundRefreshInterval else { return }
-            await refresh(preservingLoadedState: true)
+            guard now.timeIntervalSince(snapshot.fetchedAt) >= Self.foregroundRefreshInterval else {
+                return .skipped
+            }
+            return await refresh(preservingLoadedState: true)
         }
     }
 
     func usePreviewWeather() async {
         let snapshot = WeatherSnapshot.preview
         let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
+        refreshState = .idle
         loadState = .loaded(snapshot: snapshot, plan: plan)
+    }
+
+    func shouldShowStaleBanner(for snapshot: WeatherSnapshot, now: Date = .now) -> Bool {
+        refreshState == .failed &&
+            now.timeIntervalSince(snapshot.fetchedAt) > 60 * 60 * 3
     }
 
     private func weatherTarget() async throws -> (coordinate: Coordinate, name: String) {

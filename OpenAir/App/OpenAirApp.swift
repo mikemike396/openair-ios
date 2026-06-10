@@ -38,8 +38,10 @@ extension BGAppRefreshTask: @unchecked @retroactive Sendable {
                 return
             }
             let work = Task { @MainActor in
-                await store.refresh()
-                refreshTask.setTaskCompleted(success: !Task.isCancelled)
+                let result = await store.refreshPreservingLoadedState()
+                refreshTask.setTaskCompleted(
+                    success: result == .succeeded && !Task.isCancelled
+                )
             }
             refreshTask.expirationHandler = {
                 work.cancel()

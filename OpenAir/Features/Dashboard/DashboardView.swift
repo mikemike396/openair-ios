@@ -57,10 +57,15 @@ struct DashboardView: View {
         case .loaded(let snapshot, let plan):
             ScrollView {
                 LazyVStack(spacing: 18) {
-                    if snapshot.isStale {
-                        staleBanner(snapshot)
+                    if store.shouldShowStaleBanner(for: snapshot) {
+                        staleBanner
                     }
-                    RecommendationCard(snapshot: snapshot, plan: plan, unit: store.preferences.temperatureUnit)
+                    RecommendationCard(
+                        snapshot: snapshot,
+                        plan: plan,
+                        unit: store.preferences.temperatureUnit,
+                        isRefreshing: store.refreshState == .refreshing
+                    )
                     TodayPlanCard(windows: plan.windows)
                     HourlyList(plan: plan, unit: store.preferences.temperatureUnit)
                     NavigationLink {
@@ -84,9 +89,9 @@ struct DashboardView: View {
         }
     }
 
-    private func staleBanner(_ snapshot: WeatherSnapshot) -> some View {
+    private var staleBanner: some View {
         Label(
-            snapshot.isStale ? "Forecast is stale. Recommendations may be outdated." : "Showing cached weather while offline.",
+            "Forecast is stale. Recommendations may be outdated.",
             systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
         )
         .font(.footnote.weight(.medium))
