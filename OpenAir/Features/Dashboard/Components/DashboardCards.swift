@@ -5,6 +5,7 @@ struct RecommendationCard: View {
     let plan: RecommendationPlan
     let unit: TemperatureUnit
     let isRefreshing: Bool
+    private let cardHorizontalPadding: CGFloat = 20
 
     var body: some View {
         WeatherCard {
@@ -24,7 +25,7 @@ struct RecommendationCard: View {
                 }
 
                 if let nextChange = plan.nextChange {
-                    Label("Expected to change around \(nextChange.formatted(date: .omitted, time: .shortened))", systemImage: "clock")
+                    Label(RecommendationChangeText.text(for: nextChange), systemImage: "clock")
                         .font(.subheadline.weight(.medium))
                 }
 
@@ -46,7 +47,9 @@ struct RecommendationCard: View {
                                 .chip()
                         }
                     }
+                    .padding(.horizontal, cardHorizontalPadding)
                 }
+                .padding(.horizontal, -cardHorizontalPadding)
 
                 HStack(spacing: 4) {
                     Text("Updated:")
@@ -71,6 +74,30 @@ struct RecommendationCard: View {
         case .open: "Outdoor conditions are comfortable."
         case .keepClosed: "Outdoor conditions are unfavorable."
         }
+    }
+}
+
+enum RecommendationChangeText {
+    static func text(
+        for date: Date,
+        locale: Locale = .current,
+        calendar: Calendar = .current
+    ) -> String {
+        let timeStyle = Date.FormatStyle(
+            date: .omitted,
+            time: .shortened,
+            locale: locale,
+            calendar: calendar,
+            timeZone: calendar.timeZone
+        )
+        let weekdayStyle = Date.FormatStyle(
+            locale: locale,
+            calendar: calendar,
+            timeZone: calendar.timeZone
+        )
+        .weekday(.wide)
+
+        return "Expected to change around \(date.formatted(timeStyle)) \(date.formatted(weekdayStyle))"
     }
 }
 

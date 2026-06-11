@@ -16,7 +16,7 @@ struct DashboardView: View {
                     Text(navigationTitle)
                         .lineLimit(1)
                         .layoutPriority(1)
-                    Image(systemName: "location")
+                    Image(systemName: store.savedPlace == nil ? "location" : "mappin")
                         .font(.caption.weight(.semibold))
                 }
                 .font(.headline)
@@ -28,7 +28,6 @@ struct DashboardView: View {
                 } label: {
                     Image(systemName: "gearshape")
                 }
-                .buttonStyle(.glass)
                 .accessibilityLabel("Settings")
             }
         }
