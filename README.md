@@ -13,11 +13,10 @@ OpenAir is an iOS 26 SwiftUI app that recommends when outdoor temperature, dew p
 ## Screenshots
 
 <p>
-  <img src="docs/assets/openair-dashboard.png" alt="OpenAir dashboard showing current window recommendation" width="300" />
-  <img src="docs/assets/openair-forecast.png" alt="OpenAir forecast showing 48-hour window outlook" width="300" />
-  <img src="docs/assets/openair-hourly-detail.png" alt="OpenAir showing hourly detail" width="300" />
-  <img src="docs/assets/openair-settings-1.png" alt="OpenAir settings 1" width="300" />
-  <img src="docs/assets/openair-settings-2.png" alt="OpenAir settings 2" width="300" />
+  <img src="project-resources/screenshots/v2/01_open_now.png" alt="OpenAir dashboard showing current window recommendation" width="300" />
+  <img src="project-resources/screenshots/v2/02_48_hour_outlook.png" alt="OpenAir forecast showing 48-hour window outlook" width="300" />
+  <img src="project-resources/screenshots/v2/03_hourly_details.png" alt="OpenAir showing hourly detail" width="300" />
+  <img src="project-resources/screenshots/v2/04_custom_comfort.png" alt="OpenAir custom comfort settings" width="300" />
 </p>
 
 ## Features
