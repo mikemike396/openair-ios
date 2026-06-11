@@ -74,6 +74,7 @@ struct DashboardView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.glassProminent)
+                    WeatherAttributionView()
                 }
                 .padding()
             }

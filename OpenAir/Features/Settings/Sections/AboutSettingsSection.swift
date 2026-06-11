@@ -10,7 +10,7 @@ struct AboutSettingsSection: View {
                 LabeledContent("Open source / contribute", value: "GitHub")
             }
             LabeledContent("Version", value: "\(String.appVersion) (\(String.buildNumber))")
-            LabeledContent("Weather data", value: "Apple Weather")
+            WeatherLegalLinkView()
             Text("OpenAir uses outdoor conditions only. It does not measure indoor temperature, humidity, air quality, or safety hazards.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)

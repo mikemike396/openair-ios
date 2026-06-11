@@ -21,6 +21,7 @@ struct ForecastView: View {
                         initialSelectedDate: initialSelectedDate
                     )
                     HourlyDetailsCard(items: plan.hourly, unit: unit)
+                    WeatherAttributionView()
                 }
                 .padding()
             }
