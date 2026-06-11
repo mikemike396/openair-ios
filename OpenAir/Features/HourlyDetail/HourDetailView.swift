@@ -34,6 +34,7 @@ struct HourDetailView: View {
                             }
                         }
                     }
+                    WeatherAttributionView()
                 }
                 .padding()
             }
@@ -56,4 +57,3 @@ private struct StatusView: View {
             .accessibilityLabel("Recommendation: \(status.shortTitle)")
     }
 }
-
