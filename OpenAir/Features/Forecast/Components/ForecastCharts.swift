@@ -217,8 +217,8 @@ struct ForecastStatusBand: View {
                     let plotArea = geometry[plotFrame]
                     ForEach(ForecastDayBoundary.boundaries(for: xDomain, width: plotArea.width)) { boundary in
                         Rectangle()
-                            .fill(Color.white.opacity(0.8))
-                            .frame(width: 1, height: plotArea.height)
+                            .fill(Color.white.opacity(0.3))
+                            .frame(width: 1, height: plotArea.height - 5)
                             .position(
                                 x: plotArea.minX + boundary.position,
                                 y: plotArea.midY
