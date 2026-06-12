@@ -92,7 +92,7 @@ struct ForecastTimelineCharts: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForecastLineChart(
+            ForecastLineChartView(
                 data: chartData.temperature,
                 items: chartData.items,
                 selectedItem: selectedItem,
@@ -102,7 +102,7 @@ struct ForecastTimelineCharts: View {
             )
             .frame(height: 132)
 
-            ForecastLineChart(
+            ForecastLineChartView(
                 data: chartData.dewPoint,
                 items: chartData.items,
                 selectedItem: selectedItem,
@@ -112,13 +112,13 @@ struct ForecastTimelineCharts: View {
             )
             .frame(height: 132)
 
-            ForecastStatusBand(
+            ForecastStatusBandView(
                 segments: chartData.statusSegments,
                 xDomain: chartData.xDomain
             )
             .frame(height: 16)
 
-            ForecastDayAxis(
+            ForecastDayAxisView(
                 xDomain: chartData.xDomain
             )
             .frame(height: 22)

@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 struct ForecastReferenceLine: Identifiable, Equatable {
     let accessibilityLabel: String
@@ -19,6 +20,58 @@ enum ForecastChartScale {
 
         let padding = max((maximum - minimum) * 0.18, 6)
         return (minimum - padding)...(maximum + padding)
+    }
+}
+
+enum ForecastMetric {
+    case temperature
+    case dewPoint
+
+    var color: Color {
+        switch self {
+        case .temperature: .openAirAmber
+        case .dewPoint: .openAirBlue
+        }
+    }
+
+    var lineWidth: CGFloat {
+        switch self {
+        case .temperature: 2.25
+        case .dewPoint: 3.5
+        }
+    }
+
+    func value(for item: ForecastTimelineItem) -> Double {
+        switch self {
+        case .temperature: item.temperature
+        case .dewPoint: item.dewPoint
+        }
+    }
+
+    func referenceLines(
+        for preferences: ComfortPreferences,
+        unit: TemperatureUnit
+    ) -> [ForecastReferenceLine] {
+        switch self {
+        case .temperature:
+            [
+                ForecastReferenceLine(
+                    accessibilityLabel: "minimum comfort temperature",
+                    value: unit.chartValue(preferences.idealMinimumFahrenheit)
+                ),
+                ForecastReferenceLine(
+                    accessibilityLabel: "maximum comfort temperature",
+                    value: unit.chartValue(preferences.idealMaximumFahrenheit)
+                )
+            ]
+        case .dewPoint:
+            [
+                ForecastReferenceLine(
+                    accessibilityLabel: "maximum comfortable dew point",
+                    value: unit.chartValue(preferences.maximumDewPointFahrenheit)
+                )
+            ]
+        }
     }
 }
 

@@ -4,6 +4,7 @@ struct DayStatusBar: View {
     let windows: [RecommendationWindow]
     let start: Date
     let end: Date
+    @State private var availableWidth: CGFloat = 0
 
     private let barHeight: CGFloat = 12
 
@@ -13,58 +14,62 @@ struct DayStatusBar: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.12))
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.12))
 
-                    ForEach(windows) { window in
-                        Rectangle()
-                            .fill(window.status.color)
-                            .frame(
-                                width: model.segmentWidth(for: window, in: proxy.size.width),
-                                height: barHeight
-                            )
-                            .offset(x: model.segmentOffset(for: window, in: proxy.size.width))
-                    }
+                ForEach(windows) { window in
+                    Rectangle()
+                        .fill(window.status.color)
+                        .frame(
+                            width: model.segmentWidth(for: window, in: availableWidth),
+                            height: barHeight
+                        )
+                        .offset(x: model.segmentOffset(for: window, in: availableWidth))
+                }
 
-                    ForEach(segmentDividers(in: proxy.size.width)) { mark in
-                        Rectangle()
-                            .fill(Color.white.opacity(0.92))
-                            .frame(width: 2, height: barHeight)
-                            .offset(x: mark.tickPosition - 1)
-                    }
+                ForEach(segmentDividers(in: availableWidth)) { mark in
+                    Rectangle()
+                        .fill(Color.white.opacity(0.92))
+                        .frame(width: 2, height: barHeight)
+                        .offset(x: mark.tickPosition - 1)
                 }
-                .clipShape(.capsule)
-                .overlay {
-                    Capsule()
-                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(accessibilitySummary)
             }
+            .frame(maxWidth: .infinity)
             .frame(height: barHeight)
+            .clipShape(.capsule)
+            .overlay {
+                Capsule()
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilitySummary)
 
-            GeometryReader { proxy in
-                ZStack(alignment: .topLeading) {
-                    ForEach(axisMarks(in: proxy.size.width)) { mark in
-                        Rectangle()
-                            .fill(Color.secondary.opacity(0.28))
-                            .frame(width: 1, height: 9)
-                            .position(x: mark.tickPosition, y: 4)
+            ZStack(alignment: .topLeading) {
+                ForEach(axisMarks(in: availableWidth)) { mark in
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.28))
+                        .frame(width: 1, height: 9)
+                        .position(x: mark.tickPosition, y: 4)
 
-                        Text(mark.label)
-                            .frame(width: 56, alignment: mark.alignment)
-                            .position(
-                                x: mark.labelPosition,
-                                y: 24
-                            )
-                    }
+                    Text(mark.label)
+                        .frame(width: 56, alignment: mark.alignment)
+                        .position(
+                            x: mark.labelPosition,
+                            y: 24
+                        )
                 }
             }
+            .frame(maxWidth: .infinity)
             .frame(height: 34)
             .font(.caption2)
             .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { newWidth in
+            availableWidth = newWidth
         }
     }
 
