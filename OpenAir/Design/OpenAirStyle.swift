@@ -24,15 +24,15 @@ struct WeatherCard<Content: View>: View {
         content
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                Color(uiColor: .secondarySystemBackground).opacity(cardOpacity),
-                in: .rect(cornerRadius: 24)
-            )
+            .background {
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color(uiColor: .secondarySystemBackground).opacity(cardOpacity))
+                    .shadow(color: shadowColor, radius: shadowRadius, y: shadowYOffset)
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: 24)
                     .stroke(borderColor, lineWidth: borderWidth)
             }
-            .shadow(color: shadowColor, radius: shadowRadius, y: shadowYOffset)
     }
 
     private var cardOpacity: Double {
