@@ -12,12 +12,12 @@ struct ForecastView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
-//                ForecastTimelineCard(
-//                    items: plan.hourly,
-//                    unit: unit,
-//                    preferences: preferences,
-//                    initialSelectedDate: initialSelectedDate
-//                )
+                ForecastTimelineCard(
+                    items: plan.hourly,
+                    unit: unit,
+                    preferences: preferences,
+                    initialSelectedDate: initialSelectedDate
+                )
                 HourlyDetailsCard(
                     items: plan.hourly,
                     unit: unit
