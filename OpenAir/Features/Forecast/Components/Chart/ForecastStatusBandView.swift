@@ -3,47 +3,42 @@ import SwiftUI
 struct ForecastStatusBandView: View {
     let segments: [ForecastStatusSegment]
     let xDomain: ClosedRange<Date>
-    @State private var availableSize: CGSize = .zero
 
     var body: some View {
         HStack(spacing: 0) {
             Color.clear
                 .frame(width: ForecastAxisMetrics.plotLeadingInset)
 
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.secondary.opacity(0.12))
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.12))
 
-                ForEach(segments) { segment in
-                    Rectangle()
-                        .fill(segment.status.color)
-                        .frame(
-                            width: segmentWidth(segment, totalWidth: availableSize.width),
-                            height: availableSize.height
-                        )
-                        .offset(
-                            x: position(for: segment.start, totalWidth: availableSize.width)
-                        )
-                }
+                    ForEach(segments) { segment in
+                        Rectangle()
+                            .fill(segment.status.color)
+                            .frame(
+                                width: segmentWidth(segment, totalWidth: proxy.size.width),
+                                height: proxy.size.height
+                            )
+                            .offset(
+                                x: position(for: segment.start, totalWidth: proxy.size.width)
+                            )
+                    }
 
-                ForEach(
-                    ForecastDayBoundary.boundaries(
-                        for: xDomain,
-                        width: availableSize.width
-                    )
-                ) { boundary in
-                    Rectangle()
-                        .fill(Color.white.opacity(0.3))
-                        .frame(width: 1, height: max(availableSize.height - 5, 0))
-                        .offset(x: boundary.position)
+                    ForEach(
+                        ForecastDayBoundary.boundaries(
+                            for: xDomain,
+                            width: proxy.size.width
+                        )
+                    ) { boundary in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.3))
+                            .frame(width: 1, height: max(proxy.size.height - 5, 0))
+                            .offset(x: boundary.position)
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipShape(.capsule)
-            .onGeometryChange(for: CGSize.self) { proxy in
-                proxy.size
-            } action: { newSize in
-                availableSize = newSize
+                .clipShape(.capsule)
             }
         }
         .accessibilityElement(children: .ignore)
