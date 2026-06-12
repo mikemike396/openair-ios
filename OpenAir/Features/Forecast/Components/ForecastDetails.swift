@@ -10,7 +10,7 @@ struct HourlyDetailsCard: View {
                 Text("Hourly details")
                     .font(.title3.bold())
 
-                VStack(spacing: 0) {
+                LazyVStack(spacing: 0) {
                     ForEach(Array(items.prefix(48).enumerated()), id: \.element.weather.id) { index, item in
                         NavigationLink {
                             HourDetailView(weather: item.weather, recommendation: item.recommendation, unit: unit)

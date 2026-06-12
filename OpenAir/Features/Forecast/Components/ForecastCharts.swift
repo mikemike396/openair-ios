@@ -77,6 +77,16 @@ struct ForecastLineChart: View {
         )
     }
 
+    private var selectedDate: Binding<Date?> {
+        Binding(
+            get: { selectedItem?.date },
+            set: { date in
+                guard let date else { return }
+                selectedItem = items.nearest(to: date)
+            }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
@@ -128,38 +138,9 @@ struct ForecastLineChart: View {
                     }
                 }
             }
-            .chartOverlay { proxy in
-                GeometryReader { geometry in
-                    Rectangle()
-                        .fill(.clear)
-                        .contentShape(.rect)
-                        .gesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { value in
-                                    selectItem(at: value.location, proxy: proxy, geometry: geometry)
-                                }
-                        )
-                }
-            }
+            .chartXSelection(value: selectedDate)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilitySummary)
-        }
-    }
-
-    private func selectItem(at location: CGPoint, proxy: ChartProxy, geometry: GeometryProxy) {
-        guard let plotFrame = proxy.plotFrame else { return }
-        let plotArea = geometry[plotFrame]
-        let xPosition = location.x - plotArea.origin.x
-        guard
-            xPosition >= 0,
-            xPosition <= plotArea.width,
-            let date = proxy.value(atX: xPosition, as: Date.self)
-        else {
-            return
-        }
-
-        selectedItem = items.min {
-            abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
         }
     }
 

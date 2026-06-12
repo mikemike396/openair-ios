@@ -13,7 +13,7 @@ struct ForecastView: View {
         ZStack {
             AppBackground()
             ScrollView {
-                VStack(spacing: 18) {
+                LazyVStack(spacing: 18) {
                     ForecastTimelineCard(
                         items: plan.hourly,
                         unit: unit,
