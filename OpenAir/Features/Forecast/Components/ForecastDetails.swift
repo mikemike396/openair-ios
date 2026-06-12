@@ -15,7 +15,7 @@ struct HourlyDetailsCard: View {
                         NavigationLink {
                             HourDetailView(weather: item.weather, recommendation: item.recommendation, unit: unit)
                         } label: {
-                            ForecastHourRow(item: item, unit: unit)
+                            ForecastHourCell(item: item, unit: unit)
                                 .padding(.vertical, 12)
                         }
                         .buttonStyle(.plain)
@@ -30,7 +30,7 @@ struct HourlyDetailsCard: View {
     }
 }
 
-private struct ForecastHourRow: View {
+private struct ForecastHourCell: View {
     let item: (weather: HourlyWeather, recommendation: Recommendation)
     let unit: TemperatureUnit
 
@@ -70,6 +70,12 @@ private struct ForecastHourRow: View {
     }
 
     private var accessibilityLabel: String {
-        "\(item.weather.date.formatted(date: .abbreviated, time: .shortened)), \(item.recommendation.status.shortTitle), temperature \(unit.display(item.weather.temperatureFahrenheit))\(unit.symbol), dew point \(unit.display(item.weather.dewPointFahrenheit))\(unit.symbol)"
+        [
+            item.weather.date.formatted(date: .abbreviated, time: .shortened),
+            item.recommendation.status.shortTitle,
+            "temperature \(unit.display(item.weather.temperatureFahrenheit))\(unit.symbol)",
+            "dew point \(unit.display(item.weather.dewPointFahrenheit))\(unit.symbol)"
+        ]
+        .joined(separator: ", ")
     }
 }

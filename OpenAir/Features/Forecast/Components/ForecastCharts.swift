@@ -58,55 +58,43 @@ enum ForecastMetric {
 }
 
 struct ForecastLineChart: View {
-    let title: String
-    let metric: ForecastMetric
+    let data: ForecastLineChartData
     let items: [ForecastTimelineItem]
-    @Binding var selectedItem: ForecastTimelineItem?
+    let selectedItem: ForecastTimelineItem?
+    @Binding var selectedDate: Date?
     let xDomain: ClosedRange<Date>
     let unit: TemperatureUnit
-    let preferences: ComfortPreferences
 
-    private var referenceLines: [ForecastReferenceLine] {
-        metric.referenceLines(for: preferences, unit: unit)
-    }
-
-    private var yDomain: ClosedRange<Double> {
-        ForecastChartScale.domain(
-            values: items.map { metric.value(for: $0) },
-            referenceValues: referenceLines.map(\.value)
-        )
-    }
-
-    private var selectedDate: Binding<Date?> {
+    private var persistentSelectedDate: Binding<Date?> {
         Binding(
-            get: { selectedItem?.date },
-            set: { date in
-                guard let date else { return }
-                selectedItem = items.nearest(to: date)
+            get: { selectedDate },
+            set: { newDate in
+                guard let newDate else { return }
+                selectedDate = newDate
             }
         )
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title)
+            Text(data.title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             Chart {
-                ForEach(referenceLines) { referenceLine in
+                ForEach(data.referenceLines) { referenceLine in
                     RuleMark(y: .value("Comfort threshold", referenceLine.value))
-                        .foregroundStyle(metric.color.opacity(0.65))
+                        .foregroundStyle(data.metric.color.opacity(0.65))
                         .lineStyle(.init(lineWidth: 1.25, dash: [4, 3]))
                 }
 
                 ForEach(items) { item in
                     LineMark(
                         x: .value("Time", item.date),
-                        y: .value(title, metric.value(for: item))
+                        y: .value(data.title, data.metric.value(for: item))
                     )
-                    .foregroundStyle(metric.color)
-                    .lineStyle(.init(lineWidth: metric.lineWidth, lineCap: .round, lineJoin: .round))
+                    .foregroundStyle(data.metric.color)
+                    .lineStyle(.init(lineWidth: data.metric.lineWidth, lineCap: .round, lineJoin: .round))
                     .interpolationMethod(.catmullRom)
                 }
 
@@ -117,14 +105,14 @@ struct ForecastLineChart: View {
 
                     PointMark(
                         x: .value("Selected time", selectedItem.date),
-                        y: .value(title, metric.value(for: selectedItem))
+                        y: .value(data.title, data.metric.value(for: selectedItem))
                     )
-                    .foregroundStyle(metric.color)
+                    .foregroundStyle(data.metric.color)
                     .symbolSize(48)
                 }
             }
             .chartXScale(domain: xDomain)
-            .chartYScale(domain: yDomain)
+            .chartYScale(domain: data.yDomain)
             .chartXAxis(.hidden)
             .chartYAxis {
                 AxisMarks(position: .leading) { value in
@@ -138,33 +126,20 @@ struct ForecastLineChart: View {
                     }
                 }
             }
-            .chartXSelection(value: selectedDate)
+            .chartXSelection(value: persistentSelectedDate)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilitySummary)
+            .accessibilityLabel(data.accessibilitySummary)
         }
-    }
-
-    private var accessibilitySummary: String {
-        guard let first = items.first, let last = items.last else {
-            return "\(title) forecast chart unavailable"
-        }
-
-        let thresholds = referenceLines.map {
-            "\($0.accessibilityLabel) \(Int($0.value.rounded()))\(unit.symbol)"
-        }
-        .joined(separator: ", ")
-
-        return "\(title) forecast chart from \(first.date.formatted(date: .omitted, time: .shortened)) to \(last.date.formatted(date: .abbreviated, time: .shortened)). Comfort thresholds: \(thresholds)."
     }
 }
 
 struct ForecastStatusBand: View {
-    let items: [ForecastTimelineItem]
+    let segments: [ForecastStatusSegment]
     let xDomain: ClosedRange<Date>
 
     var body: some View {
         Chart {
-            ForEach(statusSegments) { segment in
+            ForEach(segments) { segment in
                 RectangleMark(
                     xStart: .value("Start", segment.start),
                     xEnd: .value("End", segment.end),
@@ -210,10 +185,6 @@ struct ForecastStatusBand: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Open and closed recommendation status over the forecast period")
-    }
-
-    private var statusSegments: [ForecastStatusSegment] {
-        ForecastStatusSegment.segments(for: items)
     }
 }
 
