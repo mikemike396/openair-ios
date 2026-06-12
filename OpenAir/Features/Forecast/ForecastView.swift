@@ -10,23 +10,24 @@ struct ForecastView: View {
     }
 
     var body: some View {
-        ZStack {
-            AppBackground()
-            ScrollView {
-                VStack(spacing: 18) {
-                    ForecastTimelineCard(
-                        items: plan.hourly,
-                        unit: unit,
-                        preferences: preferences,
-                        initialSelectedDate: initialSelectedDate
-                    )
-                    HourlyDetailsCard(items: plan.hourly, unit: unit)
-                    WeatherAttributionView()
-                }
-                .padding()
+        ScrollView {
+            VStack(spacing: 18) {
+                ForecastTimelineCard(
+                    items: plan.hourly,
+                    unit: unit,
+                    preferences: preferences,
+                    initialSelectedDate: initialSelectedDate
+                )
+                HourlyDetailsCard(
+                    items: plan.hourly,
+                    unit: unit
+                )
+                WeatherAttributionView()
             }
+            .padding()
         }
         .navigationTitle("Forecast")
         .navigationBarTitleDisplayMode(.inline)
+        .appBackground()
     }
 }

@@ -15,8 +15,6 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            AppBackground()
-
             GeometryReader { proxy in
                 ScrollViewReader { scrollProxy in
                     ScrollView {
@@ -108,21 +106,22 @@ struct OnboardingView: View {
                     Task { await store.completeOnboarding() }
                 }
             )
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-                .background {
-                    LinearGradient(
-                        colors: [.clear, Color(.systemBackground).opacity(0.75)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .ignoresSafeArea(edges: .bottom)
-                }
-                .opacity(isSearchFocused ? 0 : 1)
-                .allowsHitTesting(!isSearchFocused)
-                .animation(.easeOut(duration: 0.2), value: isSearchFocused)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+            .background {
+                LinearGradient(
+                    colors: [.clear, Color(.systemBackground).opacity(0.75)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea(edges: .bottom)
+            }
+            .opacity(isSearchFocused ? 0 : 1)
+            .allowsHitTesting(!isSearchFocused)
+            .animation(.easeOut(duration: 0.2), value: isSearchFocused)
         }
         .navigationBarBackButtonHidden()
+        .appBackground()
     }
 
     private var selectedLocationLabel: String? {

@@ -72,12 +72,14 @@ struct ForecastDayAxisLabel: Identifiable, Equatable {
     }
 
     private static func weekdayLabel(for date: Date, calendar: Calendar, locale: Locale) -> String {
-        let formatter = DateFormatter()
-        formatter.calendar = calendar
-        formatter.timeZone = calendar.timeZone
-        formatter.locale = locale
-        formatter.setLocalizedDateFormatFromTemplate("EEE")
-        return formatter.string(from: date)
+        date.formatted(
+            Date.FormatStyle(
+                locale: locale,
+                calendar: calendar,
+                timeZone: calendar.timeZone
+            )
+            .weekday(.abbreviated)
+        )
     }
 
     private struct DaySpan {

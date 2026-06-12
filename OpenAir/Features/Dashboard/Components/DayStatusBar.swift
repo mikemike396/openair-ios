@@ -6,14 +6,16 @@ struct DayStatusBar: View {
     let end: Date
 
     private let barHeight: CGFloat = 12
+    private let axisHeight: CGFloat = 34
+    private let spacing: CGFloat = 8
 
     private var model: DayStatusBarModel {
         DayStatusBarModel(start: start, end: end)
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            GeometryReader { proxy in
+        GeometryReader { proxy in
+            VStack(spacing: spacing) {
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.secondary.opacity(0.12))
@@ -35,6 +37,7 @@ struct DayStatusBar: View {
                             .offset(x: mark.tickPosition - 1)
                     }
                 }
+                .frame(height: barHeight)
                 .clipShape(.capsule)
                 .overlay {
                     Capsule()
@@ -42,10 +45,7 @@ struct DayStatusBar: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(accessibilitySummary)
-            }
-            .frame(height: barHeight)
 
-            GeometryReader { proxy in
                 ZStack(alignment: .topLeading) {
                     ForEach(axisMarks(in: proxy.size.width)) { mark in
                         Rectangle()
@@ -61,11 +61,12 @@ struct DayStatusBar: View {
                             )
                     }
                 }
+                .frame(height: axisHeight)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             }
-            .frame(height: 34)
-            .font(.caption2)
-            .foregroundStyle(.secondary)
         }
+        .frame(height: barHeight + spacing + axisHeight)
     }
 
     private var accessibilitySummary: String {

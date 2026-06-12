@@ -16,35 +16,6 @@ extension RecommendationStatus {
     }
 }
 
-struct AppBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        LinearGradient(
-            colors: colors,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-    }
-
-    private var colors: [Color] {
-        if colorScheme == .dark {
-            [
-                Color(red: 0.04, green: 0.08, blue: 0.11),
-                Color(red: 0.05, green: 0.18, blue: 0.19),
-                Color(red: 0.07, green: 0.13, blue: 0.18)
-            ]
-        } else {
-            [
-                Color(red: 0.95, green: 0.99, blue: 0.98),
-                Color.openAirTeal.opacity(0.11),
-                Color.openAirMint.opacity(0.08)
-            ]
-        }
-    }
-}
-
 struct WeatherCard<Content: View>: View {
     @ViewBuilder let content: Content
     @Environment(\.colorScheme) private var colorScheme
@@ -53,15 +24,15 @@ struct WeatherCard<Content: View>: View {
         content
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                Color(uiColor: .secondarySystemBackground).opacity(cardOpacity),
-                in: .rect(cornerRadius: 24)
-            )
+            .background {
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color(uiColor: .secondarySystemBackground).opacity(cardOpacity))
+                    .shadow(color: shadowColor, radius: shadowRadius, y: shadowYOffset)
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: 24)
                     .stroke(borderColor, lineWidth: borderWidth)
             }
-            .shadow(color: shadowColor, radius: shadowRadius, y: shadowYOffset)
     }
 
     private var cardOpacity: Double {
@@ -88,74 +59,5 @@ struct WeatherCard<Content: View>: View {
 
     private var borderWidth: CGFloat {
         colorScheme == .dark ? 0.75 : 0.5
-    }
-}
-
-private struct ChipStyle: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        content
-            .padding(.horizontal, 11)
-            .padding(.vertical, 8)
-            .background(fill, in: .capsule)
-            .overlay {
-                Capsule()
-                    .stroke(stroke, lineWidth: 0.5)
-            }
-    }
-
-    private var fill: Color {
-        colorScheme == .dark
-            ? .white.opacity(0.10)
-            : .openAirNavy.opacity(0.07)
-    }
-
-    private var stroke: Color {
-        colorScheme == .dark
-            ? .white.opacity(0.12)
-            : .openAirNavy.opacity(0.06)
-    }
-}
-
-private struct PanelStyle: ViewModifier {
-    let cornerRadius: CGFloat
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        content
-            .background(fill, in: .rect(cornerRadius: cornerRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(stroke, lineWidth: 0.5)
-            }
-    }
-
-    private var fill: Color {
-        colorScheme == .dark
-            ? .white.opacity(0.08)
-            : .openAirNavy.opacity(0.06)
-    }
-
-    private var stroke: Color {
-        colorScheme == .dark
-            ? .white.opacity(0.10)
-            : .openAirNavy.opacity(0.05)
-    }
-}
-
-extension View {
-    func chip() -> some View {
-        modifier(
-            ChipStyle()
-        )
-    }
-
-    func panel(cornerRadius: CGFloat) -> some View {
-        modifier(
-            PanelStyle(
-                cornerRadius: cornerRadius
-            )
-        )
     }
 }

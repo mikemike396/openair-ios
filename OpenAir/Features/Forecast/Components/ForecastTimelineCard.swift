@@ -1,104 +1,127 @@
 import SwiftUI
 
 struct ForecastTimelineCard: View {
-    let items: [(weather: HourlyWeather, recommendation: Recommendation)]
+    private let chartData: ForecastChartData
     let unit: TemperatureUnit
-    let preferences: ComfortPreferences
     let initialSelectedDate: Date?
-    @State private var selectedItem: ForecastTimelineItem?
 
-    private var chartItems: [ForecastTimelineItem] {
-        Array(items.prefix(48)).map {
-            ForecastTimelineItem(
-                weather: $0.weather,
-                status: $0.recommendation.status,
-                reasons: $0.recommendation.reasons,
-                unit: unit
-            )
-        }
+    init(
+        items: [(weather: HourlyWeather, recommendation: Recommendation)],
+        unit: TemperatureUnit,
+        preferences: ComfortPreferences,
+        initialSelectedDate: Date?
+    ) {
+        self.chartData = ForecastChartData(
+            items: items,
+            unit: unit,
+            preferences: preferences
+        )
+        self.unit = unit
+        self.initialSelectedDate = initialSelectedDate
     }
 
     var body: some View {
         WeatherCard {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("48-hour outlook")
-                        .font(.title3.bold())
-                    Text("Temperature, dew point, and window status")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                if chartItems.count > 1 {
-                    if let selectedItem {
-                        ForecastSelectionReadout(item: selectedItem, unit: unit)
-                    }
-
-                    ForecastTimelineCharts(
-                        items: chartItems,
-                        selectedItem: $selectedItem,
-                        unit: unit,
-                        preferences: preferences
-                    )
-                    ForecastTimelineLegend()
-                } else {
-                    ContentUnavailableView(
-                        "Forecast unavailable",
-                        systemImage: "chart.xyaxis.line",
-                        description: Text("Hourly weather is not available yet.")
-                    )
-                    .frame(minHeight: 220)
-                }
-            }
+            ForecastTimelineContent(
+                chartData: chartData,
+                unit: unit,
+                initialSelectedDate: initialSelectedDate
+            )
         }
-        .onAppear {
-            guard selectedItem == nil else { return }
-            selectedItem = chartItems.nearest(to: initialSelectedDate ?? Date())
+    }
+}
+
+private struct ForecastTimelineContent: View {
+    let chartData: ForecastChartData
+    let unit: TemperatureUnit
+    @State private var selectedDate: Date?
+
+    init(
+        chartData: ForecastChartData,
+        unit: TemperatureUnit,
+        initialSelectedDate: Date?
+    ) {
+        self.chartData = chartData
+        self.unit = unit
+        _selectedDate = State(
+            initialValue: chartData.nearestItem(to: initialSelectedDate ?? .now)?.date
+        )
+    }
+
+    var body: some View {
+        let selectedItem = chartData.nearestItem(to: selectedDate)
+
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("48-hour outlook")
+                    .font(.title3.bold())
+                Text("Temperature, dew point, and window status")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if chartData.items.count > 1 {
+                if let selectedItem {
+                    ForecastSelectionReadout(item: selectedItem, unit: unit)
+                }
+
+                ForecastTimelineCharts(
+                    chartData: chartData,
+                    selectedItem: selectedItem,
+                    selectedDate: $selectedDate,
+                    unit: unit
+                )
+                ForecastTimelineLegend()
+            } else {
+                ContentUnavailableView(
+                    "Forecast unavailable",
+                    systemImage: "chart.xyaxis.line",
+                    description: Text("Hourly weather is not available yet.")
+                )
+                .frame(minHeight: 220)
+            }
         }
     }
 }
 
 struct ForecastTimelineCharts: View {
-    let items: [ForecastTimelineItem]
-    @Binding var selectedItem: ForecastTimelineItem?
+    let chartData: ForecastChartData
+    let selectedItem: ForecastTimelineItem?
+    @Binding var selectedDate: Date?
     let unit: TemperatureUnit
-    let preferences: ComfortPreferences
-
-    private var xDomain: ClosedRange<Date> {
-        let first = items.first?.date ?? Date()
-        let last = items.last?.date.addingTimeInterval(60 * 60) ?? first.addingTimeInterval(60 * 60)
-        return first...last
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForecastLineChart(
-                title: "Temperature",
-                metric: .temperature,
-                items: items,
-                selectedItem: $selectedItem,
-                xDomain: xDomain,
-                unit: unit,
-                preferences: preferences
+            ForecastLineChartView(
+                data: chartData.temperature,
+                items: chartData.items,
+                selectedItem: selectedItem,
+                selectedDate: $selectedDate,
+                xDomain: chartData.xDomain,
+                unit: unit
             )
             .frame(height: 132)
 
-            ForecastLineChart(
-                title: "Dew point",
-                metric: .dewPoint,
-                items: items,
-                selectedItem: $selectedItem,
-                xDomain: xDomain,
-                unit: unit,
-                preferences: preferences
+            ForecastLineChartView(
+                data: chartData.dewPoint,
+                items: chartData.items,
+                selectedItem: selectedItem,
+                selectedDate: $selectedDate,
+                xDomain: chartData.xDomain,
+                unit: unit
             )
             .frame(height: 132)
 
-            ForecastStatusBand(items: items, xDomain: xDomain)
-                .frame(height: 16)
+            ForecastStatusBandView(
+                segments: chartData.statusSegments,
+                xDomain: chartData.xDomain
+            )
+            .frame(height: 16)
 
-            ForecastDayAxis(xDomain: xDomain)
-                .frame(height: 22)
+            ForecastDayAxisView(
+                xDomain: chartData.xDomain
+            )
+            .frame(height: 22)
         }
     }
 }

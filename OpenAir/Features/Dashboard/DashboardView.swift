@@ -5,36 +5,36 @@ struct DashboardView: View {
     @State private var showingSettings = false
 
     var body: some View {
-        ZStack {
-            AppBackground()
-            content
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                HStack(spacing: 6) {
-                    Text(navigationTitle)
-                        .lineLimit(1)
-                        .layoutPriority(1)
-                    Image(systemName: store.savedPlace == nil ? "location" : "mappin")
-                        .font(.caption.weight(.semibold))
+        content
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 6) {
+                        Text(navigationTitle)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                        Image(systemName: store.savedPlace == nil ? "location" : "mappin")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .font(.headline)
                 }
-                .font(.headline)
-            }
 
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
                 }
-                .accessibilityLabel("Settings")
             }
-        }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView()
-        }
-        .refreshable { await store.refreshPreservingLoadedState() }
+            .refreshable {
+                await store.refreshPreservingLoadedState()
+            }
+            .appBackground()
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
+            }
     }
 
     @ViewBuilder

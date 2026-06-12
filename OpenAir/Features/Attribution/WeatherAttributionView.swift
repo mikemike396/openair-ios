@@ -13,7 +13,7 @@ struct WeatherAttributionView: View {
     }
     
     var body: some View {
-        Group {
+        HStack(alignment: .center) {
             if let attribution {
                 Button {
                     openURL(attribution.legalPageURL)
@@ -45,6 +45,7 @@ struct WeatherAttributionView: View {
                     .accessibilityLabel("Loading Apple Weather attribution")
             }
         }
+        .frame(maxWidth: .infinity)
         .task {
             attribution = try? await WeatherService.shared.attribution
         }
