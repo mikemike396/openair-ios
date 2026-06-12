@@ -138,97 +138,95 @@ struct ForecastStatusBand: View {
     let xDomain: ClosedRange<Date>
 
     var body: some View {
-        Chart {
-            ForEach(segments) { segment in
-                RectangleMark(
-                    xStart: .value("Start", segment.start),
-                    xEnd: .value("End", segment.end),
-                    yStart: .value("Status band", 0),
-                    yEnd: .value("Status band", 1)
-                )
-                .foregroundStyle(segment.status.color)
-            }
-        }
-        .chartXScale(domain: xDomain)
-        .chartYScale(domain: 0...1)
-        .chartXAxis(.hidden)
-        .chartYAxis {
-            AxisMarks(position: .leading, values: [0]) {
-                AxisTick().foregroundStyle(.clear)
-                AxisValueLabel {
-                    Text("000\(TemperatureUnit.fahrenheit.symbol)")
-                        .frame(width: ForecastAxisMetrics.yLabelWidth, alignment: .trailing)
-                        .hidden()
-                }
-            }
-        }
-        .chartPlotStyle { plotArea in
-            plotArea
-                .background(Color.secondary.opacity(0.12), in: .capsule)
-                .clipShape(.capsule)
-        }
-        .chartOverlay { proxy in
+        HStack(spacing: 0) {
+            Color.clear
+                .frame(width: ForecastAxisMetrics.yLabelWidth)
+
             GeometryReader { geometry in
-                if let plotFrame = proxy.plotFrame {
-                    let plotArea = geometry[plotFrame]
-                    ForEach(ForecastDayBoundary.boundaries(for: xDomain, width: plotArea.width)) { boundary in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.12))
+
+                    ForEach(segments) { segment in
                         Rectangle()
-                            .fill(Color.white.opacity(0.3))
-                            .frame(width: 1, height: plotArea.height - 5)
-                            .position(
-                                x: plotArea.minX + boundary.position,
-                                y: plotArea.midY
+                            .fill(segment.status.color)
+                            .frame(
+                                width: segmentWidth(segment, totalWidth: geometry.size.width),
+                                height: geometry.size.height
+                            )
+                            .offset(
+                                x: position(for: segment.start, totalWidth: geometry.size.width)
                             )
                     }
+
+                    ForEach(
+                        ForecastDayBoundary.boundaries(
+                            for: xDomain,
+                            width: geometry.size.width
+                        )
+                    ) { boundary in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.3))
+                            .frame(width: 1, height: max(geometry.size.height - 5, 0))
+                            .offset(x: boundary.position)
+                    }
                 }
+                .clipShape(.capsule)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Open and closed recommendation status over the forecast period")
     }
+
+    private func segmentWidth(
+        _ segment: ForecastStatusSegment,
+        totalWidth: CGFloat
+    ) -> CGFloat {
+        max(
+            position(for: segment.end, totalWidth: totalWidth)
+                - position(for: segment.start, totalWidth: totalWidth),
+            0
+        )
+    }
+
+    private func position(for date: Date, totalWidth: CGFloat) -> CGFloat {
+        let duration = xDomain.upperBound.timeIntervalSince(xDomain.lowerBound)
+        guard duration > 0 else { return 0 }
+
+        let fraction = date.timeIntervalSince(xDomain.lowerBound) / duration
+        return totalWidth * min(max(fraction, 0), 1)
+    }
 }
 
 struct ForecastDayAxis: View {
     let xDomain: ClosedRange<Date>
+    @State private var availableWidth: CGFloat = 0
 
     var body: some View {
-        Chart {
-            PointMark(
-                x: .value("Start", xDomain.lowerBound),
-                y: .value("Axis", 0)
-            )
-            .foregroundStyle(.clear)
-        }
-        .chartXScale(domain: xDomain)
-        .chartYScale(domain: 0...1)
-        .chartXAxis(.hidden)
-        .chartYAxis {
-            AxisMarks(position: .leading, values: [0]) {
-                AxisTick().foregroundStyle(.clear)
-                AxisValueLabel {
-                    Text("000\(TemperatureUnit.fahrenheit.symbol)")
-                        .frame(width: ForecastAxisMetrics.yLabelWidth, alignment: .trailing)
-                        .hidden()
+        HStack(spacing: 0) {
+            Color.clear
+                .frame(width: ForecastAxisMetrics.yLabelWidth)
+
+            Group {
+                ForEach(labels) { label in
+                    Text(label.text)
+                        .frame(width: 44)
+                        .position(x: label.position, y: 11)
                 }
             }
-        }
-        .chartOverlay { proxy in
-            GeometryReader { geometry in
-                if let plotFrame = proxy.plotFrame {
-                    let plotArea = geometry[plotFrame]
-                    ForEach(ForecastDayAxisLabel.labels(for: xDomain, width: plotArea.width)) { label in
-                        Text(label.text)
-                            .frame(width: 44)
-                            .position(
-                                x: plotArea.minX + label.position,
-                                y: plotArea.midY
-                            )
-                    }
-                }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { newWidth in
+                availableWidth = newWidth
             }
         }
         .font(.caption)
         .foregroundStyle(.secondary)
         .accessibilityHidden(true)
+    }
+
+    private var labels: [ForecastDayAxisLabel] {
+        ForecastDayAxisLabel.labels(for: xDomain, width: availableWidth)
     }
 }

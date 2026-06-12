@@ -116,10 +116,12 @@ struct ForecastTimelineCharts: View {
                 segments: chartData.statusSegments,
                 xDomain: chartData.xDomain
             )
-                .frame(height: 16)
+            .frame(height: 16)
 
-            ForecastDayAxis(xDomain: chartData.xDomain)
-                .frame(height: 22)
+            ForecastDayAxis(
+                xDomain: chartData.xDomain
+            )
+            .frame(height: 22)
         }
     }
 }

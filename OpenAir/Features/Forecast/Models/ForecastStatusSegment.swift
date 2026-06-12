@@ -1,6 +1,6 @@
 import Foundation
 
-struct ForecastStatusSegment: Identifiable {
+struct ForecastStatusSegment: Identifiable, Equatable {
     let start: Date
     let end: Date
     let status: RecommendationStatus
