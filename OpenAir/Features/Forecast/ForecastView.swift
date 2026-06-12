@@ -11,7 +11,7 @@ struct ForecastView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 18) {
+            VStack(spacing: 18) {
                 ForecastTimelineCard(
                     items: plan.hourly,
                     unit: unit,
