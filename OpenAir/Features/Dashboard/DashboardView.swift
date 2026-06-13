@@ -65,7 +65,13 @@ struct DashboardView: View {
                         unit: store.preferences.temperatureUnit,
                         isRefreshing: store.refreshState == .refreshing
                     )
-                    TodayPlanCard(windows: plan.windows)
+                    NavigationLink {
+                        ForecastView(plan: plan, preferences: store.preferences)
+                    } label: {
+                        TodayPlanCard(windows: plan.windows)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens the 48-hour forecast")
                     HourlyList(plan: plan, preferences: store.preferences)
                     NavigationLink {
                         ForecastView(plan: plan, preferences: store.preferences)
