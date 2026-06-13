@@ -15,7 +15,7 @@ struct HourlyDetailsCard: View {
                         NavigationLink {
                             HourDetailView(weather: item.weather, recommendation: item.recommendation, unit: unit)
                         } label: {
-                            ForecastHourCell(item: item, unit: unit)
+                            CellView(item: item, unit: unit)
                                 .padding(.vertical, 12)
                         }
                         .buttonStyle(.plain)
@@ -30,7 +30,7 @@ struct HourlyDetailsCard: View {
     }
 }
 
-private struct ForecastHourCell: View {
+private struct CellView: View {
     let item: (weather: HourlyWeather, recommendation: Recommendation)
     let unit: TemperatureUnit
 
