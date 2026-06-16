@@ -26,8 +26,6 @@ enum RefreshState: Equatable {
 
 @Observable
 final class AppStore {
-    private static let foregroundRefreshInterval: TimeInterval = 60 * 15
-
     private let weather: any WeatherProviding
     let location: any LocationProviding
     private let places: any PlaceSearching
@@ -58,6 +56,15 @@ final class AppStore {
         }
         set {
             userPreferences.savedPlace = newValue
+        }
+    }
+
+    var lastKnownCurrentLocation: SavedPlace? {
+        get {
+            userPreferences.lastKnownCurrentLocation
+        }
+        set {
+            userPreferences.lastKnownCurrentLocation = newValue
         }
     }
 
@@ -165,10 +172,10 @@ final class AppStore {
         savedPlace = nil
         searchResults = []
         do {
-            _ = try await location.requestLocation()
+            _ = try await resolveCurrentLocationTarget()
             searchError = nil
             if hasCompletedOnboarding {
-                await refresh()
+                await performRefresh(keepsLoadedState: false, updateLocation: false)
             }
             return true
         } catch {
@@ -177,22 +184,72 @@ final class AppStore {
         }
     }
 
+    /// Refreshes weather for the selected location.
+    ///
+    /// - Parameter keepsLoadedState: Whether to keep the current forecast visible while fetching.
+    /// - Returns: The result of the refresh attempt.
+    /// - Note: In automatic-location mode this requests a fresh foreground location.
+    /// Use ``refreshForBackground()`` for background refreshes that must not touch Core Location.
     @discardableResult
-    func refresh() async -> RefreshResult {
-        await refresh(preservingLoadedState: false)
+    func refresh(keepsLoadedState: Bool = false) async -> RefreshResult {
+        await performRefresh(keepsLoadedState: keepsLoadedState)
+    }
+
+    /// Refreshes weather for a background app refresh task.
+    ///
+    /// - Returns: The result of the background refresh attempt.
+    /// - Note: This method never requests Core Location.
+    ///   - In manual-location mode it uses ``savedPlace``.
+    ///   - In automatic-location mode it uses ``lastKnownCurrentLocation``
+    ///   - If no last-known current location exists, the refresh is skipped successfully.
+    @discardableResult
+    func refreshForBackground() async -> RefreshResult {
+        await performRefresh(keepsLoadedState: true, updateLocation: false)
+    }
+    
+    /// Refreshes weather only when the current loaded forecast is old enough.
+    ///
+    /// - Parameter now: The reference date used to decide whether the loaded forecast is stale enough to refresh.
+    /// - Returns: The result of the refresh decision or attempt.
+    /// - Note: This method skips when onboarding is incomplete, a refresh is already loading,
+    /// or the loaded forecast is newer than the foreground refresh interval. When it
+    /// does refresh loaded data, it keeps the current forecast visible while fetching.
+    @discardableResult
+    func refreshIfNeeded(now: Date = .now) async -> RefreshResult {
+        guard hasCompletedOnboarding else { return .skipped }
+
+        switch loadState {
+        case .idle, .failed:
+            return await refresh()
+        case .loading:
+            return .skipped
+        case .loaded(let snapshot, _):
+            guard now.timeIntervalSince(snapshot.fetchedAt) >= .foregroundRefreshInterval else {
+                return .skipped
+            }
+            return await refresh(keepsLoadedState: true)
+        }
+    }
+    
+    func usePreviewWeather() async {
+        let snapshot = WeatherSnapshot.preview
+        let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
+        refreshState = .idle
+        loadState = .loaded(snapshot: snapshot, plan: plan)
+    }
+
+    func shouldShowStaleBanner(for snapshot: WeatherSnapshot, now: Date = .now) -> Bool {
+        refreshState == .failed &&
+            now.timeIntervalSince(snapshot.fetchedAt) > .staleCacheInterval
     }
 
     @discardableResult
-    func refreshPreservingLoadedState() async -> RefreshResult {
-        await refresh(preservingLoadedState: true)
-    }
-
-    private func refresh(preservingLoadedState: Bool) async -> RefreshResult {
+    private func performRefresh(keepsLoadedState: Bool, updateLocation: Bool = true) async -> RefreshResult {
         guard refreshState != .refreshing else { return .skipped }
         refreshState = .refreshing
 
         let existingSnapshot: WeatherSnapshot?
-        if preservingLoadedState,
+        if keepsLoadedState,
            case .loaded(let snapshot, _) = loadState {
             existingSnapshot = snapshot
         } else {
@@ -201,7 +258,12 @@ final class AppStore {
         }
 
         do {
-            let target = try await weatherTarget()
+            guard let target = try await targetForWeatherRefresh(updateLocation: updateLocation)
+            else {
+                scheduleBackgroundRefresh()
+                refreshState = .idle
+                return .skipped
+            }
             let snapshot = try await weather.fetchWeather(for: target.coordinate, locationName: target.name)
             cache.save(snapshot)
             let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
@@ -226,41 +288,23 @@ final class AppStore {
         }
     }
 
-    @discardableResult
-    func refreshIfNeeded(now: Date = .now) async -> RefreshResult {
-        guard hasCompletedOnboarding else { return .skipped }
-
-        switch loadState {
-        case .idle, .failed:
-            return await refresh()
-        case .loading:
-            return .skipped
-        case .loaded(let snapshot, _):
-            guard now.timeIntervalSince(snapshot.fetchedAt) >= Self.foregroundRefreshInterval else {
-                return .skipped
-            }
-            return await refresh(preservingLoadedState: true)
-        }
-    }
-
-    func usePreviewWeather() async {
-        let snapshot = WeatherSnapshot.preview
-        let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
-        refreshState = .idle
-        loadState = .loaded(snapshot: snapshot, plan: plan)
-    }
-
-    func shouldShowStaleBanner(for snapshot: WeatherSnapshot, now: Date = .now) -> Bool {
-        refreshState == .failed &&
-            now.timeIntervalSince(snapshot.fetchedAt) > 60 * 60 * 3
-    }
-
-    private func weatherTarget() async throws -> (coordinate: Coordinate, name: String) {
+    private func targetForWeatherRefresh(updateLocation: Bool) async throws -> (coordinate: Coordinate, name: String)? {
         if let savedPlace {
             return (savedPlace.coordinate, savedPlace.name)
         }
+        
+        guard updateLocation
+        else {
+            guard let lastKnownCurrentLocation else { return nil }
+            return (lastKnownCurrentLocation.coordinate, lastKnownCurrentLocation.name)
+        }
+        return try await resolveCurrentLocationTarget()
+    }
+
+    private func resolveCurrentLocationTarget() async throws -> (coordinate: Coordinate, name: String) {
         let coordinate = try await location.requestLocation()
         let name = await location.placename(for: coordinate) ?? "Current Location"
+        lastKnownCurrentLocation = SavedPlace(name: name, coordinate: coordinate)
         return (coordinate, name)
     }
 

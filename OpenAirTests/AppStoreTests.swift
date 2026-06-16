@@ -1,7 +1,100 @@
 import CoreLocation
+import Testing
 import XCTest
 import UserNotifications
 @testable import OpenAir
+
+@MainActor
+@Test
+func backgroundRefreshUsesLastKnownCurrentLocationWithoutRequestingLocation() async {
+    let cacheURL = FileManager.default.temporaryDirectory
+        .appending(path: "openair-background-\(UUID().uuidString).json")
+    let refreshed = appStoreTestSnapshot(fetchedAt: Date())
+    let weather = WeatherSpy(snapshots: [refreshed])
+    let location = LocationStub(result: .failure(LocationError.denied))
+    let lastKnownCurrentLocation = SavedPlace(
+        name: "Wilmington, DE",
+        coordinate: .init(latitude: 39.7391, longitude: -75.5398)
+    )
+    let userPreferences = InMemoryUserPreferenceStore()
+    userPreferences.hasCompletedOnboarding = true
+    userPreferences.lastKnownCurrentLocation = lastKnownCurrentLocation
+    let store = AppStore(
+        weather: weather,
+        location: location,
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: cacheURL),
+        userPreferences: userPreferences
+    )
+
+    let result = await store.refreshForBackground()
+
+    #expect(result == .succeeded)
+    #expect(store.refreshState == .idle)
+    let fetchCount = await weather.fetchCount
+    #expect(fetchCount == 1)
+    #expect(location.requestLocationCount == 0)
+    guard case .loaded(let snapshot, _) = store.loadState else {
+        Issue.record("Expected refreshed weather to be loaded")
+        return
+    }
+    #expect(snapshot.coordinate == lastKnownCurrentLocation.coordinate)
+    #expect(snapshot.locationName == lastKnownCurrentLocation.name)
+    #expect(snapshot.fetchedAt == refreshed.fetchedAt)
+}
+
+@MainActor
+@Test
+func backgroundRefreshSkipsWhenAutomaticLocationHasNoLastKnownPlace() async {
+    let cacheURL = FileManager.default.temporaryDirectory
+        .appending(path: "openair-background-empty-\(UUID().uuidString).json")
+    let weather = WeatherSpy(snapshots: [appStoreTestSnapshot(fetchedAt: Date())])
+    let location = LocationStub(result: .failure(LocationError.denied))
+    let userPreferences = InMemoryUserPreferenceStore()
+    userPreferences.hasCompletedOnboarding = true
+    let store = AppStore(
+        weather: weather,
+        location: location,
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: cacheURL),
+        userPreferences: userPreferences
+    )
+
+    let result = await store.refreshForBackground()
+
+    #expect(result == .skipped)
+    #expect(store.refreshState == .idle)
+    let fetchCount = await weather.fetchCount
+    #expect(fetchCount == 0)
+    #expect(location.requestLocationCount == 0)
+}
+
+@MainActor
+@Test
+func foregroundRefreshStillFailsDeniedCurrentLocation() async {
+    let cacheURL = FileManager.default.temporaryDirectory
+        .appending(path: "openair-foreground-\(UUID().uuidString).json")
+    let userPreferences = InMemoryUserPreferenceStore()
+    userPreferences.hasCompletedOnboarding = true
+    let store = AppStore(
+        weather: WeatherSpy(snapshots: [appStoreTestSnapshot(fetchedAt: Date())]),
+        location: LocationStub(result: .failure(LocationError.denied)),
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: cacheURL),
+        userPreferences: userPreferences
+    )
+
+    let result = await store.refresh(keepsLoadedState: true)
+
+    #expect(result == .failed)
+    #expect(store.refreshState == .failed)
+}
 
 @MainActor
 final class AppStoreTests: XCTestCase {
@@ -97,6 +190,7 @@ final class AppStoreTests: XCTestCase {
             return XCTFail("Expected loaded current location")
         }
         XCTAssertEqual(currentSnapshot.locationName, "Wilmington, DE")
+        XCTAssertEqual(store.lastKnownCurrentLocation?.name, "Wilmington, DE")
     }
 
     func testChooseManualPlaceRefreshesLoadedDashboard() async {
@@ -225,7 +319,7 @@ final class AppStoreTests: XCTestCase {
         markOnboardingCompleted()
         let store = makeStore(weather: FailingWeatherProvider())
 
-        let result = await store.refreshPreservingLoadedState()
+        let result = await store.refresh(keepsLoadedState: true)
 
         XCTAssertEqual(result, .failed)
         XCTAssertEqual(store.refreshState, .failed)
@@ -239,7 +333,7 @@ final class AppStoreTests: XCTestCase {
         markOnboardingCompleted()
         let store = makeStore(weather: FailingWeatherProvider())
 
-        let result = await store.refreshPreservingLoadedState()
+        let result = await store.refresh(keepsLoadedState: true)
 
         XCTAssertEqual(result, .failed)
         XCTAssertFalse(store.shouldShowStaleBanner(for: cached, now: now))
@@ -252,10 +346,10 @@ final class AppStoreTests: XCTestCase {
         WeatherCache(url: cacheURL).save(cached)
         markOnboardingCompleted()
         let store = makeStore(weather: FailingThenSucceedingWeatherProvider(snapshot: refreshed))
-        _ = await store.refreshPreservingLoadedState()
+        _ = await store.refresh(keepsLoadedState: true)
         XCTAssertTrue(store.shouldShowStaleBanner(for: cached, now: now))
 
-        let result = await store.refreshPreservingLoadedState()
+        let result = await store.refresh(keepsLoadedState: true)
 
         XCTAssertEqual(result, .succeeded)
         XCTAssertEqual(store.refreshState, .idle)
@@ -269,10 +363,10 @@ final class AppStoreTests: XCTestCase {
         markOnboardingCompleted()
         let weather = FailingThenSuspendedWeatherProvider()
         let store = makeStore(weather: weather)
-        _ = await store.refreshPreservingLoadedState()
+        _ = await store.refresh(keepsLoadedState: true)
         XCTAssertTrue(store.shouldShowStaleBanner(for: cached, now: now))
 
-        let retryTask = Task { await store.refreshPreservingLoadedState() }
+        let retryTask = Task { await store.refresh(keepsLoadedState: true) }
         await weather.waitUntilSecondFetchStarts()
 
         XCTAssertEqual(store.refreshState, .refreshing)
@@ -289,7 +383,7 @@ final class AppStoreTests: XCTestCase {
         markOnboardingCompleted()
         let store = makeStore(weather: FailingWeatherProvider())
 
-        let result = await store.refreshPreservingLoadedState()
+        let result = await store.refresh(keepsLoadedState: true)
 
         XCTAssertEqual(result, .failed)
         guard case .loaded(let snapshot, _) = store.loadState else {
@@ -302,7 +396,7 @@ final class AppStoreTests: XCTestCase {
         let refreshed = Self.snapshot(fetchedAt: Date())
         let store = makeStore(weather: WeatherSpy(snapshots: [refreshed]))
 
-        let result = await store.refreshPreservingLoadedState()
+        let result = await store.refresh(keepsLoadedState: true)
 
         XCTAssertEqual(result, .succeeded)
     }
@@ -368,7 +462,7 @@ final class AppStoreTests: XCTestCase {
         markOnboardingCompleted()
         let restoredStore = makeStore(weather: weather)
 
-        let refreshTask = Task { await restoredStore.refreshPreservingLoadedState() }
+        let refreshTask = Task { await restoredStore.refresh(keepsLoadedState: true) }
         await weather.waitUntilFetchStarts()
 
         XCTAssertEqual(restoredStore.refreshState, .refreshing)
@@ -461,10 +555,22 @@ final class AppStoreTests: XCTestCase {
     }
 }
 
+private func appStoreTestSnapshot(fetchedAt: Date) -> WeatherSnapshot {
+    let base = WeatherSnapshot.preview
+    return WeatherSnapshot(
+        locationName: base.locationName,
+        coordinate: base.coordinate,
+        fetchedAt: fetchedAt,
+        current: base.current,
+        hourly: base.hourly
+    )
+}
+
 @MainActor
 private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?
+    var lastKnownCurrentLocation: SavedPlace?
     private var storedPreferences: ComfortPreferences?
 
     var preferences: ComfortPreferences {
@@ -487,6 +593,7 @@ private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
 private final class LocationStub: LocationProviding {
     let result: Result<Coordinate, any Error>
     let placename: String?
+    private(set) var requestLocationCount = 0
     var authorizationStatus: CLAuthorizationStatus {
         switch result {
         case .success: .authorizedWhenInUse
@@ -500,7 +607,10 @@ private final class LocationStub: LocationProviding {
     }
 
     func requestAuthorization() {}
-    func requestLocation() async throws -> Coordinate { try result.get() }
+    func requestLocation() async throws -> Coordinate {
+        requestLocationCount += 1
+        return try result.get()
+    }
     func placename(for coordinate: Coordinate) async -> String? { placename }
 }
 

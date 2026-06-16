@@ -4,12 +4,14 @@ import Observation
 fileprivate extension String {
     static let onboarding = "hasCompletedOnboarding"
     static let place = "savedPlace"
+    static let lastKnownCurrentLocation = "lastKnownCurrentLocation"
     static let preferences = "comfortPreferences"
 }
 
 protocol UserPreferenceStoring {
     var hasCompletedOnboarding: Bool { get set }
     var savedPlace: SavedPlace? { get set }
+    var lastKnownCurrentLocation: SavedPlace? { get set }
     var preferences: ComfortPreferences { get set }
 }
 
@@ -59,6 +61,23 @@ final class UserPreferenceStore: UserPreferenceStoring {
             setter(
                 keyPath: \.savedPlace,
                 key: .place,
+                newValue: newValue
+            )
+        }
+    }
+
+    var lastKnownCurrentLocation: SavedPlace? {
+        get {
+            getter(
+                keyPath: \.lastKnownCurrentLocation,
+                key: .lastKnownCurrentLocation,
+                defaultValue: nil
+            )
+        }
+        set {
+            setter(
+                keyPath: \.lastKnownCurrentLocation,
+                key: .lastKnownCurrentLocation,
                 newValue: newValue
             )
         }

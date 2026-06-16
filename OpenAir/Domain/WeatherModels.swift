@@ -9,7 +9,7 @@ struct WeatherSnapshot: Codable, Sendable, Equatable {
     let hourly: [HourlyWeather]
 
     var isStale: Bool {
-        Date().timeIntervalSince(fetchedAt) > 60 * 60 * 3
+        Date.now.timeIntervalSince(fetchedAt) > .staleCacheInterval
     }
 }
 
