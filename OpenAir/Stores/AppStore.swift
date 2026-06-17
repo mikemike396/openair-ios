@@ -277,6 +277,7 @@ final class AppStore {
             refreshState = .idle
             return .succeeded
         } catch {
+            scheduleBackgroundRefresh()
             if let cached = existingSnapshot ?? cache.load() {
                 let plan = evaluator.plan(snapshot: cached, preferences: preferences)
                 loadState = .loaded(snapshot: cached, plan: plan)
@@ -323,7 +324,7 @@ final class AppStore {
 
     private func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: String.backgroundRefreshTaskIdentifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 60 * 60)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: .backgroundRefreshInterval)
 
         do {
             try BGTaskScheduler.shared.submit(request)

@@ -555,6 +555,7 @@ final class AppStoreTests: XCTestCase {
     }
 }
 
+@MainActor
 private func appStoreTestSnapshot(fetchedAt: Date) -> WeatherSnapshot {
     let base = WeatherSnapshot.preview
     return WeatherSnapshot(
