@@ -14,7 +14,8 @@ struct RecommendationEngine: RecommendationEvaluating {
         if weather.isPrecipitating {
             return .init(status: .keepClosed, reasons: [.activePrecipitation])
         }
-        if weather.gustMPH ?? 0 >= .hardMaximumGustMPH {
+        if let gustMPH = weather.gustMPH,
+           !roundedDisplayValue(gustMPH, isAtMost: preferences.maximumGustMPH) {
             return .init(status: .keepClosed, reasons: [.dangerousGusts])
         }
         if weather.temperatureFahrenheit < .hardMinimumTemperatureFahrenheit ||

@@ -6,9 +6,12 @@ extension Double {
     static let defaultMaximumDewPointFahrenheit = 62.0
     static let defaultMaximumRainChance = 0.50
     static let defaultMaximumWindMPH = 15.0
+    static let defaultMaximumGustMPH = 35.0
 
     static let hardMinimumTemperatureFahrenheit = 45.0
     static let hardMaximumTemperatureFahrenheit = 85.0
     static let hardMaximumDewPointFahrenheit = 68.0
-    static let hardMaximumGustMPH = 25.0
+    static let maximumConfigurableWindMPH = 30.0
+    static let minimumConfigurableGustMPH = 20.0
+    static let maximumConfigurableGustMPH = 50.0
 }

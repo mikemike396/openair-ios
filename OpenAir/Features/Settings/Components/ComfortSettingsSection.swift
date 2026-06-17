@@ -36,7 +36,14 @@ struct ComfortSettingsSection: View {
             valueSlider(
                 title: "Maximum sustained wind",
                 keyPath: \.maximumWindMPH,
-                range: 5...(.hardMaximumGustMPH - 1),
+                range: 5...(.maximumConfigurableWindMPH),
+                step: 1,
+                value: { "\(Int($0)) mph" }
+            )
+            valueSlider(
+                title: "Maximum gusts",
+                keyPath: \.maximumGustMPH,
+                range: .minimumConfigurableGustMPH...(.maximumConfigurableGustMPH),
                 step: 1,
                 value: { "\(Int($0)) mph" }
             )
