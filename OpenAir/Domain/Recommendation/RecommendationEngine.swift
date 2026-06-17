@@ -15,21 +15,21 @@ struct RecommendationEngine: RecommendationEvaluating {
             return .init(status: .keepClosed, reasons: [.activePrecipitation])
         }
         if let gustMPH = weather.gustMPH,
-           !roundedDisplayValue(gustMPH, isAtMost: preferences.maximumGustMPH) {
+           displayedValue(gustMPH, exceeds: preferences.maximumGustMPH) {
             return .init(status: .keepClosed, reasons: [.dangerousGusts])
         }
-        if weather.temperatureFahrenheit < .hardMinimumTemperatureFahrenheit ||
-            weather.temperatureFahrenheit > .hardMaximumTemperatureFahrenheit {
+        if weather.temperatureFahrenheit < .minimumConfigurableTemperatureFahrenheit ||
+            weather.temperatureFahrenheit > .maximumConfigurableTemperatureFahrenheit {
             return .init(status: .keepClosed, reasons: [.extremeTemperature])
         }
-        if weather.dewPointFahrenheit > .hardMaximumDewPointFahrenheit {
+        if weather.dewPointFahrenheit > .maximumConfigurableDewPointFahrenheit {
             return .init(status: .keepClosed, reasons: [.extremeHumidity])
         }
 
         var positive: [RecommendationReason] = []
         var negative: [RecommendationReason] = []
 
-        if roundedDisplayValue(
+        if displayedValue(
             weather.temperatureFahrenheit,
             within: preferences.idealMinimumFahrenheit...preferences.idealMaximumFahrenheit,
             unit: preferences.temperatureUnit
@@ -39,9 +39,9 @@ struct RecommendationEngine: RecommendationEvaluating {
             negative.append(.temperatureOutsideRange)
         }
 
-        if roundedDisplayValue(
+        if displayedValue(
             weather.dewPointFahrenheit,
-            isAtMost: preferences.maximumDewPointFahrenheit,
+            doesNotExceed: preferences.maximumDewPointFahrenheit,
             unit: preferences.temperatureUnit
         ) {
             positive.append(.lowDewPoint)
@@ -55,7 +55,7 @@ struct RecommendationEngine: RecommendationEvaluating {
             negative.append(.rainRisk)
         }
 
-        if roundedDisplayValue(weather.windMPH, isAtMost: preferences.maximumWindMPH) {
+        if displayedValue(weather.windMPH, doesNotExceed: preferences.maximumWindMPH) {
             positive.append(.lightWind)
         } else {
             negative.append(.windy)
@@ -80,7 +80,7 @@ struct RecommendationEngine: RecommendationEvaluating {
         return RecommendationPlan(current: current, hourly: evaluated, windows: windows, nextChange: nextChange)
     }
 
-    private func roundedDisplayValue(
+    private func displayedValue(
         _ value: Double,
         within range: ClosedRange<Double>,
         unit: TemperatureUnit
@@ -89,17 +89,24 @@ struct RecommendationEngine: RecommendationEvaluating {
         return (unit.display(range.lowerBound)...unit.display(range.upperBound)).contains(displayedValue)
     }
 
-    private func roundedDisplayValue(
+    private func displayedValue(
         _ value: Double,
-        isAtMost maximum: Double,
+        doesNotExceed maximum: Double,
         unit: TemperatureUnit
     ) -> Bool {
         unit.display(value) <= unit.display(maximum)
     }
 
-    private func roundedDisplayValue(
+    private func displayedValue(
         _ value: Double,
-        isAtMost maximum: Double
+        exceeds maximum: Double
+    ) -> Bool {
+        Int(value.rounded()) > Int(maximum.rounded())
+    }
+
+    private func displayedValue(
+        _ value: Double,
+        doesNotExceed maximum: Double
     ) -> Bool {
         Int(value.rounded()) <= Int(maximum.rounded())
     }

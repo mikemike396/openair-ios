@@ -14,29 +14,29 @@ struct ComfortSettingsSection: View {
             temperatureSlider(
                 title: "Minimum temperature",
                 keyPath: \.idealMinimumFahrenheit,
-                range: .hardMinimumTemperatureFahrenheit...70
+                range: .minimumConfigurableTemperatureFahrenheit...(.maximumConfigurableIdealMinimumFahrenheit)
             )
             temperatureSlider(
                 title: "Maximum temperature",
                 keyPath: \.idealMaximumFahrenheit,
-                range: 65...(.hardMaximumTemperatureFahrenheit)
+                range: .minimumConfigurableIdealMaximumFahrenheit...(.maximumConfigurableTemperatureFahrenheit)
             )
             temperatureSlider(
                 title: "Maximum dew point",
                 keyPath: \.maximumDewPointFahrenheit,
-                range: 45...(.hardMaximumDewPointFahrenheit)
+                range: .minimumConfigurableDewPointFahrenheit...(.maximumConfigurableDewPointFahrenheit)
             )
             valueSlider(
                 title: "Maximum rain chance",
                 keyPath: \.maximumRainChance,
-                range: 0.05...0.75,
+                range: .minimumConfigurableRainChance...(.maximumConfigurableRainChance),
                 step: 0.05,
                 value: { $0.formatted(.percent) }
             )
             valueSlider(
                 title: "Maximum sustained wind",
                 keyPath: \.maximumWindMPH,
-                range: 5...(.maximumConfigurableWindMPH),
+                range: .minimumConfigurableWindMPH...(.maximumConfigurableWindMPH),
                 step: 1,
                 value: { "\(Int($0)) mph" }
             )

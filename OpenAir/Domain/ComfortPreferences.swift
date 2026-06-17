@@ -39,10 +39,29 @@ struct ComfortPreferences: Codable, Sendable, Equatable {
 
     var normalized: ComfortPreferences {
         var preferences = self
+        preferences.idealMinimumFahrenheit = min(
+            max(preferences.idealMinimumFahrenheit, .minimumConfigurableTemperatureFahrenheit),
+            .maximumConfigurableIdealMinimumFahrenheit
+        )
+        preferences.idealMaximumFahrenheit = min(
+            max(preferences.idealMaximumFahrenheit, .minimumConfigurableIdealMaximumFahrenheit),
+            .maximumConfigurableTemperatureFahrenheit
+        )
         if preferences.idealMinimumFahrenheit > preferences.idealMaximumFahrenheit {
             preferences.idealMaximumFahrenheit = preferences.idealMinimumFahrenheit
         }
-        preferences.maximumWindMPH = min(preferences.maximumWindMPH, .maximumConfigurableWindMPH)
+        preferences.maximumDewPointFahrenheit = min(
+            max(preferences.maximumDewPointFahrenheit, .minimumConfigurableDewPointFahrenheit),
+            .maximumConfigurableDewPointFahrenheit
+        )
+        preferences.maximumRainChance = min(
+            max(preferences.maximumRainChance, .minimumConfigurableRainChance),
+            .maximumConfigurableRainChance
+        )
+        preferences.maximumWindMPH = min(
+            max(preferences.maximumWindMPH, .minimumConfigurableWindMPH),
+            .maximumConfigurableWindMPH
+        )
         preferences.maximumGustMPH = min(
             max(preferences.maximumGustMPH, .minimumConfigurableGustMPH),
             .maximumConfigurableGustMPH

@@ -15,8 +15,8 @@ struct RecommendationEngineTests {
         #expect(engine.evaluate(weather(temp: 78), preferences: preferences).status == .open)
         #expect(engine.evaluate(weather(dewPoint: 60), preferences: preferences).status == .open)
         #expect(engine.evaluate(weather(rain: 0.199), preferences: preferences).status == .open)
-        #expect(engine.evaluate(weather(wind: 15), preferences: preferences).status == .open)
-        #expect(engine.evaluate(weather(gust: 35), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(wind: 20), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(gust: 30), preferences: preferences).status == .open)
     }
 
     @Test
@@ -57,8 +57,8 @@ struct RecommendationEngineTests {
         #expect(engine.evaluate(weather(temp: 80), preferences: preferences).status == .keepClosed)
         #expect(engine.evaluate(weather(dewPoint: 64), preferences: preferences).status == .keepClosed)
         #expect(engine.evaluate(weather(rain: 0.501), preferences: preferences).status == .keepClosed)
-        #expect(engine.evaluate(weather(wind: 16), preferences: preferences).status == .keepClosed)
-        #expect(engine.evaluate(weather(temp: 80, dewPoint: 64, wind: 20), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(wind: 21), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(temp: 80, dewPoint: 64, wind: 21), preferences: preferences).status == .keepClosed)
     }
 
     @Test
@@ -73,12 +73,12 @@ struct RecommendationEngineTests {
 
     @Test
     func displayedWindAtMaximumAllowsOpenDespiteHiddenDecimal() {
-        #expect(engine.evaluate(weather(wind: 15.49), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(wind: 20.49), preferences: preferences).status == .open)
     }
 
     @Test
     func displayedGustAtMaximumAllowsOpenDespiteHiddenDecimal() {
-        #expect(engine.evaluate(weather(gust: 35.49), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(gust: 30.49), preferences: preferences).status == .open)
     }
 
     @Test
