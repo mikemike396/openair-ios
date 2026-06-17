@@ -29,7 +29,7 @@ struct DashboardView: View {
                 }
             }
             .refreshable {
-                await store.refreshPreservingLoadedState()
+                await store.refresh(keepsLoadedState: true)
             }
             .appBackground()
             .sheet(isPresented: $showingSettings) {

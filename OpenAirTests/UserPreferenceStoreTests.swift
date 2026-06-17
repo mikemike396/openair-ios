@@ -12,6 +12,7 @@ struct UserPreferenceStoreTests {
 
         #expect(!store.hasCompletedOnboarding)
         #expect(store.savedPlace == nil)
+        #expect(store.lastKnownCurrentLocation == nil)
         #expect(store.preferences == .default(for: Locale(identifier: "en_US")))
     }
 
@@ -37,6 +38,20 @@ struct UserPreferenceStoreTests {
         let restored = fixture.makeStore()
 
         #expect(restored.savedPlace == place)
+    }
+
+    @Test
+    func lastKnownCurrentLocationPersists() async {
+        let fixture = UserPreferenceStoreFixture()
+        let place = SavedPlace(
+            name: "Wilmington, DE",
+            coordinate: .init(latitude: 39.7, longitude: -75.5)
+        )
+        fixture.makeStore().lastKnownCurrentLocation = place
+
+        let restored = fixture.makeStore()
+
+        #expect(restored.lastKnownCurrentLocation == place)
     }
 
     @Test
