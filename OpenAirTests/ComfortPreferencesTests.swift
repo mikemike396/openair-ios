@@ -31,4 +31,16 @@ struct ComfortPreferencesTests {
 
         #expect(preferences.normalized.maximumGustMPH == .minimumConfigurableGustMPH)
     }
+    
+    @Test
+    func normalizedClampsTemperaturesBeforeFixingInvertedRange() {
+        var preferences = ComfortPreferences.default(for: .init(identifier: "en_US"))
+        preferences.idealMinimumFahrenheit = 90
+        preferences.idealMaximumFahrenheit = 60
+
+        let normalized = preferences.normalized
+
+        #expect(normalized.idealMinimumFahrenheit == .maximumConfigurableIdealMinimumFahrenheit)
+        #expect(normalized.idealMaximumFahrenheit == .maximumConfigurableIdealMinimumFahrenheit)
+    }
 }
