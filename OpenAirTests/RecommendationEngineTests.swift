@@ -1,69 +1,97 @@
-import XCTest
+import Foundation
+import Testing
 @testable import OpenAir
 
+@Suite
 @MainActor
-final class RecommendationEngineTests: XCTestCase {
+struct RecommendationEngineTests {
     private let engine = RecommendationEngine()
     private let preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
     private let start = Date(timeIntervalSince1970: 1_800_000_000)
 
-    func testIdealBoundariesAreOpen() {
-        XCTAssertEqual(engine.evaluate(weather(temp: 52), preferences: preferences).status, .open)
-        XCTAssertEqual(engine.evaluate(weather(temp: 78), preferences: preferences).status, .open)
-        XCTAssertEqual(engine.evaluate(weather(dewPoint: 60), preferences: preferences).status, .open)
-        XCTAssertEqual(engine.evaluate(weather(rain: 0.199), preferences: preferences).status, .open)
-        XCTAssertEqual(engine.evaluate(weather(wind: 15), preferences: preferences).status, .open)
+    @Test
+    func idealBoundariesAreOpen() {
+        #expect(engine.evaluate(weather(temp: 52), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(temp: 78), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(dewPoint: 60), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(rain: 0.199), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(wind: 20), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(gust: 30), preferences: preferences).status == .open)
     }
 
-    func testRainAboveThresholdClosesWindows() {
+    @Test
+    func rainAboveThresholdClosesWindows() {
         let result = engine.evaluate(weather(rain: 0.501), preferences: preferences)
-        XCTAssertEqual(result.status, .keepClosed)
-        XCTAssertTrue(result.reasons.contains(.rainRisk))
+
+        #expect(result.status == .keepClosed)
+        #expect(result.reasons.contains(.rainRisk))
     }
 
-    func testRainProbabilityAtOrBelowThresholdAllowsOpen() {
-        XCTAssertEqual(engine.evaluate(weather(rain: 0.50), preferences: preferences).status, .open)
-        XCTAssertEqual(engine.evaluate(weather(rain: 0.499), preferences: preferences).status, .open)
+    @Test
+    func rainProbabilityAtOrBelowThresholdAllowsOpen() {
+        #expect(engine.evaluate(weather(rain: 0.50), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(rain: 0.499), preferences: preferences).status == .open)
     }
 
-    func testEachHardCloseConditionWins() {
-        XCTAssertEqual(engine.evaluate(weather(precipitating: true), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(thunderstorm: true), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(gust: 25), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(temp: 44.9), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(temp: 85.1), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(dewPoint: 68.1), preferences: preferences).status, .keepClosed)
+    @Test
+    func eachHardCloseConditionWins() {
+        #expect(engine.evaluate(weather(precipitating: true), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(thunderstorm: true), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(gust: 36), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(temp: 44.9), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(temp: 85.1), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(dewPoint: 68.1), preferences: preferences).status == .keepClosed)
     }
 
-    func testAnyComfortThresholdMissClosesWindows() {
-        XCTAssertEqual(engine.evaluate(weather(temp: 80), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(dewPoint: 64), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(rain: 0.501), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(wind: 16), preferences: preferences).status, .keepClosed)
-        XCTAssertEqual(engine.evaluate(weather(temp: 80, dewPoint: 64, wind: 20), preferences: preferences).status, .keepClosed)
+    @Test
+    func maximumGustPreferenceControlsGustClosures() {
+        var preferences = preferences
+        preferences.maximumGustMPH = 40
+
+        #expect(engine.evaluate(weather(gust: 40), preferences: preferences).status == .open)
+        #expect(engine.evaluate(weather(gust: 41), preferences: preferences).status == .keepClosed)
     }
 
-    func testDisplayedDewPointAtMaximumAllowsOpenDespiteHiddenDecimal() {
-        XCTAssertEqual(engine.evaluate(weather(dewPoint: 62.49), preferences: preferences).status, .open)
+    @Test
+    func anyComfortThresholdMissClosesWindows() {
+        #expect(engine.evaluate(weather(temp: 80), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(dewPoint: 64), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(rain: 0.501), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(wind: 21), preferences: preferences).status == .keepClosed)
+        #expect(engine.evaluate(weather(temp: 80, dewPoint: 64, wind: 21), preferences: preferences).status == .keepClosed)
     }
 
-    func testDisplayedTemperatureAtMaximumAllowsOpenDespiteHiddenDecimal() {
-        XCTAssertEqual(engine.evaluate(weather(temp: 78.49), preferences: preferences).status, .open)
+    @Test
+    func displayedDewPointAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        #expect(engine.evaluate(weather(dewPoint: 62.49), preferences: preferences).status == .open)
     }
 
-    func testDisplayedWindAtMaximumAllowsOpenDespiteHiddenDecimal() {
-        XCTAssertEqual(engine.evaluate(weather(wind: 15.49), preferences: preferences).status, .open)
+    @Test
+    func displayedTemperatureAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        #expect(engine.evaluate(weather(temp: 78.49), preferences: preferences).status == .open)
     }
 
-    func testInvertedTemperatureRangeDoesNotCrashRecommendation() {
+    @Test
+    func displayedWindAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        #expect(engine.evaluate(weather(wind: 20.49), preferences: preferences).status == .open)
+    }
+
+    @Test
+    func displayedGustAtMaximumAllowsOpenDespiteHiddenDecimal() {
+        #expect(engine.evaluate(weather(gust: 30.49), preferences: preferences).status == .open)
+    }
+
+    @Test
+    func invertedTemperatureRangeDoesNotCrashRecommendation() {
         var preferences = preferences
         preferences.idealMinimumFahrenheit = 70
         preferences.idealMaximumFahrenheit = 65
 
-        XCTAssertNoThrow(engine.evaluate(weather(temp: 70), preferences: preferences))
+        _ = engine.evaluate(weather(temp: 70), preferences: preferences)
     }
 
-    func testConsecutiveHoursMergeIntoWindows() {
+    @Test
+    func consecutiveHoursMergeIntoWindows() {
         let hours = [
             weather(date: start, temp: 65),
             weather(date: start.addingTimeInterval(3600), temp: 66),
@@ -80,15 +108,16 @@ final class RecommendationEngineTests: XCTestCase {
 
         let plan = engine.plan(snapshot: snapshot, preferences: preferences)
 
-        XCTAssertEqual(plan.windows.count, 2)
-        XCTAssertEqual(plan.windows[0].status, .open)
-        XCTAssertEqual(plan.windows[0].start, hours[0].date)
-        XCTAssertEqual(plan.windows[0].end, hours[2].date)
-        XCTAssertEqual(plan.windows[1].status, .keepClosed)
-        XCTAssertEqual(plan.nextChange, hours[2].date)
+        #expect(plan.windows.count == 2)
+        #expect(plan.windows[0].status == .open)
+        #expect(plan.windows[0].start == hours[0].date)
+        #expect(plan.windows[0].end == hours[2].date)
+        #expect(plan.windows[1].status == .keepClosed)
+        #expect(plan.nextChange == hours[2].date)
     }
 
-    func testPlanStartsWithCurrentConditionsAndSkipsElapsedHourlyBuckets() {
+    @Test
+    func planStartsWithCurrentConditionsAndSkipsElapsedHourlyBuckets() {
         let current = weather(date: start.addingTimeInterval(50 * 60), temp: 70)
         let elapsedHour = weather(date: start, temp: 55)
         let nextHour = weather(date: start.addingTimeInterval(3600), temp: 72)
@@ -103,10 +132,11 @@ final class RecommendationEngineTests: XCTestCase {
 
         let plan = engine.plan(snapshot: snapshot, preferences: preferences)
 
-        XCTAssertEqual(plan.hourly.map(\.weather), [current, nextHour, followingHour])
+        #expect(plan.hourly.map(\.weather) == [current, nextHour, followingHour])
     }
 
-    func testNextChangeUsesUpcomingForecastAfterCurrentConditions() {
+    @Test
+    func nextChangeUsesUpcomingForecastAfterCurrentConditions() {
         let current = weather(date: start.addingTimeInterval(50 * 60), temp: 70)
         let elapsedClosedHour = weather(date: start, temp: 86)
         let nextOpenHour = weather(date: start.addingTimeInterval(3600), temp: 72)
@@ -121,8 +151,8 @@ final class RecommendationEngineTests: XCTestCase {
 
         let plan = engine.plan(snapshot: snapshot, preferences: preferences)
 
-        XCTAssertEqual(plan.current.status, .open)
-        XCTAssertEqual(plan.nextChange, followingClosedHour.date)
+        #expect(plan.current.status == .open)
+        #expect(plan.nextChange == followingClosedHour.date)
     }
 
     private func weather(

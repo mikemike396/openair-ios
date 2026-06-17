@@ -60,17 +60,45 @@ struct UserPreferenceStoreTests {
         var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
         preferences.temperatureUnit = .celsius
         preferences.maximumWindMPH = 12
+        preferences.maximumGustMPH = 38
         fixture.makeStore().preferences = preferences
 
         let restored = fixture.makeStore()
 
         #expect(restored.preferences == preferences)
     }
+
+    @Test
+    func savedPreferencesWithoutGustsReceiveDefaultGustPreference() async throws {
+        let preferences = LegacyComfortPreferences(
+            idealMinimumFahrenheit: 50,
+            idealMaximumFahrenheit: 76,
+            maximumDewPointFahrenheit: 61,
+            maximumRainChance: 0.4,
+            maximumWindMPH: 14,
+            alertsEnabled: false,
+            temperatureUnit: .celsius
+        )
+        let data = try JSONEncoder().encode(preferences)
+        let fixture = UserPreferenceStoreFixture()
+        fixture.defaults.set(data, forKey: "comfortPreferences")
+
+        let restored = fixture.makeStore().preferences
+
+        #expect(restored.idealMinimumFahrenheit == 50)
+        #expect(restored.idealMaximumFahrenheit == 76)
+        #expect(restored.maximumDewPointFahrenheit == 61)
+        #expect(restored.maximumRainChance == 0.4)
+        #expect(restored.maximumWindMPH == 14)
+        #expect(restored.maximumGustMPH == .defaultMaximumGustMPH)
+        #expect(!restored.alertsEnabled)
+        #expect(restored.temperatureUnit == .celsius)
+    }
 }
 
 @MainActor
 private final class UserPreferenceStoreFixture {
-    private let defaults: UserDefaults
+    let defaults: UserDefaults
 
     init() {
         defaults = UserDefaults(suiteName: "UserPreferenceStoreTests.\(UUID().uuidString)")!
@@ -79,4 +107,14 @@ private final class UserPreferenceStoreFixture {
     func makeStore(locale: Locale = Locale(identifier: "en_US")) -> UserPreferenceStore {
         UserPreferenceStore(userDefaults: defaults, locale: locale)
     }
+}
+
+private struct LegacyComfortPreferences: Codable {
+    var idealMinimumFahrenheit: Double
+    var idealMaximumFahrenheit: Double
+    var maximumDewPointFahrenheit: Double
+    var maximumRainChance: Double
+    var maximumWindMPH: Double
+    var alertsEnabled: Bool
+    var temperatureUnit: TemperatureUnit
 }
