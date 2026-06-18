@@ -82,6 +82,6 @@ private struct DashboardPreview: View {
         let defaults = UserDefaults(suiteName: "DashboardPreview.\(UUID().uuidString)")!
         let userPreferences = UserPreferenceStore(userDefaults: defaults)
         userPreferences.hasCompletedOnboarding = true
-        return AppStore(weather: PreviewWeatherClient(), userPreferences: userPreferences)
+        return AppStore(weather: PreviewWeatherClient(), userPreferences: userPreferences, appReviewManager: AppReviewManager())
     }
 }

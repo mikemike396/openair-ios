@@ -6,6 +6,8 @@ fileprivate extension String {
     static let place = "savedPlace"
     static let lastKnownCurrentLocation = "lastKnownCurrentLocation"
     static let preferences = "comfortPreferences"
+    static let reviewSignificantEventCount = "reviewSignificantEventCount"
+    static let lastReviewRequestAttemptAt = "lastReviewRequestAttemptAt"
 }
 
 protocol UserPreferenceStoring {
@@ -13,6 +15,8 @@ protocol UserPreferenceStoring {
     var savedPlace: SavedPlace? { get set }
     var lastKnownCurrentLocation: SavedPlace? { get set }
     var preferences: ComfortPreferences { get set }
+    var reviewSignificantEventCount: Int { get set }
+    var lastReviewRequestAttemptAt: Date? { get set }
 }
 
 @Observable
@@ -95,6 +99,40 @@ final class UserPreferenceStore: UserPreferenceStoring {
             setter(
                 keyPath: \.preferences,
                 key: .preferences,
+                newValue: newValue
+            )
+        }
+    }
+
+    var reviewSignificantEventCount: Int {
+        get {
+            getter(
+                keyPath: \.reviewSignificantEventCount,
+                key: .reviewSignificantEventCount,
+                defaultValue: 0
+            )
+        }
+        set {
+            setter(
+                keyPath: \.reviewSignificantEventCount,
+                key: .reviewSignificantEventCount,
+                newValue: newValue
+            )
+        }
+    }
+
+    var lastReviewRequestAttemptAt: Date? {
+        get {
+            getter(
+                keyPath: \.lastReviewRequestAttemptAt,
+                key: .lastReviewRequestAttemptAt,
+                defaultValue: nil
+            )
+        }
+        set {
+            setter(
+                keyPath: \.lastReviewRequestAttemptAt,
+                key: .lastReviewRequestAttemptAt,
                 newValue: newValue
             )
         }

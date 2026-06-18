@@ -14,6 +14,8 @@ struct UserPreferenceStoreTests {
         #expect(store.savedPlace == nil)
         #expect(store.lastKnownCurrentLocation == nil)
         #expect(store.preferences == .default(for: Locale(identifier: "en_US")))
+        #expect(store.reviewSignificantEventCount == 0)
+        #expect(store.lastReviewRequestAttemptAt == nil)
     }
 
     @Test
@@ -66,6 +68,20 @@ struct UserPreferenceStoreTests {
         let restored = fixture.makeStore()
 
         #expect(restored.preferences == preferences)
+    }
+
+    @Test
+    func appReviewStatePersists() async throws {
+        let fixture = UserPreferenceStoreFixture()
+        let requestDate = try #require(Calendar.current.date(from: DateComponents(year: 2026, month: 6, day: 17)))
+        let store = fixture.makeStore()
+        store.reviewSignificantEventCount = 2
+        store.lastReviewRequestAttemptAt = requestDate
+
+        let restored = fixture.makeStore()
+
+        #expect(restored.reviewSignificantEventCount == 2)
+        #expect(restored.lastReviewRequestAttemptAt == requestDate)
     }
 
     @Test
