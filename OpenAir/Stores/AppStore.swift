@@ -32,6 +32,7 @@ final class AppStore {
     private let evaluator: any RecommendationEvaluating
     private let notifications: any NotificationScheduling
     private let cache: WeatherCache
+    private let appReviewManager: AppReviewManager
     private var userPreferences: any UserPreferenceStoring
 
     var loadState: DashboardLoadState = .idle
@@ -85,7 +86,8 @@ final class AppStore {
         evaluator: RecommendationEvaluating = RecommendationEngine(),
         notifications: NotificationScheduling = NotificationClient(),
         cache: WeatherCache = WeatherCache(),
-        userPreferences: any UserPreferenceStoring = UserPreferenceStore()
+        userPreferences: any UserPreferenceStoring,
+        appReviewManager: AppReviewManager
     ) {
         self.weather = weather
         self.location = location
@@ -94,6 +96,7 @@ final class AppStore {
         self.notifications = notifications
         self.cache = cache
         self.userPreferences = userPreferences
+        self.appReviewManager = appReviewManager
         if hasCompletedOnboarding, let cached = cache.load() {
             let plan = evaluator.plan(snapshot: cached, preferences: preferences)
             loadState = .loaded(snapshot: cached, plan: plan)
@@ -192,7 +195,9 @@ final class AppStore {
     /// Use ``refreshForBackground()`` for background refreshes that must not touch Core Location.
     @discardableResult
     func refresh(keepsLoadedState: Bool = false) async -> RefreshResult {
-        await performRefresh(keepsLoadedState: keepsLoadedState)
+        let result = await performRefresh(keepsLoadedState: keepsLoadedState)
+        recordSignificantEventIfNeeded(for: result)
+        return result
     }
 
     /// Refreshes weather for a background app refresh task.
@@ -244,7 +249,10 @@ final class AppStore {
     }
 
     @discardableResult
-    private func performRefresh(keepsLoadedState: Bool, updateLocation: Bool = true) async -> RefreshResult {
+    private func performRefresh(
+        keepsLoadedState: Bool,
+        updateLocation: Bool = true
+    ) async -> RefreshResult {
         guard refreshState != .refreshing else { return .skipped }
         refreshState = .refreshing
 
@@ -287,6 +295,11 @@ final class AppStore {
             refreshState = .failed
             return .failed
         }
+    }
+
+    private func recordSignificantEventIfNeeded(for result: RefreshResult) {
+        guard result == .succeeded else { return }
+        appReviewManager.recordSignificantEvent()
     }
 
     private func targetForWeatherRefresh(updateLocation: Bool) async throws -> (coordinate: Coordinate, name: String)? {

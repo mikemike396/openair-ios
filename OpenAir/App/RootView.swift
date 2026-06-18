@@ -1,26 +1,17 @@
 import SwiftUI
 
 struct RootView: View {
-    @Environment(AppStore.self) private var store
+    @Environment(AppStore.self) private var appStore
 
     var body: some View {
         NavigationStack {
-            if store.hasCompletedOnboarding {
+            if appStore.hasCompletedOnboarding {
                 DashboardView()
             } else {
                 OnboardingView()
             }
         }
+        .withAppReviewPrompt()
         .tint(.accentColor)
     }
-}
-
-#Preview("Dashboard") {
-    let defaults = UserDefaults(suiteName: "RootPreview")!
-    let userPreferences = UserPreferenceStore(userDefaults: defaults)
-    userPreferences.hasCompletedOnboarding = true
-    return RootView()
-        .environment(
-            AppStore(weather: PreviewWeatherClient(), userPreferences: userPreferences)
-        )
 }

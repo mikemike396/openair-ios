@@ -9,6 +9,9 @@ struct AboutSettingsSection: View {
             Link(destination: .githubRepo) {
                 LabeledContent("Open source / contribute", value: "GitHub")
             }
+            Link(destination: .appStoreReview) {
+                LabeledContent("Rate OpenAir", value: "App Store")
+            }
             LabeledContent("Version", value: "\(String.appVersion) (\(String.buildNumber))")
             WeatherLegalLinkView()
             Text("OpenAir uses outdoor conditions only. It does not measure indoor temperature, humidity, air quality, or safety hazards.")

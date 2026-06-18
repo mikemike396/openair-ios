@@ -6,6 +6,106 @@ import UserNotifications
 
 @MainActor
 @Test
+func successfulForegroundRefreshRecordsSignificantEvent() async {
+    let cacheURL = FileManager.default.temporaryDirectory
+        .appending(path: "openair-review-success-\(UUID().uuidString).json")
+    let userPreferences = InMemoryUserPreferenceStore()
+    userPreferences.hasCompletedOnboarding = true
+    let appReviewManager = AppReviewManager(userPreferences: userPreferences)
+    let store = AppStore(
+        weather: WeatherSpy(snapshots: [appStoreTestSnapshot(fetchedAt: Date())]),
+        location: LocationStub(result: .success(.init(latitude: 39.7391, longitude: -75.5398))),
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: cacheURL),
+        userPreferences: userPreferences,
+        appReviewManager: appReviewManager
+    )
+
+    let result = await store.refresh()
+
+    #expect(result == .succeeded)
+    #expect(userPreferences.reviewSignificantEventCount == 1)
+}
+
+@MainActor
+@Test
+func failedForegroundRefreshDoesNotRecordSignificantEvent() async {
+    let cacheURL = FileManager.default.temporaryDirectory
+        .appending(path: "openair-review-failure-\(UUID().uuidString).json")
+    let userPreferences = InMemoryUserPreferenceStore()
+    userPreferences.hasCompletedOnboarding = true
+    let appReviewManager = AppReviewManager(userPreferences: userPreferences)
+    let store = AppStore(
+        weather: FailingWeatherProvider(),
+        location: LocationStub(result: .success(.init(latitude: 39.7391, longitude: -75.5398))),
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: cacheURL),
+        userPreferences: userPreferences,
+        appReviewManager: appReviewManager
+    )
+
+    let result = await store.refresh()
+
+    #expect(result == .failed)
+    #expect(userPreferences.reviewSignificantEventCount == 0)
+}
+
+@MainActor
+@Test
+func backgroundRefreshDoesNotRecordSignificantEvent() async {
+    let cacheURL = FileManager.default.temporaryDirectory
+        .appending(path: "openair-review-background-\(UUID().uuidString).json")
+    let userPreferences = InMemoryUserPreferenceStore()
+    userPreferences.hasCompletedOnboarding = true
+    userPreferences.lastKnownCurrentLocation = SavedPlace(
+        name: "Wilmington, DE",
+        coordinate: .init(latitude: 39.7391, longitude: -75.5398)
+    )
+    let appReviewManager = AppReviewManager(userPreferences: userPreferences)
+    let store = AppStore(
+        weather: WeatherSpy(snapshots: [appStoreTestSnapshot(fetchedAt: Date())]),
+        location: LocationStub(result: .failure(LocationError.denied)),
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: cacheURL),
+        userPreferences: userPreferences,
+        appReviewManager: appReviewManager
+    )
+
+    let result = await store.refreshForBackground()
+
+    #expect(result == .succeeded)
+    #expect(userPreferences.reviewSignificantEventCount == 0)
+}
+
+@MainActor
+@Test
+func previewWeatherDoesNotRecordSignificantEvent() async {
+    let userPreferences = InMemoryUserPreferenceStore()
+    let appReviewManager = AppReviewManager(userPreferences: userPreferences)
+    let store = AppStore(
+        weather: WeatherSpy(snapshots: [appStoreTestSnapshot(fetchedAt: Date())]),
+        location: LocationStub(result: .success(.init(latitude: 39.7391, longitude: -75.5398))),
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "openair-review-preview-\(UUID().uuidString).json")),
+        userPreferences: userPreferences,
+        appReviewManager: appReviewManager
+    )
+
+    await store.usePreviewWeather()
+
+    #expect(userPreferences.reviewSignificantEventCount == 0)
+}
+
+@MainActor
+@Test
 func backgroundRefreshUsesLastKnownCurrentLocationWithoutRequestingLocation() async {
     let cacheURL = FileManager.default.temporaryDirectory
         .appending(path: "openair-background-\(UUID().uuidString).json")
@@ -26,7 +126,8 @@ func backgroundRefreshUsesLastKnownCurrentLocationWithoutRequestingLocation() as
         evaluator: RecommendationEngine(),
         notifications: NotificationStub(),
         cache: WeatherCache(url: cacheURL),
-        userPreferences: userPreferences
+        userPreferences: userPreferences,
+        appReviewManager: AppReviewManager()
     )
 
     let result = await store.refreshForBackground()
@@ -61,7 +162,8 @@ func backgroundRefreshSkipsWhenAutomaticLocationHasNoLastKnownPlace() async {
         evaluator: RecommendationEngine(),
         notifications: NotificationStub(),
         cache: WeatherCache(url: cacheURL),
-        userPreferences: userPreferences
+        userPreferences: userPreferences,
+        appReviewManager: AppReviewManager()
     )
 
     let result = await store.refreshForBackground()
@@ -87,7 +189,8 @@ func foregroundRefreshStillFailsDeniedCurrentLocation() async {
         evaluator: RecommendationEngine(),
         notifications: NotificationStub(),
         cache: WeatherCache(url: cacheURL),
-        userPreferences: userPreferences
+        userPreferences: userPreferences,
+        appReviewManager: AppReviewManager()
     )
 
     let result = await store.refresh(keepsLoadedState: true)
@@ -528,7 +631,8 @@ final class AppStoreTests: XCTestCase {
             evaluator: RecommendationEngine(),
             notifications: NotificationStub(),
             cache: WeatherCache(url: cacheURL),
-            userPreferences: makeUserPreferences(locale: locale)
+            userPreferences: makeUserPreferences(locale: locale),
+            appReviewManager: AppReviewManager()
         )
     }
 
@@ -572,6 +676,8 @@ private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?
     var lastKnownCurrentLocation: SavedPlace?
+    var reviewSignificantEventCount = 0
+    var lastReviewRequestAttemptAt: Date?
     private var storedPreferences: ComfortPreferences?
 
     var preferences: ComfortPreferences {
