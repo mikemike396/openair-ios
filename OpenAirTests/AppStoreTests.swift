@@ -200,6 +200,69 @@ func foregroundRefreshStillFailsDeniedCurrentLocation() async {
 }
 
 @MainActor
+@Test
+func completingOnboardingPublishesWidgetSnapshotForSelectedPlace() async {
+    let selectedPlace = SavedPlace(
+        name: "Wilmington, DE",
+        coordinate: .init(latitude: 39.7391, longitude: -75.5398)
+    )
+    let widgetPublisher = WidgetSnapshotPublisherSpy()
+    let userPreferences = InMemoryUserPreferenceStore()
+    let store = AppStore(
+        weather: WeatherSpy(snapshots: [appStoreTestSnapshot(fetchedAt: Date())]),
+        location: LocationStub(result: .failure(LocationError.denied)),
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "openair-widget-onboarding-\(UUID().uuidString).json")),
+        widgetPublisher: widgetPublisher,
+        userPreferences: userPreferences,
+        appReviewManager: AppReviewManager()
+    )
+
+    store.choose(place: selectedPlace)
+    await store.completeOnboarding()
+
+    #expect(widgetPublisher.publishedLocationNames == ["Wilmington, DE"])
+}
+
+@MainActor
+@Test
+func choosingManualPlacePublishesWidgetSnapshotAfterRefresh() async {
+    let initialPlace = SavedPlace(
+        name: "Philadelphia, PA",
+        coordinate: .init(latitude: 39.9526, longitude: -75.1652)
+    )
+    let newPlace = SavedPlace(
+        name: "Wilmington, DE",
+        coordinate: .init(latitude: 39.7391, longitude: -75.5398)
+    )
+    let widgetPublisher = WidgetSnapshotPublisherSpy()
+    let userPreferences = InMemoryUserPreferenceStore()
+    userPreferences.hasCompletedOnboarding = true
+    let store = AppStore(
+        weather: WeatherSpy(snapshots: [
+            appStoreTestSnapshot(fetchedAt: Date()),
+            appStoreTestSnapshot(fetchedAt: Date())
+        ]),
+        location: LocationStub(result: .failure(LocationError.denied)),
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "openair-widget-manual-\(UUID().uuidString).json")),
+        widgetPublisher: widgetPublisher,
+        userPreferences: userPreferences,
+        appReviewManager: AppReviewManager()
+    )
+
+    store.choose(place: initialPlace)
+    _ = await store.refresh()
+    await store.chooseAndRefresh(place: newPlace)
+
+    #expect(widgetPublisher.publishedLocationNames == ["Philadelphia, PA", "Wilmington, DE"])
+}
+
+@MainActor
 final class AppStoreTests: XCTestCase {
     private let userPreferences = InMemoryUserPreferenceStore()
     private let cacheURL = FileManager.default.temporaryDirectory
@@ -723,6 +786,19 @@ private final class LocationStub: LocationProviding {
 
 private struct PlaceSearchStub: PlaceSearching {
     func search(query: String) async throws -> [SavedPlace] { [] }
+}
+
+@MainActor
+private final class WidgetSnapshotPublisherSpy: WidgetSnapshotPublishing {
+    private(set) var publishedLocationNames: [String] = []
+
+    func publish(
+        weather: WeatherSnapshot,
+        plan: RecommendationPlan,
+        preferences: ComfortPreferences
+    ) {
+        publishedLocationNames.append(weather.locationName)
+    }
 }
 
 private actor WeatherSpy: WeatherProviding {

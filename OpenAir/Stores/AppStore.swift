@@ -32,6 +32,7 @@ final class AppStore {
     private let evaluator: any RecommendationEvaluating
     private let notifications: any NotificationScheduling
     private let cache: WeatherCache
+    private let widgetPublisher: any WidgetSnapshotPublishing
     private let appReviewManager: AppReviewManager
     private var userPreferences: any UserPreferenceStoring
 
@@ -86,6 +87,7 @@ final class AppStore {
         evaluator: RecommendationEvaluating = RecommendationEngine(),
         notifications: NotificationScheduling = NotificationClient(),
         cache: WeatherCache = WeatherCache(),
+        widgetPublisher: any WidgetSnapshotPublishing = DisabledWidgetSnapshotPublisher(),
         userPreferences: any UserPreferenceStoring,
         appReviewManager: AppReviewManager
     ) {
@@ -95,6 +97,7 @@ final class AppStore {
         self.evaluator = evaluator
         self.notifications = notifications
         self.cache = cache
+        self.widgetPublisher = widgetPublisher
         self.userPreferences = userPreferences
         self.appReviewManager = appReviewManager
         if hasCompletedOnboarding, let cached = cache.load() {
@@ -276,6 +279,7 @@ final class AppStore {
             cache.save(snapshot)
             let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
             loadState = .loaded(snapshot: snapshot, plan: plan)
+            widgetPublisher.publish(weather: snapshot, plan: plan, preferences: preferences)
             await notifications.replaceNotifications(
                 plan: plan,
                 locationName: snapshot.locationName,
@@ -289,6 +293,7 @@ final class AppStore {
             if let cached = existingSnapshot ?? cache.load() {
                 let plan = evaluator.plan(snapshot: cached, preferences: preferences)
                 loadState = .loaded(snapshot: cached, plan: plan)
+                widgetPublisher.publish(weather: cached, plan: plan, preferences: preferences)
             } else {
                 loadState = .failed(message: error.localizedDescription, cached: nil)
             }
@@ -326,6 +331,7 @@ final class AppStore {
         guard case .loaded(let snapshot, _) = loadState else { return }
         let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
         loadState = .loaded(snapshot: snapshot, plan: plan)
+        widgetPublisher.publish(weather: snapshot, plan: plan, preferences: preferences)
         Task {
             await notifications.replaceNotifications(
                 plan: plan,

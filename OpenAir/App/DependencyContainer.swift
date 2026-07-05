@@ -11,6 +11,7 @@ final class DependencyContainer {
         let userPreferenceStore = UserPreferenceStore()
         let appReviewManager = AppReviewManager(userPreferences: userPreferenceStore)
         let appStore = AppStore(
+            widgetPublisher: WidgetSnapshotPublisher(),
             userPreferences: userPreferenceStore,
             appReviewManager: appReviewManager
         )
