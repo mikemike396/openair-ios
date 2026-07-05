@@ -23,7 +23,6 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
 
 struct OpenAirWidgetSnapshotStore {
     nonisolated static let suiteName = "group.com.openairapp.openair"
-    nonisolated static let snapshotDidChangeNotification = Notification.Name("OpenAirWidgetSnapshotDidChange")
     nonisolated static let watchTransferSnapshotDataKey = "snapshotData"
 
     nonisolated private static let snapshotKey = "openAirWidgetSnapshot"
@@ -42,12 +41,10 @@ struct OpenAirWidgetSnapshotStore {
     func save(_ snapshot: OpenAirWidgetSnapshot) {
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         userDefaults.set(data, forKey: Self.snapshotKey)
-        NotificationCenter.default.post(name: Self.snapshotDidChangeNotification, object: nil)
     }
 
     func save(data: Data) {
         userDefaults.set(data, forKey: Self.snapshotKey)
-        NotificationCenter.default.post(name: Self.snapshotDidChangeNotification, object: nil)
     }
 
     static func encoded(_ snapshot: OpenAirWidgetSnapshot) -> Data? {

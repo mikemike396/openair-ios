@@ -55,10 +55,6 @@ protocol WatchSnapshotSyncing {
     func send(_ snapshot: OpenAirWidgetSnapshot)
 }
 
-struct DisabledWatchSnapshotSyncClient: WatchSnapshotSyncing {
-    func send(_ snapshot: OpenAirWidgetSnapshot) {}
-}
-
 #if os(iOS)
 @MainActor
 final class WatchSnapshotSyncClient: NSObject, WatchSnapshotSyncing, WCSessionDelegate {
