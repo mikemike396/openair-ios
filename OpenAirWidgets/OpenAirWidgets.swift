@@ -52,7 +52,7 @@ private struct OpenAirPhoneWidgetView: View {
         case .systemMedium:
             OpenAirMediumWidgetView(snapshot: snapshot ?? .placeholder)
                 .containerBackground(for: .widget) {
-                    Color(.secondarySystemBackground)
+                    OpenAirMediumWidgetBackground()
                 }
         default:
             OpenAirAccessoryCircularView(snapshot: snapshot)
@@ -61,7 +61,21 @@ private struct OpenAirPhoneWidgetView: View {
     }
 }
 
+private struct OpenAirMediumWidgetBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        if colorScheme == .dark {
+            Color(red: 0.04, green: 0.08, blue: 0.11)
+        } else {
+            Color(uiColor: .secondarySystemBackground)
+                .opacity(0.91)
+        }
+    }
+}
+
 private struct OpenAirMediumWidgetView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let snapshot: OpenAirWidgetSnapshot
 
     var body: some View {
@@ -75,21 +89,16 @@ private struct OpenAirMediumWidgetView: View {
 
                     Text(snapshot.locationName)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
                 }
 
                 if let nextChangeText {
                     Label(nextChangeText, systemImage: "clock")
                         .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
-                } else {
-                    Text(statusSummary)
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
 
                 Spacer(minLength: 0)
@@ -103,7 +112,7 @@ private struct OpenAirMediumWidgetView: View {
 
                 Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryTextColor)
                     .lineLimit(1)
             }
 
@@ -136,16 +145,9 @@ private struct OpenAirMediumWidgetView: View {
         }
     }
 
-    private var statusSummary: String {
-        switch snapshot.status {
-        case .open: "Outdoor conditions are comfortable."
-        case .keepClosed: "Outdoor conditions are unfavorable."
-        }
-    }
-
     private var nextChangeText: String? {
         guard let nextChange = snapshot.nextChange else { return nil }
-        return "Expected to change around \(nextChange.formatted(date: .omitted, time: .shortened)) \(nextChange.formatted(.dateTime.weekday(.wide)))"
+        return "Changes around \(nextChange.formatted(date: .omitted, time: .shortened)) \(nextChange.formatted(.dateTime.weekday(.wide)))"
     }
 
     private var statusColor: Color {
@@ -153,8 +155,12 @@ private struct OpenAirMediumWidgetView: View {
         case .open:
             Color(.openAirWidgetOpen)
         case .keepClosed:
-            Color(.openAirWidgetClosed)
+            colorScheme == .dark ? Color(red: 0.50, green: 0.58, blue: 0.68) : Color(.openAirWidgetClosed)
         }
+    }
+
+    private var secondaryTextColor: Color {
+        colorScheme == .dark ? .white.opacity(0.72) : .secondary
     }
 }
 
