@@ -19,6 +19,7 @@ func widgetSnapshotUsesCurrentRecommendationAndDewPoint() {
     #expect(widgetSnapshot.status.symbolName == "window.vertical.open")
     #expect(widgetSnapshot.temperature == 64)
     #expect(widgetSnapshot.dewPoint == 52)
+    #expect(widgetSnapshot.windMPH == 5)
     #expect(widgetSnapshot.unitSymbol == "°F")
     #expect(widgetSnapshot.locationName == "Wilmington, DE")
 }
@@ -51,6 +52,7 @@ func widgetSnapshotStoreRoundTripsPayload() throws {
         status: .keepClosed,
         temperature: 72,
         dewPoint: 68,
+        windMPH: 12,
         unitSymbol: "°F",
         fetchedAt: Date(timeIntervalSince1970: 1_800),
         locationName: "Wilmington, DE"

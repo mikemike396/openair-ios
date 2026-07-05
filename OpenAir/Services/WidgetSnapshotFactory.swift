@@ -11,6 +11,7 @@ struct WidgetSnapshotFactory {
             status: plan.current.status.widgetStatus,
             temperature: unit.display(weather.current.temperatureFahrenheit),
             dewPoint: unit.display(weather.current.dewPointFahrenheit),
+            windMPH: Int(weather.current.windMPH.rounded()),
             unitSymbol: unit.symbol,
             fetchedAt: weather.fetchedAt,
             locationName: weather.locationName

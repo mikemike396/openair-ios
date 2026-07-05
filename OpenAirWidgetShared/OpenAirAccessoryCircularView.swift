@@ -85,6 +85,7 @@ extension OpenAirWidgetSnapshot {
         status: .open,
         temperature: 72,
         dewPoint: 58,
+        windMPH: 5,
         unitSymbol: "°F",
         fetchedAt: .now,
         locationName: "Preview"
