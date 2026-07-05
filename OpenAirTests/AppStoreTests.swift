@@ -106,6 +106,28 @@ func previewWeatherDoesNotRecordSignificantEvent() async {
 
 @MainActor
 @Test
+func previewWeatherPublishesWidgetSnapshot() async {
+    let widgetPublisher = WidgetSnapshotPublisherSpy()
+    let userPreferences = InMemoryUserPreferenceStore()
+    let store = AppStore(
+        weather: WeatherSpy(snapshots: [appStoreTestSnapshot(fetchedAt: Date())]),
+        location: LocationStub(result: .success(.init(latitude: 39.7391, longitude: -75.5398))),
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "openair-preview-widget-\(UUID().uuidString).json")),
+        widgetPublisher: widgetPublisher,
+        userPreferences: userPreferences,
+        appReviewManager: AppReviewManager(userPreferences: userPreferences)
+    )
+
+    await store.usePreviewWeather()
+
+    #expect(widgetPublisher.publishedLocationNames == [WeatherSnapshot.preview.locationName])
+}
+
+@MainActor
+@Test
 func backgroundRefreshUsesLastKnownCurrentLocationWithoutRequestingLocation() async {
     let cacheURL = FileManager.default.temporaryDirectory
         .appending(path: "openair-background-\(UUID().uuidString).json")
@@ -260,6 +282,37 @@ func choosingManualPlacePublishesWidgetSnapshotAfterRefresh() async {
     await store.chooseAndRefresh(place: newPlace)
 
     #expect(widgetPublisher.publishedLocationNames == ["Philadelphia, PA", "Wilmington, DE"])
+}
+
+@MainActor
+@Test
+func skippedFreshForegroundRefreshRepublishesWidgetSnapshot() async {
+    let now = Date()
+    let selectedPlace = SavedPlace(
+        name: "Wilmington, DE",
+        coordinate: .init(latitude: 39.7391, longitude: -75.5398)
+    )
+    let widgetPublisher = WidgetSnapshotPublisherSpy()
+    let userPreferences = InMemoryUserPreferenceStore()
+    userPreferences.hasCompletedOnboarding = true
+    userPreferences.savedPlace = selectedPlace
+    let store = AppStore(
+        weather: WeatherSpy(snapshots: [appStoreTestSnapshot(fetchedAt: now.addingTimeInterval(-60 * 14))]),
+        location: LocationStub(result: .failure(LocationError.denied)),
+        places: PlaceSearchStub(),
+        evaluator: RecommendationEngine(),
+        notifications: NotificationStub(),
+        cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "openair-widget-republish-\(UUID().uuidString).json")),
+        widgetPublisher: widgetPublisher,
+        userPreferences: userPreferences,
+        appReviewManager: AppReviewManager()
+    )
+
+    await store.refresh()
+    let result = await store.refreshIfNeeded(now: now)
+
+    #expect(result == .skipped)
+    #expect(widgetPublisher.publishedLocationNames == ["Wilmington, DE", "Wilmington, DE"])
 }
 
 @MainActor

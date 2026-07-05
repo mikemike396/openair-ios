@@ -21,12 +21,7 @@ struct OpenAirWatchApp: App {
 
 @MainActor
 final class WatchSnapshotReceiver: NSObject, WCSessionDelegate {
-    private let store: OpenAirWidgetSnapshotStore
     private var session: WCSession?
-
-    init(store: OpenAirWidgetSnapshotStore = OpenAirWidgetSnapshotStore()) {
-        self.store = store
-    }
 
     func start() {
         guard WCSession.isSupported() else { return }
@@ -46,7 +41,10 @@ final class WatchSnapshotReceiver: NSObject, WCSessionDelegate {
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: (any Error)?
-    ) {}
+    ) {
+        guard activationState == .activated else { return }
+        saveSnapshot(from: session.receivedApplicationContext)
+    }
 
     nonisolated func session(
         _ session: WCSession,
@@ -71,8 +69,12 @@ final class WatchSnapshotReceiver: NSObject, WCSessionDelegate {
 
     private nonisolated func saveSnapshot(from payload: [String: Any]) {
         guard let data = payload[OpenAirWidgetSnapshotStore.watchTransferSnapshotDataKey] as? Data else { return }
+        Self.saveSnapshot(data)
+    }
+
+    private nonisolated static func saveSnapshot(_ data: Data) {
         Task { @MainActor in
-            self.store.save(data: data)
+            OpenAirWidgetSnapshotStore().save(data: data)
             WidgetCenter.shared.reloadAllTimelines()
         }
     }

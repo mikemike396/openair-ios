@@ -233,6 +233,7 @@ final class AppStore {
             return .skipped
         case .loaded(let snapshot, _):
             guard now.timeIntervalSince(snapshot.fetchedAt) >= .foregroundRefreshInterval else {
+                publishLoadedSnapshot()
                 return .skipped
             }
             return await refresh(keepsLoadedState: true)
@@ -244,6 +245,7 @@ final class AppStore {
         let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
         refreshState = .idle
         loadState = .loaded(snapshot: snapshot, plan: plan)
+        widgetPublisher.publish(weather: snapshot, plan: plan, preferences: preferences)
     }
 
     func shouldShowStaleBanner(for snapshot: WeatherSnapshot, now: Date = .now) -> Bool {
@@ -339,6 +341,11 @@ final class AppStore {
                 enabled: preferences.alertsEnabled
             )
         }
+    }
+
+    private func publishLoadedSnapshot() {
+        guard case .loaded(let snapshot, let plan) = loadState else { return }
+        widgetPublisher.publish(weather: snapshot, plan: plan, preferences: preferences)
     }
 
     private func scheduleBackgroundRefresh() {

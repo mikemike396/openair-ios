@@ -7,7 +7,14 @@ import Testing
 func widgetSnapshotUsesCurrentRecommendationAndDewPoint() {
     let snapshot = WeatherSnapshot.preview
     let preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
-    let plan = RecommendationEngine().plan(snapshot: snapshot, preferences: preferences)
+    let basePlan = RecommendationEngine().plan(snapshot: snapshot, preferences: preferences)
+    let nextChange = Date(timeIntervalSince1970: 7_200)
+    let plan = RecommendationPlan(
+        current: basePlan.current,
+        hourly: basePlan.hourly,
+        windows: basePlan.windows,
+        nextChange: nextChange
+    )
 
     let widgetSnapshot = WidgetSnapshotFactory().makeSnapshot(
         weather: snapshot,
@@ -22,6 +29,7 @@ func widgetSnapshotUsesCurrentRecommendationAndDewPoint() {
     #expect(widgetSnapshot.windMPH == 5)
     #expect(widgetSnapshot.unitSymbol == "°F")
     #expect(widgetSnapshot.locationName == "Wilmington, DE")
+    #expect(widgetSnapshot.nextChange == nextChange)
 }
 
 @MainActor
@@ -55,11 +63,38 @@ func widgetSnapshotStoreRoundTripsPayload() throws {
         windMPH: 12,
         unitSymbol: "°F",
         fetchedAt: Date(timeIntervalSince1970: 1_800),
-        locationName: "Wilmington, DE"
+        locationName: "Wilmington, DE",
+        nextChange: Date(timeIntervalSince1970: 7_200)
     )
 
     store.save(snapshot)
 
     #expect(store.load() == snapshot)
     #expect(snapshot.status.symbolName == "window.vertical.closed")
+}
+
+@MainActor
+@Test
+func widgetSnapshotDecodesOlderPayloadWithoutNextChange() throws {
+    let payload: [String: Any] = [
+        "status": "open",
+        "temperature": 72,
+        "dewPoint": 58,
+        "windMPH": 5,
+        "unitSymbol": "°F",
+        "fetchedAt": 1_800,
+        "locationName": "Wilmington, DE"
+    ]
+    let data = try JSONSerialization.data(withJSONObject: payload)
+
+    let snapshot = try JSONDecoder().decode(OpenAirWidgetSnapshot.self, from: data)
+
+    #expect(snapshot.status == .open)
+    #expect(snapshot.temperature == 72)
+    #expect(snapshot.dewPoint == 58)
+    #expect(snapshot.windMPH == 5)
+    #expect(snapshot.unitSymbol == "°F")
+    #expect(snapshot.fetchedAt == Date(timeIntervalSinceReferenceDate: 1_800))
+    #expect(snapshot.locationName == "Wilmington, DE")
+    #expect(snapshot.nextChange == nil)
 }

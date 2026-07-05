@@ -20,6 +20,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
     let unitSymbol: String
     let fetchedAt: Date
     let locationName: String
+    let nextChange: Date?
 
     init(
         status: OpenAirWidgetRecommendationStatus,
@@ -28,7 +29,8 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         windMPH: Int,
         unitSymbol: String,
         fetchedAt: Date,
-        locationName: String
+        locationName: String,
+        nextChange: Date? = nil
     ) {
         self.status = status
         self.temperature = temperature
@@ -37,6 +39,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         self.unitSymbol = unitSymbol
         self.fetchedAt = fetchedAt
         self.locationName = locationName
+        self.nextChange = nextChange
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -47,6 +50,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         case unitSymbol
         case fetchedAt
         case locationName
+        case nextChange
     }
 
     init(from decoder: Decoder) throws {
@@ -58,6 +62,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         unitSymbol = try container.decode(String.self, forKey: .unitSymbol)
         fetchedAt = try container.decode(Date.self, forKey: .fetchedAt)
         locationName = try container.decode(String.self, forKey: .locationName)
+        nextChange = try container.decodeIfPresent(Date.self, forKey: .nextChange)
     }
 }
 

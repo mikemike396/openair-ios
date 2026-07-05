@@ -10,7 +10,7 @@ struct OpenAirAccessoryCircularView: View {
         ZStack {
             AccessoryWidgetBackground()
             CircularStatusFace(snapshot: snapshot)
-                .padding(5)
+                .padding(3)
         }
     }
 }
@@ -21,7 +21,10 @@ private struct CircularStatusFace: View {
     var body: some View {
         GeometryReader { proxy in
             let size = min(proxy.size.width, proxy.size.height)
-            let lineWidth = max(size * 0.07, 2.5)
+            let lineWidth = max(size * 0.065, 2.25)
+            let temperatureFontSize = min(max(size * 0.34, 13), 17)
+            let dewPointFontSize = min(max(size * 0.19, 7.5), 9.5)
+            let dewPointIconSize = min(max(size * 0.155, 6.5), 8)
 
             ZStack {
                 StatusArc()
@@ -30,21 +33,21 @@ private struct CircularStatusFace: View {
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                     )
 
-                VStack(spacing: 0) {
+                VStack(spacing: -1) {
                     Text(snapshot.temperatureText)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: temperatureFontSize, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
-                        .minimumScaleFactor(0.75)
+                        .minimumScaleFactor(0.7)
 
                     HStack(spacing: 1) {
                         Image(systemName: "drop.fill")
-                            .font(.system(size: 7, weight: .bold))
+                            .font(.system(size: dewPointIconSize, weight: .bold))
                             .foregroundStyle(Color(.openAirBlue))
                         Text(snapshot.dewPointText)
-                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                            .font(.system(size: dewPointFontSize, weight: .semibold, design: .rounded))
                             .foregroundStyle(.primary.opacity(0.9))
                     }
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.7)
                 }
                 .lineLimit(1)
                 .offset(y: 1)

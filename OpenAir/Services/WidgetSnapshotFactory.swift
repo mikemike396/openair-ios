@@ -14,7 +14,8 @@ struct WidgetSnapshotFactory {
             windMPH: Int(weather.current.windMPH.rounded()),
             unitSymbol: unit.symbol,
             fetchedAt: weather.fetchedAt,
-            locationName: weather.locationName
+            locationName: weather.locationName,
+            nextChange: plan.nextChange
         )
     }
 }

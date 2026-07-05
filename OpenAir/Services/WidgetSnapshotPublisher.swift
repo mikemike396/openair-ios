@@ -98,15 +98,26 @@ final class WatchSnapshotSyncClient: NSObject, WatchSnapshotSyncing, WCSessionDe
     }
 
     private func flushPendingSnapshot() {
-        guard let session, let snapshot = pendingSnapshot else { return }
+        guard let session else { return }
+        guard let snapshot = pendingSnapshot ?? latestStoredSnapshot() else { return }
         pendingSnapshot = nil
         send(snapshot, through: session)
+    }
+
+    private func latestStoredSnapshot() -> OpenAirWidgetSnapshot? {
+        OpenAirWidgetSnapshotStore().load()
     }
 
     private func send(_ snapshot: OpenAirWidgetSnapshot, through session: WCSession) {
         guard let data = OpenAirWidgetSnapshotStore.encoded(snapshot) else { return }
         let userInfo = [OpenAirWidgetSnapshotStore.watchTransferSnapshotDataKey: data]
-        try? session.updateApplicationContext(userInfo)
+
+        do {
+            try session.updateApplicationContext(userInfo)
+        } catch {
+            pendingSnapshot = snapshot
+        }
+
         session.transferUserInfo(userInfo)
 
         if session.isReachable {
