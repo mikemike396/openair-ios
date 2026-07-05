@@ -9,13 +9,13 @@ struct OpenAirAccessoryCircularView: View {
 
         ZStack {
             AccessoryWidgetBackground()
-            DewPointGauge(snapshot: snapshot)
+            CircularStatusFace(snapshot: snapshot)
                 .padding(5)
         }
     }
 }
 
-private struct DewPointGauge: View {
+private struct CircularStatusFace: View {
     let snapshot: OpenAirWidgetSnapshot
 
     var body: some View {
