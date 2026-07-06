@@ -153,27 +153,15 @@ private struct OpenAirSmallWidgetView: View {
     }
 
     private var statusTitle: String {
-        switch snapshot.status {
-        case .open: "OPEN"
-        case .keepClosed: "CLOSED"
-        }
+        snapshot.widgetStatusTitle
     }
 
     private var nextChangeText: String? {
-        guard let nextChange = snapshot.nextChange else { return nil }
-        let timeText = Calendar.current.component(.minute, from: nextChange) == 0
-            ? nextChange.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated)))
-            : nextChange.formatted(date: .omitted, time: .shortened)
-        return "Changes \(timeText) \(nextChange.formatted(.dateTime.weekday(.abbreviated)))"
+        snapshot.shortNextChangeText
     }
 
     private var statusColor: Color {
-        switch snapshot.status {
-        case .open:
-            Color(.openAirWidgetOpen)
-        case .keepClosed:
-            Color(.openAirWidgetClosed)
-        }
+        snapshot.widgetStatusColor
     }
 
     private var secondaryTextColor: Color {
@@ -258,19 +246,32 @@ private struct OpenAirMediumWidgetView: View {
     }
 
     private var statusTitle: String {
-        switch snapshot.status {
+        snapshot.widgetStatusTitle
+    }
+
+    private var nextChangeText: String? {
+        snapshot.longNextChangeText
+    }
+
+    private var statusColor: Color {
+        snapshot.widgetStatusColor
+    }
+
+    private var secondaryTextColor: Color {
+        colorScheme == .dark ? .white.opacity(0.72) : .secondary
+    }
+}
+
+private extension OpenAirWidgetSnapshot {
+    var widgetStatusTitle: String {
+        switch status {
         case .open: "OPEN"
         case .keepClosed: "CLOSED"
         }
     }
 
-    private var nextChangeText: String? {
-        guard let nextChange = snapshot.nextChange else { return nil }
-        return "Changes around \(nextChange.formatted(date: .omitted, time: .shortened)) \(nextChange.formatted(.dateTime.weekday(.wide)))"
-    }
-
-    private var statusColor: Color {
-        switch snapshot.status {
+    var widgetStatusColor: Color {
+        switch status {
         case .open:
             Color(.openAirWidgetOpen)
         case .keepClosed:
@@ -278,8 +279,17 @@ private struct OpenAirMediumWidgetView: View {
         }
     }
 
-    private var secondaryTextColor: Color {
-        colorScheme == .dark ? .white.opacity(0.72) : .secondary
+    var shortNextChangeText: String? {
+        guard let nextChange else { return nil }
+        let timeText = Calendar.current.component(.minute, from: nextChange) == 0
+            ? nextChange.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated)))
+            : nextChange.formatted(date: .omitted, time: .shortened)
+        return "Changes \(timeText) \(nextChange.formatted(.dateTime.weekday(.abbreviated)))"
+    }
+
+    var longNextChangeText: String? {
+        guard let nextChange else { return nil }
+        return "Changes around \(nextChange.formatted(date: .omitted, time: .shortened)) \(nextChange.formatted(.dateTime.weekday(.wide)))"
     }
 }
 
