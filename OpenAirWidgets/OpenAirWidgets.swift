@@ -87,7 +87,7 @@ private struct OpenAirSmallWidgetView: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .top, spacing: 6) {
                 Text(statusTitle)
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(statusColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
@@ -130,14 +130,13 @@ private struct OpenAirSmallWidgetView: View {
             }
 
             Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
-                .font(.caption2.weight(.medium))
+                .font(.system(size: 11, weight: .regular))
                 .foregroundStyle(secondaryTextColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
-        .padding(.vertical, 0)
-        .padding(.horizontal, 0)
+        .padding(0)
     }
 
     private func compactMetric(_ value: String, systemImage: String) -> some View {
@@ -187,11 +186,11 @@ private struct OpenAirMediumWidgetView: View {
     let snapshot: OpenAirWidgetSnapshot
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(statusTitle)
-                        .font(.system(.title, design: .rounded, weight: .heavy))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(statusColor)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
@@ -202,44 +201,46 @@ private struct OpenAirMediumWidgetView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
+                .layoutPriority(1)
 
-                if let nextChangeText {
-                    Label(nextChangeText, systemImage: "clock")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(secondaryTextColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                }
+                Spacer(minLength: 8)
 
-                Spacer(minLength: 0)
+                Image(systemName: snapshot.status.symbolName)
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(statusColor)
+                    .accessibilityHidden(true)
+            }
 
-                HStack(spacing: 0) {
-                    metric(snapshot.temperatureText, systemImage: snapshot.conditionSymbolName)
-                    Spacer(minLength: 12)
-                    metric("DP \(snapshot.dewPointText)", systemImage: "drop")
-                    Spacer(minLength: 12)
-                    metric("\(snapshot.windMPH) mph", systemImage: "wind")
-                }
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
-                    .font(.system(.caption2, weight: .medium))
+            if let nextChangeText {
+                Label(nextChangeText, systemImage: "clock")
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(secondaryTextColor)
                     .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .minimumScaleFactor(0.85)
             }
+
+            HStack(spacing: 0) {
+                metric(snapshot.temperatureText, systemImage: snapshot.conditionSymbolName)
+                Spacer(minLength: 12)
+                metric("DP \(snapshot.dewPointText)", systemImage: "drop")
+                Spacer(minLength: 12)
+                metric("\(snapshot.windMPH) mph", systemImage: "wind")
+            }
+            .lineLimit(1)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 6)
 
             Spacer(minLength: 0)
 
-            Image(systemName: snapshot.status.symbolName)
-                .font(.system(.title, weight: .semibold))
-                .foregroundStyle(statusColor)
-                .accessibilityHidden(true)
+            Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
+                .font(.system(.caption2, weight: .medium))
+                .foregroundStyle(secondaryTextColor)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
-        .padding(16)
+        .padding(8)
     }
 
     private func metric(_ value: String, systemImage: String) -> some View {
