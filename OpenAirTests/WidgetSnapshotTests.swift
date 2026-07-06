@@ -27,6 +27,7 @@ func widgetSnapshotUsesCurrentRecommendationAndDewPoint() {
     #expect(widgetSnapshot.temperature == 64)
     #expect(widgetSnapshot.dewPoint == 52)
     #expect(widgetSnapshot.windMPH == 5)
+    #expect(widgetSnapshot.conditionSymbolName == snapshot.current.symbolName)
     #expect(widgetSnapshot.unitSymbol == "°F")
     #expect(widgetSnapshot.locationName == "Wilmington, DE")
     #expect(widgetSnapshot.nextChange == nextChange)
@@ -61,6 +62,7 @@ func widgetSnapshotStoreRoundTripsPayload() throws {
         temperature: 72,
         dewPoint: 68,
         windMPH: 12,
+        conditionSymbolName: "cloud.sun.fill",
         unitSymbol: "°F",
         fetchedAt: Date(timeIntervalSince1970: 1_800),
         locationName: "Wilmington, DE",
@@ -93,6 +95,7 @@ func widgetSnapshotDecodesOlderPayloadWithoutNextChange() throws {
     #expect(snapshot.temperature == 72)
     #expect(snapshot.dewPoint == 58)
     #expect(snapshot.windMPH == 5)
+    #expect(snapshot.conditionSymbolName == "cloud")
     #expect(snapshot.unitSymbol == "°F")
     #expect(snapshot.fetchedAt == Date(timeIntervalSinceReferenceDate: 1_800))
     #expect(snapshot.locationName == "Wilmington, DE")

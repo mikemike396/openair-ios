@@ -39,7 +39,7 @@ struct OpenAirPhoneWidget: Widget {
         }
         .configurationDisplayName("OpenAir")
         .description("Shows whether to open windows, plus temperature and dew point.")
-        .supportedFamilies([.accessoryCircular, .systemMedium])
+        .supportedFamilies([.accessoryCircular, .systemSmall, .systemMedium])
     }
 }
 
@@ -49,6 +49,11 @@ private struct OpenAirPhoneWidgetView: View {
 
     var body: some View {
         switch family {
+        case .systemSmall:
+            OpenAirSmallWidgetView(snapshot: snapshot ?? .placeholder)
+                .containerBackground(for: .widget) {
+                    OpenAirMediumWidgetBackground()
+                }
         case .systemMedium:
             OpenAirMediumWidgetView(snapshot: snapshot ?? .placeholder)
                 .containerBackground(for: .widget) {
@@ -66,11 +71,114 @@ private struct OpenAirMediumWidgetBackground: View {
 
     var body: some View {
         if colorScheme == .dark {
-            Color(red: 0.04, green: 0.08, blue: 0.11)
+            Color.black
         } else {
             Color(uiColor: .secondarySystemBackground)
                 .opacity(0.91)
         }
+    }
+}
+
+private struct OpenAirSmallWidgetView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let snapshot: OpenAirWidgetSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .top, spacing: 6) {
+                Text(statusTitle)
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .foregroundStyle(statusColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .layoutPriority(1)
+
+                Spacer(minLength: 4)
+
+                Image(systemName: snapshot.status.symbolName)
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(statusColor)
+                    .accessibilityHidden(true)
+            }
+
+            Text(snapshot.locationName)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(secondaryTextColor)
+                .lineLimit(2)
+
+            Spacer(minLength: nextChangeText == nil ? 6 : 0)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 12) {
+                    compactMetric(snapshot.temperatureText, systemImage: snapshot.conditionSymbolName)
+                    compactMetric(snapshot.dewPointText, systemImage: "drop")
+                }
+
+                HStack {
+                    compactMetric("\(snapshot.windMPH) mph", systemImage: "wind")
+                    Spacer(minLength: 0)
+                }
+            }
+            .lineLimit(1)
+
+            if let nextChangeText {
+                Label(nextChangeText, systemImage: "clock")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(secondaryTextColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+
+            Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(secondaryTextColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+        .padding(.vertical, 0)
+        .padding(.horizontal, 0)
+    }
+
+    private func compactMetric(_ value: String, systemImage: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(systemImage == "drop" ? Color(.openAirBlue) : .primary)
+                .frame(width: 16, alignment: .leading)
+
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .minimumScaleFactor(0.75)
+        }
+    }
+
+    private var statusTitle: String {
+        switch snapshot.status {
+        case .open: "OPEN"
+        case .keepClosed: "CLOSED"
+        }
+    }
+
+    private var nextChangeText: String? {
+        guard let nextChange = snapshot.nextChange else { return nil }
+        let timeText = Calendar.current.component(.minute, from: nextChange) == 0
+            ? nextChange.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated)))
+            : nextChange.formatted(date: .omitted, time: .shortened)
+        return "Changes \(timeText) \(nextChange.formatted(.dateTime.weekday(.abbreviated)))"
+    }
+
+    private var statusColor: Color {
+        switch snapshot.status {
+        case .open:
+            Color(.openAirWidgetOpen)
+        case .keepClosed:
+            Color(.openAirWidgetClosed)
+        }
+    }
+
+    private var secondaryTextColor: Color {
+        colorScheme == .dark ? .white.opacity(0.72) : .secondary
     }
 }
 
@@ -83,14 +191,16 @@ private struct OpenAirMediumWidgetView: View {
             VStack(alignment: .leading, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(statusTitle)
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .font(.system(.title, design: .rounded, weight: .heavy))
                         .foregroundStyle(statusColor)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.8)
 
                     Text(snapshot.locationName)
-                        .font(.caption)
+                        .font(.body.weight(.semibold))
                         .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
 
                 if let nextChangeText {
@@ -103,39 +213,47 @@ private struct OpenAirMediumWidgetView: View {
 
                 Spacer(minLength: 0)
 
-                HStack(spacing: 12) {
-                    metric(snapshot.temperatureText, systemImage: "cloud")
+                HStack(spacing: 0) {
+                    metric(snapshot.temperatureText, systemImage: snapshot.conditionSymbolName)
+                    Spacer(minLength: 12)
                     metric("DP \(snapshot.dewPointText)", systemImage: "drop")
+                    Spacer(minLength: 12)
                     metric("\(snapshot.windMPH) mph", systemImage: "wind")
                 }
                 .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
-                    .font(.caption2)
+                    .font(.system(.caption2, weight: .medium))
                     .foregroundStyle(secondaryTextColor)
                     .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
 
             Image(systemName: snapshot.status.symbolName)
-                .font(.system(size: 50, weight: .semibold))
+                .font(.system(.title, weight: .semibold))
                 .foregroundStyle(statusColor)
                 .accessibilityHidden(true)
         }
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
         .padding(16)
     }
 
     private func metric(_ value: String, systemImage: String) -> some View {
         Label {
             Text(value)
-                .font(.caption.weight(.semibold))
+                .font(.body.weight(.semibold))
                 .minimumScaleFactor(0.75)
+                .fixedSize(horizontal: true, vertical: false)
         } icon: {
             Image(systemName: systemImage)
-                .font(.caption2.weight(.semibold))
+                .font(.callout.weight(.semibold))
                 .foregroundStyle(systemImage == "drop" ? Color(.openAirBlue) : .primary)
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var statusTitle: String {
@@ -155,7 +273,7 @@ private struct OpenAirMediumWidgetView: View {
         case .open:
             Color(.openAirWidgetOpen)
         case .keepClosed:
-            colorScheme == .dark ? Color(red: 0.50, green: 0.58, blue: 0.68) : Color(.openAirWidgetClosed)
+            Color(.openAirWidgetClosed)
         }
     }
 

@@ -96,7 +96,7 @@ struct OpenAirWatchStatusView: View {
                 HStack(spacing: 0) {
                     metric(
                         snapshot.temperatureText,
-                        systemImage: "cloud",
+                        systemImage: snapshot.conditionSymbolName,
                         color: .primary,
                         scale: scale
                     )
@@ -119,7 +119,7 @@ struct OpenAirWatchStatusView: View {
                 HStack(spacing: 6 * scale) {
                     metric(
                         snapshot.temperatureText,
-                        systemImage: "cloud",
+                        systemImage: snapshot.conditionSymbolName,
                         color: .primary,
                         scale: scale
                     )

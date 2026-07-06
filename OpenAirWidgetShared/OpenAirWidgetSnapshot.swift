@@ -17,6 +17,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
     let temperature: Int
     let dewPoint: Int
     let windMPH: Int
+    let conditionSymbolName: String
     let unitSymbol: String
     let fetchedAt: Date
     let locationName: String
@@ -27,6 +28,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         temperature: Int,
         dewPoint: Int,
         windMPH: Int,
+        conditionSymbolName: String = "cloud",
         unitSymbol: String,
         fetchedAt: Date,
         locationName: String,
@@ -36,6 +38,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         self.temperature = temperature
         self.dewPoint = dewPoint
         self.windMPH = windMPH
+        self.conditionSymbolName = conditionSymbolName
         self.unitSymbol = unitSymbol
         self.fetchedAt = fetchedAt
         self.locationName = locationName
@@ -47,6 +50,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         case temperature
         case dewPoint
         case windMPH
+        case conditionSymbolName
         case unitSymbol
         case fetchedAt
         case locationName
@@ -59,6 +63,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         temperature = try container.decode(Int.self, forKey: .temperature)
         dewPoint = try container.decode(Int.self, forKey: .dewPoint)
         windMPH = try container.decodeIfPresent(Int.self, forKey: .windMPH) ?? 0
+        conditionSymbolName = try container.decodeIfPresent(String.self, forKey: .conditionSymbolName) ?? "cloud"
         unitSymbol = try container.decode(String.self, forKey: .unitSymbol)
         fetchedAt = try container.decode(Date.self, forKey: .fetchedAt)
         locationName = try container.decode(String.self, forKey: .locationName)
