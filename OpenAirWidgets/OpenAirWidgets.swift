@@ -222,7 +222,7 @@ private struct OpenAirMediumWidgetView: View {
             HStack(spacing: 0) {
                 metric(snapshot.temperatureText, systemImage: snapshot.conditionSymbolName)
                 Spacer(minLength: 12)
-                metric("DP \(snapshot.dewPointText)", systemImage: "drop")
+                metric(snapshot.dewPointText, systemImage: "drop")
                 Spacer(minLength: 12)
                 metric("\(snapshot.windMPH) mph", systemImage: "wind")
             }
