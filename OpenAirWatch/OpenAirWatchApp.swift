@@ -19,7 +19,6 @@ struct OpenAirWatchApp: App {
     }
 }
 
-@MainActor
 final class WatchSnapshotReceiver: NSObject, WCSessionDelegate {
     private var session: WCSession?
 

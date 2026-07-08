@@ -1,8 +1,6 @@
 import Foundation
 import Testing
 @testable import OpenAir
-
-@MainActor
 @Test
 func widgetSnapshotUsesCurrentRecommendationAndDewPoint() {
     let snapshot = WeatherSnapshot.preview
@@ -32,8 +30,6 @@ func widgetSnapshotUsesCurrentRecommendationAndDewPoint() {
     #expect(widgetSnapshot.locationName == "Wilmington, DE")
     #expect(widgetSnapshot.nextChange == nextChange)
 }
-
-@MainActor
 @Test
 func widgetSnapshotUsesCelsiusPreference() {
     var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
@@ -51,8 +47,6 @@ func widgetSnapshotUsesCelsiusPreference() {
     #expect(widgetSnapshot.dewPoint == 11)
     #expect(widgetSnapshot.unitSymbol == "°C")
 }
-
-@MainActor
 @Test
 func widgetSnapshotStoreRoundTripsPayload() throws {
     let defaults = try #require(UserDefaults(suiteName: "WidgetSnapshotTests.\(UUID().uuidString)"))
@@ -74,8 +68,6 @@ func widgetSnapshotStoreRoundTripsPayload() throws {
     #expect(store.load() == snapshot)
     #expect(snapshot.status.symbolName == "window.vertical.closed")
 }
-
-@MainActor
 @Test
 func widgetSnapshotDecodesOlderPayloadWithoutNextChange() throws {
     let payload: [String: Any] = [

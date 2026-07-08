@@ -3,7 +3,6 @@ import Testing
 @testable import OpenAir
 
 @Suite
-@MainActor
 struct AppReviewManagerTests {
     @Test
     func waitsUntilThirdSignificantEvent() {
@@ -69,8 +68,6 @@ struct AppReviewManagerTests {
         #expect(userPreferences.reviewSignificantEventCount == 3)
     }
 }
-
-@MainActor
 private final class ReviewUserPreferenceStore: UserPreferenceStoring {
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?

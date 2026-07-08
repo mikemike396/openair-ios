@@ -3,7 +3,6 @@ import Testing
 @testable import OpenAir
 
 @Suite
-@MainActor
 struct ForecastChartDataTests {
     @Test
     func buildsAtMostFortyEightConvertedTimelineItems() {

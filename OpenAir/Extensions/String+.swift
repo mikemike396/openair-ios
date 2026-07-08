@@ -1,7 +1,7 @@
 import Foundation
 
 extension String {
-    nonisolated static let backgroundRefreshTaskIdentifier = "com.openairapp.openair.refresh"
+    static let backgroundRefreshTaskIdentifier = "com.openairapp.openair.refresh"
     static let openAirSupportEmail = "openairappsupport@gmail.com"
     
     static var appVersion: String {

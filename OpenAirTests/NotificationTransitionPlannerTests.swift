@@ -1,8 +1,9 @@
-import XCTest
+import Foundation
+import Testing
 @testable import OpenAir
-
-@MainActor
-final class NotificationTransitionPlannerTests: XCTestCase {
+@Suite
+struct NotificationTransitionPlannerTests {
+    @Test
     func testOnlyOpenClosedBoundaryChangesProduceNotifications() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let statuses: [RecommendationStatus] = [.open, .open, .keepClosed, .keepClosed, .open]
@@ -31,9 +32,10 @@ final class NotificationTransitionPlannerTests: XCTestCase {
 
         let transitions = NotificationTransitionPlanner().transitions(in: plan, after: now)
 
-        XCTAssertEqual(transitions.map(\.status), [.keepClosed, .open])
+        #expect(transitions.map(\.status) == [.keepClosed, .open])
     }
 
+    @Test
     func testPastTransitionsAreIgnored() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let weather = HourlyWeather(
@@ -57,9 +59,10 @@ final class NotificationTransitionPlannerTests: XCTestCase {
             nextChange: nil
         )
 
-        XCTAssertTrue(NotificationTransitionPlanner().transitions(in: plan, after: now).isEmpty)
+        #expect(NotificationTransitionPlanner().transitions(in: plan, after: now).isEmpty)
     }
 
+    @Test
     func testOneHourChangeProducesNoNotifications() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let plan = plan(
@@ -71,9 +74,10 @@ final class NotificationTransitionPlannerTests: XCTestCase {
             ]
         )
 
-        XCTAssertTrue(NotificationTransitionPlanner().transitions(in: plan, after: now).isEmpty)
+        #expect(NotificationTransitionPlanner().transitions(in: plan, after: now).isEmpty)
     }
 
+    @Test
     func testOneHourChangeKeepsCloseAndReopenNotifications() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let plan = plan(
@@ -87,7 +91,7 @@ final class NotificationTransitionPlannerTests: XCTestCase {
 
         let transitions = NotificationTransitionPlanner().transitions(in: plan, after: now)
 
-        XCTAssertEqual(transitions.map(\.status), [.keepClosed, .open])
+        #expect(transitions.map(\.status) == [.keepClosed, .open])
     }
 
     private func plan(

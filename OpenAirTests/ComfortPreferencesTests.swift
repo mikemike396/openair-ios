@@ -2,7 +2,6 @@ import Testing
 @testable import OpenAir
 
 @Suite
-@MainActor
 struct ComfortPreferencesTests {
     @Test
     func normalizedClampsWeatherThresholdPreferencesToConfigurableRanges() {

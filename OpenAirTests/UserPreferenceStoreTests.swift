@@ -3,7 +3,6 @@ import Testing
 @testable import OpenAir
 
 @Suite
-@MainActor
 struct UserPreferenceStoreTests {
     @Test
     func defaultValues() async {
@@ -111,8 +110,6 @@ struct UserPreferenceStoreTests {
         #expect(restored.temperatureUnit == .celsius)
     }
 }
-
-@MainActor
 private final class UserPreferenceStoreFixture {
     let defaults: UserDefaults
 

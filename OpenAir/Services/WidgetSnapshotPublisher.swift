@@ -5,7 +5,6 @@ import WidgetKit
 import WatchConnectivity
 #endif
 
-@MainActor
 protocol WidgetSnapshotPublishing {
     func publish(
         weather: WeatherSnapshot,
@@ -14,7 +13,6 @@ protocol WidgetSnapshotPublishing {
     )
 }
 
-@MainActor
 final class WidgetSnapshotPublisher: WidgetSnapshotPublishing {
     private let factory: WidgetSnapshotFactory
     private let store: OpenAirWidgetSnapshotStore
@@ -50,13 +48,11 @@ struct DisabledWidgetSnapshotPublisher: WidgetSnapshotPublishing {
     ) {}
 }
 
-@MainActor
 protocol WatchSnapshotSyncing {
     func send(_ snapshot: OpenAirWidgetSnapshot)
 }
 
 #if os(iOS)
-@MainActor
 final class WatchSnapshotSyncClient: NSObject, WatchSnapshotSyncing, WCSessionDelegate {
     private var pendingSnapshot: OpenAirWidgetSnapshot?
     private let session: WCSession?

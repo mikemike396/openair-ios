@@ -1,14 +1,15 @@
-import XCTest
+import Foundation
+import Testing
 @testable import OpenAir
-
-@MainActor
-final class DayStatusBarAxisTests: XCTestCase {
+@Suite
+struct DayStatusBarAxisTests {
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         return calendar
     }
 
+    @Test
     func testUsesFourHourMarkersWhenMoreThanEightHoursRemain() throws {
         let markers = DayStatusBarAxis.markerDates(
             start: try date(hour: 10),
@@ -16,13 +17,15 @@ final class DayStatusBarAxisTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(markers, [
+        let expectedMarkers = [
             try date(hour: 12),
             try date(hour: 16),
             try date(hour: 20)
-        ])
+        ]
+        #expect(markers == expectedMarkers)
     }
 
+    @Test
     func testUsesTwoHourMarkersWhenThreeToEightHoursRemain() throws {
         let markers = DayStatusBarAxis.markerDates(
             start: try date(hour: 16),
@@ -30,13 +33,15 @@ final class DayStatusBarAxisTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(markers, [
+        let expectedMarkers = [
             try date(hour: 18),
             try date(hour: 20),
             try date(hour: 22)
-        ])
+        ]
+        #expect(markers == expectedMarkers)
     }
 
+    @Test
     func testUsesHourlyMarkersWhenUnderThreeHoursRemain() throws {
         let markers = DayStatusBarAxis.markerDates(
             start: try date(hour: 21, minute: 30),
@@ -44,12 +49,14 @@ final class DayStatusBarAxisTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(markers, [
+        let expectedMarkers = [
             try date(hour: 22),
             try date(hour: 23)
-        ])
+        ]
+        #expect(markers == expectedMarkers)
     }
 
+    @Test
     func testOmitsMarkersOutsideRange() throws {
         let markers = DayStatusBarAxis.markerDates(
             start: try date(hour: 22),
@@ -57,7 +64,8 @@ final class DayStatusBarAxisTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(markers, [try date(hour: 23)])
+        let expectedMarkers = [try date(hour: 23)]
+        #expect(markers == expectedMarkers)
     }
 
     private func date(hour: Int, minute: Int = 0) throws -> Date {
@@ -68,8 +76,8 @@ final class DayStatusBarAxisTests: XCTestCase {
             month: 6,
             day: 7
         )
-        let startOfDay = try XCTUnwrap(calendar.date(from: startOfDayComponents))
-        let date = try XCTUnwrap(calendar.date(byAdding: .hour, value: hour, to: startOfDay))
-        return try XCTUnwrap(calendar.date(byAdding: .minute, value: minute, to: date))
+        let startOfDay = try #require(calendar.date(from: startOfDayComponents))
+        let date = try #require(calendar.date(byAdding: .hour, value: hour, to: startOfDay))
+        return try #require(calendar.date(byAdding: .minute, value: minute, to: date))
     }
 }
