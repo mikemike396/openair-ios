@@ -84,14 +84,21 @@ private struct OpenAirSmallWidgetView: View {
     let snapshot: OpenAirWidgetSnapshot
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .top, spacing: 6) {
-                Text(statusTitle)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(statusColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-                    .layoutPriority(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(statusTitle)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(statusColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+
+                    Text(snapshot.locationName)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(secondaryTextColor)
+                        .lineLimit(2)
+                }
+                .layoutPriority(1)
 
                 Spacer(minLength: 4)
 
@@ -101,12 +108,12 @@ private struct OpenAirSmallWidgetView: View {
                     .accessibilityHidden(true)
             }
 
-            Text(snapshot.locationName)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(secondaryTextColor)
-                .lineLimit(2)
-
-            Spacer(minLength: nextChangeText == nil ? 6 : 0)
+            if nextChangeText == nil {
+                Color.clear
+                    .frame(height: 6)
+            } else {
+                Spacer(minLength: 0)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 12) {
@@ -184,7 +191,7 @@ private struct OpenAirMediumWidgetView: View {
                         .minimumScaleFactor(0.8)
 
                     Text(snapshot.locationName)
-                        .font(.body.weight(.semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
@@ -199,14 +206,6 @@ private struct OpenAirMediumWidgetView: View {
                     .accessibilityHidden(true)
             }
 
-            if let nextChangeText {
-                Label(nextChangeText, systemImage: "clock")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(secondaryTextColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-            }
-
             HStack(spacing: 0) {
                 metric(snapshot.temperatureText, systemImage: snapshot.conditionSymbolName)
                 Spacer(minLength: 12)
@@ -219,6 +218,14 @@ private struct OpenAirMediumWidgetView: View {
             .padding(.top, 6)
 
             Spacer(minLength: 0)
+
+            if let nextChangeText {
+                Label(nextChangeText, systemImage: "clock")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(secondaryTextColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
 
             Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
                 .font(.system(.caption2, weight: .medium))
