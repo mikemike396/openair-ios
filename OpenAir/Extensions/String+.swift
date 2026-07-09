@@ -1,7 +1,8 @@
 import Foundation
 
 extension String {
-    static let backgroundRefreshTaskIdentifier = "com.openairapp.openair.refresh"
+    // The project defaults declarations to MainActor, but BGTaskScheduler callbacks read this off-main.
+    nonisolated static let backgroundRefreshTaskIdentifier = "com.openairapp.openair.refresh"
     static let openAirSupportEmail = "openairappsupport@gmail.com"
     
     static var appVersion: String {

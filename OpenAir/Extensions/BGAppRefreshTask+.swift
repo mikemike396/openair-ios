@@ -1,7 +1,9 @@
 import BackgroundTasks
 
 extension BGAppRefreshTask: @unchecked @retroactive Sendable {
-    static func registerBackgroundRefresh(store: AppStore) {
+    // The project defaults declarations to MainActor, but BGTaskScheduler calls this from its own queue.
+    // Keep registration nonisolated, then hop to MainActor inside the handler for app state work.
+    nonisolated static func registerBackgroundRefresh(store: AppStore) {
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: String.backgroundRefreshTaskIdentifier,
             using: nil
