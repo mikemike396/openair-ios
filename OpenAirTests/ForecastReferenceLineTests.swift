@@ -2,7 +2,6 @@ import Testing
 @testable import OpenAir
 
 @Suite
-@MainActor
 struct ForecastReferenceLineTests {
     @Test
     func temperatureReferencesUseConfiguredMinimumAndMaximum() {

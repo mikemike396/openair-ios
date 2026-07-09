@@ -6,7 +6,5 @@
 	<array>
 		<string>group.com.openairapp.openair</string>
 	</array>
-	<key>com.apple.developer.weatherkit</key>
-	<true/>
 </dict>
 </plist>

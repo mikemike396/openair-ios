@@ -1,40 +1,44 @@
-import XCTest
+import Foundation
+import Testing
 @testable import OpenAir
-
-@MainActor
-final class TemperatureUnitTests: XCTestCase {
+@Suite
+struct TemperatureUnitTests {
+    @Test
     func testFahrenheitDisplayRounds() {
-        XCTAssertEqual(TemperatureUnit.fahrenheit.display(64.6), 65)
+        #expect(TemperatureUnit.fahrenheit.display(64.6) == 65)
     }
 
+    @Test
     func testCelsiusConversionAndRounding() {
-        XCTAssertEqual(TemperatureUnit.celsius.display(32), 0)
-        XCTAssertEqual(TemperatureUnit.celsius.display(68), 20)
+        #expect(TemperatureUnit.celsius.display(32) == 0)
+        #expect(TemperatureUnit.celsius.display(68) == 20)
     }
 
+    @Test
     func testDefaultPreferencesUseFahrenheitForUSLocale() {
-        XCTAssertEqual(
-            ComfortPreferences.default(for: Locale(identifier: "en_US")).temperatureUnit,
-            .fahrenheit
+        #expect(
+            ComfortPreferences.default(for: Locale(identifier: "en_US")).temperatureUnit == .fahrenheit
         )
     }
 
+    @Test
     func testDefaultPreferencesUseCelsiusForMetricLocale() {
-        XCTAssertEqual(
-            ComfortPreferences.default(for: Locale(identifier: "ja_JP")).temperatureUnit,
-            .celsius
+        #expect(
+            ComfortPreferences.default(for: Locale(identifier: "ja_JP")).temperatureUnit == .celsius
         )
     }
 
+    @Test
     func testNormalizedPreferencesPreventInvertedTemperatureRange() {
         var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
         preferences.idealMinimumFahrenheit = 70
         preferences.idealMaximumFahrenheit = 65
 
-        XCTAssertEqual(preferences.normalized.idealMinimumFahrenheit, 70)
-        XCTAssertEqual(preferences.normalized.idealMaximumFahrenheit, 70)
+        #expect(preferences.normalized.idealMinimumFahrenheit == 70)
+        #expect(preferences.normalized.idealMaximumFahrenheit == 70)
     }
 
+    @Test
     func testResetSliderDefaultsPreservesNonSliderPreferences() {
         let locale = Locale(identifier: "en_US")
         let defaults = ComfortPreferences.default(for: locale)
@@ -49,12 +53,12 @@ final class TemperatureUnitTests: XCTestCase {
 
         preferences.resetSliderDefaults(for: locale)
 
-        XCTAssertEqual(preferences.idealMinimumFahrenheit, defaults.idealMinimumFahrenheit)
-        XCTAssertEqual(preferences.idealMaximumFahrenheit, defaults.idealMaximumFahrenheit)
-        XCTAssertEqual(preferences.maximumDewPointFahrenheit, defaults.maximumDewPointFahrenheit)
-        XCTAssertEqual(preferences.maximumRainChance, defaults.maximumRainChance)
-        XCTAssertEqual(preferences.maximumWindMPH, defaults.maximumWindMPH)
-        XCTAssertEqual(preferences.temperatureUnit, .celsius)
-        XCTAssertFalse(preferences.alertsEnabled)
+        #expect(preferences.idealMinimumFahrenheit == defaults.idealMinimumFahrenheit)
+        #expect(preferences.idealMaximumFahrenheit == defaults.idealMaximumFahrenheit)
+        #expect(preferences.maximumDewPointFahrenheit == defaults.maximumDewPointFahrenheit)
+        #expect(preferences.maximumRainChance == defaults.maximumRainChance)
+        #expect(preferences.maximumWindMPH == defaults.maximumWindMPH)
+        #expect(preferences.temperatureUnit == .celsius)
+        #expect(!preferences.alertsEnabled)
     }
 }

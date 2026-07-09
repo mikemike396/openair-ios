@@ -1,8 +1,6 @@
 import Foundation
 import Testing
 @testable import OpenAir
-
-@MainActor
 struct RecommendationPlanSmoothingTests {
     private let engine = RecommendationEngine()
     private let preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))

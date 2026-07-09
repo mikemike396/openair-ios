@@ -33,7 +33,12 @@ struct RecommendationCard: View {
                 HStack {
                     Label("\(unit.display(snapshot.current.temperatureFahrenheit))\(unit.symbol)", systemImage: snapshot.current.symbolName)
                     Spacer()
-                    Label("DP \(unit.display(snapshot.current.dewPointFahrenheit))\(unit.symbol)", systemImage: "drop")
+                    Label {
+                        Text("\(unit.display(snapshot.current.dewPointFahrenheit))\(unit.symbol)")
+                    } icon: {
+                        Image(systemName: "drop")
+                            .foregroundStyle(Color(.openAirBlue))
+                    }
                     Spacer()
                     Label("\(Int(snapshot.current.windMPH.rounded())) mph", systemImage: "wind")
                 }

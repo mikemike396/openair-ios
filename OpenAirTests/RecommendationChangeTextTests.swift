@@ -4,7 +4,6 @@ import Testing
 
 struct RecommendationChangeTextTests {
     @Test
-    @MainActor
     func includesTimeAndWeekday() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try #require(TimeZone(secondsFromGMT: 0))

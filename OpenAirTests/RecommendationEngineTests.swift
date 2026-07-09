@@ -3,7 +3,6 @@ import Testing
 @testable import OpenAir
 
 @Suite
-@MainActor
 struct RecommendationEngineTests {
     private let engine = RecommendationEngine()
     private let preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))

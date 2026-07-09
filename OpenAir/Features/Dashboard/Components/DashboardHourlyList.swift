@@ -60,7 +60,11 @@ private struct HourlyTile: View {
             VStack(spacing: 4) {
                 Text("\(unit.display(item.weather.temperatureFahrenheit))\(unit.symbol)")
                     .font(.headline.weight(.semibold))
-                Text("DP \(unit.display(item.weather.dewPointFahrenheit))\(unit.symbol)")
+                HStack(spacing: 3) {
+                    Image(systemName: "drop")
+                        .foregroundStyle(Color(.openAirBlue))
+                    Text("\(unit.display(item.weather.dewPointFahrenheit))\(unit.symbol)")
+                }
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
             }

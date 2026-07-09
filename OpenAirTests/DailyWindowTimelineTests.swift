@@ -1,14 +1,15 @@
-import XCTest
+import Foundation
+import Testing
 @testable import OpenAir
-
-@MainActor
-final class DailyWindowTimelineTests: XCTestCase {
+@Suite
+struct DailyWindowTimelineTests {
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         return calendar
     }
 
+    @Test
     func testClipsVisibleWindowsToCurrentDay() throws {
         let now = try date(hour: 10)
         let timeline = DailyWindowTimeline(
@@ -20,14 +21,17 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(timeline.start, now)
-        XCTAssertEqual(timeline.end, try date(hour: 24))
-        XCTAssertEqual(timeline.windows, [
+        let endOfDay = try date(hour: 24)
+        let expectedWindows = [
             RecommendationWindow(start: try date(hour: 10), end: try date(hour: 12), status: .open),
-            RecommendationWindow(start: try date(hour: 12), end: try date(hour: 24), status: .keepClosed)
-        ])
+            RecommendationWindow(start: try date(hour: 12), end: endOfDay, status: .keepClosed)
+        ]
+        #expect(timeline.start == now)
+        #expect(timeline.end == endOfDay)
+        #expect(timeline.windows == expectedWindows)
     }
 
+    @Test
     func testCurrentWindowIsClippedToNow() throws {
         let now = try date(hour: 10)
         let timeline = DailyWindowTimeline(
@@ -36,11 +40,13 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(timeline.windows, [
+        let expectedWindows = [
             RecommendationWindow(start: now, end: try date(hour: 12), status: .open)
-        ])
+        ]
+        #expect(timeline.windows == expectedWindows)
     }
 
+    @Test
     func testDropsExpiredAndTomorrowOnlyWindows() throws {
         let timeline = DailyWindowTimeline(
             windows: [
@@ -51,9 +57,10 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(timeline.windows, [])
+        #expect(timeline.windows == [])
     }
 
+    @Test
     func testSmoothsOneHourValidReasonForDisplay() throws {
         let timeline = DailyWindowTimeline(
             windows: [
@@ -65,11 +72,13 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(timeline.windows, [
+        let expectedWindows = [
             RecommendationWindow(start: try date(hour: 10), end: try date(hour: 16), status: .open)
-        ])
+        ]
+        #expect(timeline.windows == expectedWindows)
     }
 
+    @Test
     func testKeepsOneHourChangeForDisplay() throws {
         let timeline = DailyWindowTimeline(
             windows: [
@@ -81,11 +90,12 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(timeline.windows.count, 3)
-        XCTAssertEqual(timeline.windows[1].status, .keepClosed)
-        XCTAssertEqual(timeline.windows[1].reasons, [.activePrecipitation])
+        #expect(timeline.windows.count == 3)
+        #expect(timeline.windows[1].status == .keepClosed)
+        #expect(timeline.windows[1].reasons == [.activePrecipitation])
     }
 
+    @Test
     func testCurrentWindowLabelUsesNow() throws {
         let window = window(startHour: 8, endHour: 12, status: .open)
         let timeline = DailyWindowTimeline(
@@ -94,12 +104,12 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(
-            normalizedTimeSpacing(timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_US"))),
-            "Open now → 12 PM"
+        #expect(
+            normalizedTimeSpacing(timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_US"))) == "Open now → 12 PM"
         )
     }
 
+    @Test
     func testFutureWindowLabelIsPlainStatusAndRange() throws {
         let window = window(startHour: 18, endHour: 24, status: .keepClosed)
         let timeline = DailyWindowTimeline(
@@ -108,12 +118,12 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(
-            normalizedTimeSpacing(timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_US"))),
-            "Keep closed 6 PM → 12 AM"
+        #expect(
+            normalizedTimeSpacing(timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_US"))) == "Keep closed 6 PM → 12 AM"
         )
     }
 
+    @Test
     func testLabelsSupportTwentyFourHourLocale() throws {
         let window = window(startHour: 18, endHour: 24, status: .keepClosed)
         let timeline = DailyWindowTimeline(
@@ -122,12 +132,12 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(
-            timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_GB")),
-            "Keep closed 18 → 00"
+        #expect(
+            timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_GB")) == "Keep closed 18 → 00"
         )
     }
 
+    @Test
     func testCurrentWindowLabelSupportsTwentyFourHourLocale() throws {
         let window = window(startHour: 8, endHour: 12, status: .open)
         let timeline = DailyWindowTimeline(
@@ -136,9 +146,8 @@ final class DailyWindowTimelineTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(
-            timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_GB")),
-            "Open now → 12"
+        #expect(
+            timeline.label(for: window, calendar: calendar, locale: Locale(identifier: "en_GB")) == "Open now → 12"
         )
     }
 
@@ -164,8 +173,8 @@ final class DailyWindowTimelineTests: XCTestCase {
             month: 6,
             day: 7
         )
-        let startOfDay = try XCTUnwrap(calendar.date(from: startOfDayComponents))
-        return try XCTUnwrap(calendar.date(byAdding: .hour, value: hour, to: startOfDay))
+        let startOfDay = try #require(calendar.date(from: startOfDayComponents))
+        return try #require(calendar.date(byAdding: .hour, value: hour, to: startOfDay))
     }
 
     private func normalizedTimeSpacing(_ label: String) -> String {

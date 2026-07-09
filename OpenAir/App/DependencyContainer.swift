@@ -1,7 +1,6 @@
 import BackgroundTasks
 import SwiftUI
 
-@MainActor
 final class DependencyContainer {
     let userPreferenceStore: UserPreferenceStoring
     let appReviewManager: AppReviewManager
@@ -11,6 +10,7 @@ final class DependencyContainer {
         let userPreferenceStore = UserPreferenceStore()
         let appReviewManager = AppReviewManager(userPreferences: userPreferenceStore)
         let appStore = AppStore(
+            widgetPublisher: WidgetSnapshotPublisher(),
             userPreferences: userPreferenceStore,
             appReviewManager: appReviewManager
         )

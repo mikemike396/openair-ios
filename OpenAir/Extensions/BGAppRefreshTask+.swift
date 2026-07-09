@@ -1,7 +1,7 @@
 import BackgroundTasks
 
 extension BGAppRefreshTask: @unchecked @retroactive Sendable {
-    nonisolated static func registerBackgroundRefresh(store: AppStore) {
+    static func registerBackgroundRefresh(store: AppStore) {
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: String.backgroundRefreshTaskIdentifier,
             using: nil

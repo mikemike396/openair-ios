@@ -101,7 +101,12 @@ private struct SelectionReadout: View {
             Spacer()
 
             Label("\(Int(item.temperature.rounded()))\(unit.symbol)", systemImage: "thermometer.medium")
-            Label("DP \(Int(item.dewPoint.rounded()))\(unit.symbol)", systemImage: "drop")
+            Label {
+                Text("\(Int(item.dewPoint.rounded()))\(unit.symbol)")
+            } icon: {
+                Image(systemName: "drop")
+                    .foregroundStyle(Color(.openAirBlue))
+            }
         }
         .font(.caption.weight(.medium))
         .monospacedDigit()
