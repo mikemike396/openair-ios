@@ -553,14 +553,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = OpenAir/OpenAir.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAir/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenAir;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.weather";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 26.5;
+				MARKETING_VERSION = 26.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.openairapp.openair;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -580,14 +580,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = OpenAir/OpenAir.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAir/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenAir;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.weather";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 26.5;
+				MARKETING_VERSION = 26.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.openairapp.openair;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -645,7 +645,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = OpenAirWidgets/OpenAirWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAirWidgets/Info.plist;
@@ -655,7 +655,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 26.5;
+				MARKETING_VERSION = 26.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.openairapp.openair.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -675,7 +675,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = OpenAirWidgets/OpenAirWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAirWidgets/Info.plist;
@@ -685,7 +685,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 26.5;
+				MARKETING_VERSION = 26.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.openairapp.openair.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -705,7 +705,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OpenAirWatch/OpenAirWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAirWatch/Info.plist;
@@ -715,7 +715,7 @@
 					"@executable_path/../../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				MARKETING_VERSION = 26.5;
+				MARKETING_VERSION = 26.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.openairapp.openair.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -737,7 +737,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OpenAirWatch/OpenAirWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAirWatch/Info.plist;
@@ -747,7 +747,7 @@
 					"@executable_path/../../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				MARKETING_VERSION = 26.5;
+				MARKETING_VERSION = 26.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.openairapp.openair.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -769,7 +769,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = OpenAirWatchWidgets/OpenAirWatchWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAirWatchWidgets/Info.plist;
@@ -778,7 +778,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 26.5;
+				MARKETING_VERSION = 26.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.openairapp.openair.watchkitapp.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -800,7 +800,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = OpenAirWatchWidgets/OpenAirWatchWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 99Z3NY9PHK;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenAirWatchWidgets/Info.plist;
@@ -809,7 +809,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 26.5;
+				MARKETING_VERSION = 26.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.openairapp.openair.watchkitapp.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
