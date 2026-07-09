@@ -4,11 +4,18 @@ import WidgetKit
 
 @main
 struct OpenAirWatchApp: App {
-    @State private var receiver = WatchSnapshotReceiver()
+    @State private var model: WatchSnapshotModel
+    @State private var receiver: WatchSnapshotReceiver
+
+    init() {
+        let model = WatchSnapshotModel()
+        _model = State(initialValue: model)
+        _receiver = State(initialValue: WatchSnapshotReceiver(model: model))
+    }
 
     var body: some Scene {
         WindowGroup {
-            OpenAirWatchStatusView()
+            OpenAirWatchStatusView(model: model)
                 .task {
                     receiver.start()
                 }
@@ -19,8 +26,35 @@ struct OpenAirWatchApp: App {
     }
 }
 
+@Observable
+@MainActor
+final class WatchSnapshotModel {
+    private let store: OpenAirWidgetSnapshotStore
+    private(set) var snapshot: OpenAirWidgetSnapshot?
+
+    init(store: OpenAirWidgetSnapshotStore = OpenAirWidgetSnapshotStore()) {
+        self.store = store
+    }
+
+    func loadSnapshot() {
+        snapshot = store.load()
+    }
+
+    func saveSnapshot(data: Data) {
+        store.save(data: data)
+        loadSnapshot()
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+}
+
+@MainActor
 final class WatchSnapshotReceiver: NSObject, WCSessionDelegate {
     private var session: WCSession?
+    private let model: WatchSnapshotModel
+
+    init(model: WatchSnapshotModel) {
+        self.model = model
+    }
 
     func start() {
         guard WCSession.isSupported() else { return }
@@ -68,13 +102,8 @@ final class WatchSnapshotReceiver: NSObject, WCSessionDelegate {
 
     private nonisolated func saveSnapshot(from payload: [String: Any]) {
         guard let data = payload[OpenAirWidgetSnapshotStore.watchTransferSnapshotDataKey] as? Data else { return }
-        Self.saveSnapshot(data)
-    }
-
-    private nonisolated static func saveSnapshot(_ data: Data) {
-        Task { @MainActor in
-            OpenAirWidgetSnapshotStore().save(data: data)
-            WidgetCenter.shared.reloadAllTimelines()
+        Task { @MainActor [weak self] in
+            self?.model.saveSnapshot(data: data)
         }
     }
 }

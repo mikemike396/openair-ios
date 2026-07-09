@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct OpenAirWatchStatusView: View {
-    @State private var snapshot: OpenAirWidgetSnapshot?
-    private let store = OpenAirWidgetSnapshotStore()
+    let model: WatchSnapshotModel
+
+    private var snapshot: OpenAirWidgetSnapshot? {
+        model.snapshot
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -14,10 +17,7 @@ struct OpenAirWatchStatusView: View {
             .contentMargins(.horizontal, 0, for: .scrollContent)
         }
         .task {
-            loadSnapshot()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: OpenAirWidgetSnapshotStore.snapshotDidChangeNotification)) { _ in
-            loadSnapshot()
+            model.loadSnapshot()
         }
     }
 
@@ -227,9 +227,5 @@ struct OpenAirWatchStatusView: View {
         case nil:
             .secondary
         }
-    }
-
-    private func loadSnapshot() {
-        snapshot = store.load()
     }
 }

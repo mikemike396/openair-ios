@@ -108,12 +108,8 @@ private struct OpenAirSmallWidgetView: View {
                     .accessibilityHidden(true)
             }
 
-            if nextChangeText == nil {
-                Color.clear
-                    .frame(height: 6)
-            } else {
-                Spacer(minLength: 0)
-            }
+            Color.clear
+                .frame(height: 8)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 12) {
@@ -127,6 +123,8 @@ private struct OpenAirSmallWidgetView: View {
                 }
             }
             .lineLimit(1)
+
+            Spacer(minLength: 0)
 
             if let nextChangeText {
                 Label(nextChangeText, systemImage: "clock")
@@ -142,6 +140,7 @@ private struct OpenAirSmallWidgetView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
         .padding(0)
     }
