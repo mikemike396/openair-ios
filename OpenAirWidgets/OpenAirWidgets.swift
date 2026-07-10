@@ -96,7 +96,8 @@ private struct OpenAirSmallWidgetView: View {
                     Text(snapshot.locationName)
                         .font(.caption2.weight(.medium))
                         .foregroundStyle(secondaryTextColor)
-                        .lineLimit(2)
+                        .lineLimit(2, reservesSpace: true)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .layoutPriority(1)
 
@@ -107,9 +108,6 @@ private struct OpenAirSmallWidgetView: View {
                     .foregroundStyle(statusColor)
                     .accessibilityHidden(true)
             }
-
-            Color.clear
-                .frame(height: 8)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 12) {
@@ -146,11 +144,13 @@ private struct OpenAirSmallWidgetView: View {
     }
 
     private func compactMetric(_ value: String, systemImage: String) -> some View {
-        HStack(spacing: 6) {
+        let isDewPoint = systemImage == "drop"
+
+        return HStack(spacing: isDewPoint ? 4 : 6) {
             Image(systemName: systemImage)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(systemImage == "drop" ? Color(.openAirBlue) : .primary)
-                .frame(width: 16, alignment: .leading)
+                .foregroundStyle(isDewPoint ? Color(.openAirBlue) : .primary)
+                .frame(width: isDewPoint ? nil : 16, alignment: .leading)
 
             Text(value)
                 .font(.subheadline.weight(.semibold))

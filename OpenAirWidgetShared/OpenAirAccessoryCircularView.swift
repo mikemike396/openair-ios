@@ -10,7 +10,6 @@ struct OpenAirAccessoryCircularView: View {
         ZStack {
             AccessoryWidgetBackground()
             CircularStatusFace(snapshot: snapshot)
-                .padding(3)
         }
     }
 }
@@ -70,7 +69,7 @@ private struct StatusArc: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let size = min(rect.width, rect.height)
-        let radius = size * 0.42
+        let radius = size * 0.46
         let center = CGPoint(x: rect.midX, y: rect.midY)
         path.addArc(
             center: center,

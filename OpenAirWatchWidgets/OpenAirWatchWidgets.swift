@@ -59,6 +59,7 @@ struct OpenAirComplicationWidget: Widget {
         .configurationDisplayName("OpenAir")
         .description("Shows whether to open windows, plus temperature and dew point.")
         .supportedFamilies([.accessoryCircular])
+        .contentMarginsDisabled()
     }
 }
 
