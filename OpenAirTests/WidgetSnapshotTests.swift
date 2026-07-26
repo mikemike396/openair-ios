@@ -68,6 +68,37 @@ func widgetSnapshotStoreRoundTripsPayload() throws {
     #expect(store.load() == snapshot)
     #expect(snapshot.status.symbolName == "window.vertical.closed")
 }
+
+@Test
+func widgetSnapshotStoreRejectsAnOlderPublishedSnapshot() throws {
+    let defaults = try #require(UserDefaults(suiteName: "WidgetSnapshotTests.\(UUID().uuidString)"))
+    let store = OpenAirWidgetSnapshotStore(userDefaults: defaults)
+    let fetchedAt = Date(timeIntervalSince1970: 1_800)
+    let newer = OpenAirWidgetSnapshot(
+        status: .open,
+        temperature: 74,
+        dewPoint: 60,
+        windMPH: 8,
+        unitSymbol: "°F",
+        fetchedAt: fetchedAt,
+        publishedAt: Date(timeIntervalSince1970: 2_000),
+        locationName: "Wilmington, DE"
+    )
+    let older = OpenAirWidgetSnapshot(
+        status: .keepClosed,
+        temperature: 68,
+        dewPoint: 55,
+        windMPH: 5,
+        unitSymbol: "°F",
+        fetchedAt: fetchedAt,
+        publishedAt: Date(timeIntervalSince1970: 1_900),
+        locationName: "Wilmington, DE"
+    )
+
+    #expect(store.save(newer))
+    #expect(!store.save(older))
+    #expect(store.load() == newer)
+}
 @Test
 func widgetSnapshotDecodesOlderPayloadWithoutNextChange() throws {
     let payload: [String: Any] = [
@@ -90,6 +121,7 @@ func widgetSnapshotDecodesOlderPayloadWithoutNextChange() throws {
     #expect(snapshot.conditionSymbolName == "cloud")
     #expect(snapshot.unitSymbol == "°F")
     #expect(snapshot.fetchedAt == Date(timeIntervalSinceReferenceDate: 1_800))
+    #expect(snapshot.publishedAt == snapshot.fetchedAt)
     #expect(snapshot.locationName == "Wilmington, DE")
     #expect(snapshot.nextChange == nil)
 }

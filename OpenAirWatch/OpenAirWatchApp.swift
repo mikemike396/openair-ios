@@ -41,9 +41,9 @@ final class WatchSnapshotModel {
     }
 
     func saveSnapshot(data: Data) {
-        store.save(data: data)
+        guard store.save(data: data) else { return }
         loadSnapshot()
-        WidgetCenter.shared.reloadAllTimelines()
+        WidgetCenter.shared.reloadTimelines(ofKind: "OpenAirComplicationWidget")
     }
 }
 
@@ -57,6 +57,7 @@ final class WatchSnapshotReceiver: NSObject, WCSessionDelegate {
     }
 
     func start() {
+        model.loadSnapshot()
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self

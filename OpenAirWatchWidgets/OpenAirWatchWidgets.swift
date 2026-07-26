@@ -44,7 +44,7 @@ struct OpenAirComplicationProvider: TimelineProvider {
         guard let data = session.receivedApplicationContext[OpenAirWidgetSnapshotStore.watchTransferSnapshotDataKey] as? Data else {
             return
         }
-        store.save(data: data)
+        _ = store.save(data: data)
     }
 }
 
