@@ -17,13 +17,22 @@ struct OpenAirWidgetSnapshotStore {
         return try? JSONDecoder().decode(OpenAirWidgetSnapshot.self, from: data)
     }
 
-    func save(_ snapshot: OpenAirWidgetSnapshot) {
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+    @discardableResult
+    func save(_ snapshot: OpenAirWidgetSnapshot) -> Bool {
+        if let storedSnapshot = load(), snapshot.publishedAt <= storedSnapshot.publishedAt {
+            return false
+        }
+        guard let data = try? JSONEncoder().encode(snapshot) else { return false }
         userDefaults.set(data, forKey: Self.snapshotKey)
+        return true
     }
 
-    func save(data: Data) {
-        userDefaults.set(data, forKey: Self.snapshotKey)
+    @discardableResult
+    func save(data: Data) -> Bool {
+        guard let snapshot = try? JSONDecoder().decode(OpenAirWidgetSnapshot.self, from: data) else {
+            return false
+        }
+        return save(snapshot)
     }
 
     static func encoded(_ snapshot: OpenAirWidgetSnapshot) -> Data? {

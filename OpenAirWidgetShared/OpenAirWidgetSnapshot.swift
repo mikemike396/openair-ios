@@ -20,6 +20,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
     let conditionSymbolName: String
     let unitSymbol: String
     let fetchedAt: Date
+    let publishedAt: Date
     let locationName: String
     let nextChange: Date?
 
@@ -31,6 +32,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         conditionSymbolName: String = "cloud",
         unitSymbol: String,
         fetchedAt: Date,
+        publishedAt: Date = .now,
         locationName: String,
         nextChange: Date? = nil
     ) {
@@ -41,6 +43,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         self.conditionSymbolName = conditionSymbolName
         self.unitSymbol = unitSymbol
         self.fetchedAt = fetchedAt
+        self.publishedAt = publishedAt
         self.locationName = locationName
         self.nextChange = nextChange
     }
@@ -53,6 +56,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         case conditionSymbolName
         case unitSymbol
         case fetchedAt
+        case publishedAt
         case locationName
         case nextChange
     }
@@ -66,6 +70,7 @@ struct OpenAirWidgetSnapshot: Codable, Sendable, Equatable {
         conditionSymbolName = try container.decodeIfPresent(String.self, forKey: .conditionSymbolName) ?? "cloud"
         unitSymbol = try container.decode(String.self, forKey: .unitSymbol)
         fetchedAt = try container.decode(Date.self, forKey: .fetchedAt)
+        publishedAt = try container.decodeIfPresent(Date.self, forKey: .publishedAt) ?? fetchedAt
         locationName = try container.decode(String.self, forKey: .locationName)
         nextChange = try container.decodeIfPresent(Date.self, forKey: .nextChange)
     }
