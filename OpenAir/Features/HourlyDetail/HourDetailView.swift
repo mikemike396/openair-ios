@@ -4,6 +4,7 @@ struct HourDetailView: View {
     let weather: HourlyWeather
     let recommendation: Recommendation
     let unit: TemperatureUnit
+    let temperatureSource: TemperatureEvaluationSource
 
     var body: some View {
         ScrollView {
@@ -14,7 +15,10 @@ struct HourDetailView: View {
                 StatusView(status: recommendation.status)
                 WeatherCard {
                     VStack(spacing: 12) {
-                        LabeledContent("Temperature", value: "\(unit.display(weather.temperatureFahrenheit))\(unit.symbol)")
+                        LabeledContent(
+                            temperatureSource.temperatureLabel,
+                            value: "\(unit.display(weather.temperatureFahrenheit(for: temperatureSource)))\(unit.symbol)"
+                        )
                         LabeledContent("Dew point", value: "\(unit.display(weather.dewPointFahrenheit))\(unit.symbol)")
                         LabeledContent("Rain chance", value: weather.precipitationChance, format: .percent)
                         LabeledContent("Wind", value: "\(Int(weather.windMPH.rounded())) mph")

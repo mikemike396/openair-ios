@@ -176,7 +176,8 @@ struct ForecastTimelineSupportTests {
             ),
             status: status,
             reasons: reasons,
-            unit: .fahrenheit
+            unit: .fahrenheit,
+            temperatureSource: .actual
         )
     }
 

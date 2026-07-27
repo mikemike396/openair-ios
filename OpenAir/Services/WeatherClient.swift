@@ -19,6 +19,7 @@ struct WeatherKitClient: WeatherProviding {
         let current = map(
             date: weather.0.date,
             temperature: weather.0.temperature,
+            apparentTemperature: weather.0.apparentTemperature,
             dewPoint: weather.0.dewPoint,
             precipitationChance: 0,
             condition: weather.0.condition,
@@ -29,6 +30,7 @@ struct WeatherKitClient: WeatherProviding {
             map(
                 date: $0.date,
                 temperature: $0.temperature,
+                apparentTemperature: $0.apparentTemperature,
                 dewPoint: $0.dewPoint,
                 precipitationChance: $0.precipitationChance,
                 condition: $0.condition,
@@ -48,6 +50,7 @@ struct WeatherKitClient: WeatherProviding {
     private func map(
         date: Date,
         temperature: Measurement<UnitTemperature>,
+        apparentTemperature: Measurement<UnitTemperature>,
         dewPoint: Measurement<UnitTemperature>,
         precipitationChance: Double,
         condition: WeatherCondition,
@@ -62,6 +65,7 @@ struct WeatherKitClient: WeatherProviding {
         return HourlyWeather(
             date: date,
             temperatureFahrenheit: temperature.converted(to: .fahrenheit).value,
+            apparentTemperatureFahrenheit: apparentTemperature.converted(to: .fahrenheit).value,
             dewPointFahrenheit: dewPoint.converted(to: .fahrenheit).value,
             precipitationChance: precipitationChance,
             isPrecipitating: precipitating,

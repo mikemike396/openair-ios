@@ -39,7 +39,7 @@ struct TemperatureUnitTests {
     }
 
     @Test
-    func testResetSliderDefaultsPreservesNonSliderPreferences() {
+    func testResetComfortDefaultsPreservesUnitAndAlertsButResetsTemperatureSource() {
         let locale = Locale(identifier: "en_US")
         let defaults = ComfortPreferences.default(for: locale)
         var preferences = defaults
@@ -49,6 +49,7 @@ struct TemperatureUnitTests {
         preferences.maximumRainChance = 0.75
         preferences.maximumWindMPH = 30
         preferences.temperatureUnit = .celsius
+        preferences.temperatureEvaluationSource = .actual
         preferences.alertsEnabled = false
 
         preferences.resetSliderDefaults(for: locale)
@@ -59,6 +60,7 @@ struct TemperatureUnitTests {
         #expect(preferences.maximumRainChance == defaults.maximumRainChance)
         #expect(preferences.maximumWindMPH == defaults.maximumWindMPH)
         #expect(preferences.temperatureUnit == .celsius)
+        #expect(preferences.temperatureEvaluationSource == .feelsLike)
         #expect(!preferences.alertsEnabled)
     }
 }

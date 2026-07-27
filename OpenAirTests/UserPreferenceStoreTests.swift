@@ -60,6 +60,7 @@ struct UserPreferenceStoreTests {
         let fixture = UserPreferenceStoreFixture()
         var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
         preferences.temperatureUnit = .celsius
+        preferences.temperatureEvaluationSource = .feelsLike
         preferences.maximumWindMPH = 12
         preferences.maximumGustMPH = 38
         fixture.makeStore().preferences = preferences
@@ -84,7 +85,7 @@ struct UserPreferenceStoreTests {
     }
 
     @Test
-    func savedPreferencesWithoutGustsReceiveDefaultGustPreference() async throws {
+    func savedPreferencesWithoutNewerFieldsReceiveDefaults() async throws {
         let preferences = LegacyComfortPreferences(
             idealMinimumFahrenheit: 50,
             idealMaximumFahrenheit: 76,
@@ -108,6 +109,7 @@ struct UserPreferenceStoreTests {
         #expect(restored.maximumGustMPH == .defaultMaximumGustMPH)
         #expect(!restored.alertsEnabled)
         #expect(restored.temperatureUnit == .celsius)
+        #expect(restored.temperatureEvaluationSource == .feelsLike)
     }
 }
 private final class UserPreferenceStoreFixture {

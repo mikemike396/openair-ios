@@ -9,7 +9,7 @@ struct WidgetSnapshotFactory {
         let unit = preferences.temperatureUnit
         return OpenAirWidgetSnapshot(
             status: plan.current.status.widgetStatus,
-            temperature: unit.display(weather.current.temperatureFahrenheit),
+            temperature: unit.display(weather.current.temperatureFahrenheit(for: preferences.temperatureEvaluationSource)),
             dewPoint: unit.display(weather.current.dewPointFahrenheit),
             windMPH: Int(weather.current.windMPH.rounded()),
             conditionSymbolName: weather.current.symbolName,

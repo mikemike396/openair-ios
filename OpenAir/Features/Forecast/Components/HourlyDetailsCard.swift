@@ -3,6 +3,7 @@ import SwiftUI
 struct HourlyDetailsCard: View {
     let items: [(weather: HourlyWeather, recommendation: Recommendation)]
     let unit: TemperatureUnit
+    let temperatureSource: TemperatureEvaluationSource
 
     var body: some View {
         WeatherCard {
@@ -13,9 +14,14 @@ struct HourlyDetailsCard: View {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(items.prefix(48).enumerated()), id: \.element.weather.id) { index, item in
                         NavigationLink {
-                            HourDetailView(weather: item.weather, recommendation: item.recommendation, unit: unit)
+                            HourDetailView(
+                                weather: item.weather,
+                                recommendation: item.recommendation,
+                                unit: unit,
+                                temperatureSource: temperatureSource
+                            )
                         } label: {
-                            CellView(item: item, unit: unit)
+                            CellView(item: item, unit: unit, temperatureSource: temperatureSource)
                                 .padding(.vertical, 12)
                         }
                         .buttonStyle(.plain)
@@ -33,6 +39,7 @@ struct HourlyDetailsCard: View {
 private struct CellView: View {
     let item: (weather: HourlyWeather, recommendation: Recommendation)
     let unit: TemperatureUnit
+    let temperatureSource: TemperatureEvaluationSource
 
     var body: some View {
         HStack(spacing: 12) {
@@ -52,7 +59,7 @@ private struct CellView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text("\(unit.display(item.weather.temperatureFahrenheit))\(unit.symbol)")
+                Text("\(unit.display(item.weather.temperatureFahrenheit(for: temperatureSource)))\(unit.symbol)")
                     .font(.subheadline.weight(.semibold))
                 HStack(spacing: 3) {
                     Image(systemName: "drop")
@@ -77,7 +84,7 @@ private struct CellView: View {
         [
             item.weather.date.formatted(date: .abbreviated, time: .shortened),
             item.recommendation.status.shortTitle,
-            "temperature \(unit.display(item.weather.temperatureFahrenheit))\(unit.symbol)",
+            "\(temperatureSource.temperatureLabel.lowercased()) \(unit.display(item.weather.temperatureFahrenheit(for: temperatureSource)))\(unit.symbol)",
             "dew point \(unit.display(item.weather.dewPointFahrenheit))\(unit.symbol)"
         ]
         .joined(separator: ", ")

@@ -92,7 +92,8 @@ struct ForecastChartData {
                 weather: $0.weather,
                 status: $0.recommendation.status,
                 reasons: $0.recommendation.reasons,
-                unit: unit
+                unit: unit,
+                temperatureSource: preferences.temperatureEvaluationSource
             )
         }
         let firstDate = timelineItems.first?.date ?? .now
@@ -102,7 +103,7 @@ struct ForecastChartData {
         self.items = timelineItems
         self.xDomain = firstDate...lastDate
         self.temperature = ForecastLineChartData(
-            title: "Temperature",
+            title: preferences.temperatureEvaluationSource.temperatureLabel,
             metric: .temperature,
             items: timelineItems,
             unit: unit,

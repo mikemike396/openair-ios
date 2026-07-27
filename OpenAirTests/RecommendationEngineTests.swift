@@ -81,6 +81,31 @@ struct RecommendationEngineTests {
     }
 
     @Test
+    func temperatureEvaluationSourceCanCloseForWindChill() {
+        let weather = weather(temp: 60, apparentTemp: 48, wind: 18)
+        var actualPreferences = preferences
+        actualPreferences.temperatureEvaluationSource = .actual
+        var feelsLikePreferences = preferences
+        feelsLikePreferences.temperatureEvaluationSource = .feelsLike
+
+        #expect(engine.evaluate(weather, preferences: actualPreferences).status == .open)
+        #expect(engine.evaluate(weather, preferences: feelsLikePreferences).status == .keepClosed)
+        #expect(engine.evaluate(weather, preferences: feelsLikePreferences).reasons == [.temperatureOutsideRange])
+    }
+
+    @Test
+    func feelsLikeTemperatureControlsExtremeTemperatureClosures() {
+        let weather = weather(temp: 75, apparentTemp: 86)
+        var actualPreferences = preferences
+        actualPreferences.temperatureEvaluationSource = .actual
+        var feelsLikePreferences = preferences
+        feelsLikePreferences.temperatureEvaluationSource = .feelsLike
+
+        #expect(engine.evaluate(weather, preferences: actualPreferences).status == .open)
+        #expect(engine.evaluate(weather, preferences: feelsLikePreferences).reasons == [.extremeTemperature])
+    }
+
+    @Test
     func invertedTemperatureRangeDoesNotCrashRecommendation() {
         var preferences = preferences
         preferences.idealMinimumFahrenheit = 70
@@ -157,6 +182,7 @@ struct RecommendationEngineTests {
     private func weather(
         date: Date? = nil,
         temp: Double = 65,
+        apparentTemp: Double? = nil,
         dewPoint: Double = 55,
         rain: Double = 0.1,
         wind: Double = 10,
@@ -167,6 +193,7 @@ struct RecommendationEngineTests {
         HourlyWeather(
             date: date ?? start,
             temperatureFahrenheit: temp,
+            apparentTemperatureFahrenheit: apparentTemp,
             dewPointFahrenheit: dewPoint,
             precipitationChance: rain,
             isPrecipitating: precipitating,
