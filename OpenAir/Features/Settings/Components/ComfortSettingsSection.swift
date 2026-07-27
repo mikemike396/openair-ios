@@ -11,6 +11,12 @@ struct ComfortSettingsSection: View {
                 }
             }
 
+            Picker("Temperature source", selection: preferenceBinding(\.temperatureEvaluationSource)) {
+                ForEach(TemperatureEvaluationSource.allCases) { source in
+                    Text(source.title).tag(source)
+                }
+            }
+
             temperatureSlider(
                 title: "Minimum temperature",
                 keyPath: \.idealMinimumFahrenheit,

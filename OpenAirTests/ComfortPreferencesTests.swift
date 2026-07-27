@@ -42,4 +42,14 @@ struct ComfortPreferencesTests {
         #expect(normalized.idealMinimumFahrenheit == .maximumConfigurableIdealMinimumFahrenheit)
         #expect(normalized.idealMaximumFahrenheit == .maximumConfigurableIdealMinimumFahrenheit)
     }
+
+    @Test
+    func resetSliderDefaultsRestoresFeelsLikeTemperatureSource() {
+        var preferences = ComfortPreferences.default(for: .init(identifier: "en_US"))
+        preferences.temperatureEvaluationSource = .actual
+
+        preferences.resetSliderDefaults(for: .init(identifier: "en_US"))
+
+        #expect(preferences.temperatureEvaluationSource == .feelsLike)
+    }
 }

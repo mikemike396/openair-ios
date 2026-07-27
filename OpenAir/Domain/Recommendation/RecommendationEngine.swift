@@ -8,6 +8,7 @@ protocol RecommendationEvaluating: Sendable {
 struct RecommendationEngine: RecommendationEvaluating {
     func evaluate(_ weather: HourlyWeather, preferences: ComfortPreferences) -> Recommendation {
         let preferences = preferences.normalized
+        let temperature = weather.temperatureFahrenheit(for: preferences.temperatureEvaluationSource)
         if weather.isThunderstorm {
             return .init(status: .keepClosed, reasons: [.thunderstorm])
         }
@@ -18,8 +19,8 @@ struct RecommendationEngine: RecommendationEvaluating {
            displayedValue(gustMPH, exceeds: preferences.maximumGustMPH) {
             return .init(status: .keepClosed, reasons: [.dangerousGusts])
         }
-        if weather.temperatureFahrenheit < .minimumConfigurableTemperatureFahrenheit ||
-            weather.temperatureFahrenheit > .maximumConfigurableTemperatureFahrenheit {
+        if temperature < .minimumConfigurableTemperatureFahrenheit ||
+            temperature > .maximumConfigurableTemperatureFahrenheit {
             return .init(status: .keepClosed, reasons: [.extremeTemperature])
         }
         if weather.dewPointFahrenheit > .maximumConfigurableDewPointFahrenheit {
@@ -30,7 +31,7 @@ struct RecommendationEngine: RecommendationEvaluating {
         var negative: [RecommendationReason] = []
 
         if displayedValue(
-            weather.temperatureFahrenheit,
+            temperature,
             within: preferences.idealMinimumFahrenheit...preferences.idealMaximumFahrenheit,
             unit: preferences.temperatureUnit
         ) {

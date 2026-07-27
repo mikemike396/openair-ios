@@ -5,10 +5,11 @@ struct ForecastTimelineItem: Identifiable {
     let status: RecommendationStatus
     let reasons: [RecommendationReason]
     let unit: TemperatureUnit
+    let temperatureSource: TemperatureEvaluationSource
 
     var id: Date { weather.date }
     var date: Date { weather.date }
-    var temperature: Double { unit.chartValue(weather.temperatureFahrenheit) }
+    var temperature: Double { unit.chartValue(weather.temperatureFahrenheit(for: temperatureSource)) }
     var dewPoint: Double { unit.chartValue(weather.dewPointFahrenheit) }
 }
 

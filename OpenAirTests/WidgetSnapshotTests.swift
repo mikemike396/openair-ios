@@ -47,6 +47,40 @@ func widgetSnapshotUsesCelsiusPreference() {
     #expect(widgetSnapshot.dewPoint == 11)
     #expect(widgetSnapshot.unitSymbol == "°C")
 }
+
+@Test
+func widgetSnapshotUsesSelectedTemperatureSource() {
+    let current = HourlyWeather(
+        date: .now,
+        temperatureFahrenheit: 62,
+        apparentTemperatureFahrenheit: 48,
+        dewPointFahrenheit: 50,
+        precipitationChance: 0,
+        isPrecipitating: false,
+        isThunderstorm: false,
+        windMPH: 15,
+        gustMPH: nil,
+        symbolName: "sun.max"
+    )
+    let snapshot = WeatherSnapshot(
+        locationName: "Wilmington, DE",
+        coordinate: .init(latitude: 39.7, longitude: -75.5),
+        fetchedAt: .now,
+        current: current,
+        hourly: [current]
+    )
+    var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
+    preferences.temperatureEvaluationSource = .feelsLike
+    let plan = RecommendationEngine().plan(snapshot: snapshot, preferences: preferences)
+
+    let widgetSnapshot = WidgetSnapshotFactory().makeSnapshot(
+        weather: snapshot,
+        plan: plan,
+        preferences: preferences
+    )
+
+    #expect(widgetSnapshot.temperature == 48)
+}
 @Test
 func widgetSnapshotStoreRoundTripsPayload() throws {
     let defaults = try #require(UserDefaults(suiteName: "WidgetSnapshotTests.\(UUID().uuidString)"))

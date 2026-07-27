@@ -4,6 +4,7 @@ struct RecommendationCard: View {
     let snapshot: WeatherSnapshot
     let plan: RecommendationPlan
     let unit: TemperatureUnit
+    let temperatureSource: TemperatureEvaluationSource
     let isRefreshing: Bool
     private let cardHorizontalPadding: CGFloat = 20
 
@@ -31,7 +32,7 @@ struct RecommendationCard: View {
 
                 Divider()
                 HStack {
-                    Label("\(unit.display(snapshot.current.temperatureFahrenheit))\(unit.symbol)", systemImage: snapshot.current.symbolName)
+                    Label("\(unit.display(snapshot.current.temperatureFahrenheit(for: temperatureSource)))\(unit.symbol)", systemImage: snapshot.current.symbolName)
                     Spacer()
                     Label {
                         Text("\(unit.display(snapshot.current.dewPointFahrenheit))\(unit.symbol)")

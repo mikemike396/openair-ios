@@ -9,6 +9,7 @@ struct ComfortPreferences: Codable, Sendable, Equatable {
     var maximumGustMPH: Double = .defaultMaximumGustMPH
     var alertsEnabled = true
     var temperatureUnit: TemperatureUnit = .fahrenheit
+    var temperatureEvaluationSource: TemperatureEvaluationSource = .feelsLike
 
     private enum CodingKeys: String, CodingKey {
         case idealMinimumFahrenheit
@@ -19,6 +20,7 @@ struct ComfortPreferences: Codable, Sendable, Equatable {
         case maximumGustMPH
         case alertsEnabled
         case temperatureUnit
+        case temperatureEvaluationSource
     }
 
     static func `default`(for locale: Locale) -> ComfortPreferences {
@@ -35,6 +37,7 @@ struct ComfortPreferences: Codable, Sendable, Equatable {
         maximumRainChance = defaults.maximumRainChance
         maximumWindMPH = defaults.maximumWindMPH
         maximumGustMPH = defaults.maximumGustMPH
+        temperatureEvaluationSource = defaults.temperatureEvaluationSource
     }
 
     var normalized: ComfortPreferences {
@@ -81,5 +84,6 @@ extension ComfortPreferences {
         maximumGustMPH = try container.decodeIfPresent(Double.self, forKey: .maximumGustMPH) ?? .defaultMaximumGustMPH
         alertsEnabled = try container.decodeIfPresent(Bool.self, forKey: .alertsEnabled) ?? true
         temperatureUnit = try container.decodeIfPresent(TemperatureUnit.self, forKey: .temperatureUnit) ?? .fahrenheit
+        temperatureEvaluationSource = try container.decodeIfPresent(TemperatureEvaluationSource.self, forKey: .temperatureEvaluationSource) ?? .feelsLike
     }
 }

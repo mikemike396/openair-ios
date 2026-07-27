@@ -80,9 +80,24 @@ struct ForecastChartDataTests {
         #expect(selected.date == start.addingTimeInterval(60 * 60))
     }
 
+    @Test
+    func usesSelectedTemperatureSourceForChartValues() {
+        var preferences = ComfortPreferences()
+        preferences.temperatureEvaluationSource = .feelsLike
+        let data = ForecastChartData(
+            items: [forecastItem(date: .now, temperature: 62, apparentTemperature: 48, dewPoint: 50)],
+            unit: .fahrenheit,
+            preferences: preferences
+        )
+
+        #expect(data.items[0].temperature == 48)
+        #expect(data.temperature.title == "Feels like")
+    }
+
     private func forecastItem(
         date: Date,
         temperature: Double,
+        apparentTemperature: Double? = nil,
         dewPoint: Double,
         status: RecommendationStatus = .open
     ) -> (weather: HourlyWeather, recommendation: Recommendation) {
@@ -90,6 +105,7 @@ struct ForecastChartDataTests {
             weather: HourlyWeather(
                 date: date,
                 temperatureFahrenheit: temperature,
+                apparentTemperatureFahrenheit: apparentTemperature,
                 dewPointFahrenheit: dewPoint,
                 precipitationChance: 0,
                 isPrecipitating: false,

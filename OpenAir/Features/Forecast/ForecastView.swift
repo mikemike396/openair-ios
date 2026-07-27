@@ -20,7 +20,8 @@ struct ForecastView: View {
                 )
                 HourlyDetailsCard(
                     items: plan.hourly,
-                    unit: unit
+                    unit: unit,
+                    temperatureSource: preferences.temperatureEvaluationSource
                 )
                 WeatherAttributionView()
             }

@@ -63,6 +63,7 @@ struct DashboardView: View {
                         snapshot: snapshot,
                         plan: plan,
                         unit: store.preferences.temperatureUnit,
+                        temperatureSource: store.preferences.temperatureEvaluationSource,
                         isRefreshing: store.refreshState == .refreshing
                     )
                     NavigationLink {

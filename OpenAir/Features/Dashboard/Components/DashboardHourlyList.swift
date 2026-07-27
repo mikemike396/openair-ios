@@ -25,7 +25,12 @@ struct HourlyList: View {
                                     initialSelectedDate: item.weather.date
                                 )
                             } label: {
-                                HourlyTile(item: item, index: index, unit: unit)
+                                HourlyTile(
+                                    item: item,
+                                    index: index,
+                                    unit: unit,
+                                    temperatureSource: preferences.temperatureEvaluationSource
+                                )
                             }
                             .buttonStyle(.plain)
                         }
@@ -43,6 +48,7 @@ private struct HourlyTile: View {
     let item: (weather: HourlyWeather, recommendation: Recommendation)
     let index: Int
     let unit: TemperatureUnit
+    let temperatureSource: TemperatureEvaluationSource
 
     var body: some View {
         VStack(spacing: 10) {
@@ -58,7 +64,7 @@ private struct HourlyTile: View {
                 .frame(height: 28)
 
             VStack(spacing: 4) {
-                Text("\(unit.display(item.weather.temperatureFahrenheit))\(unit.symbol)")
+                Text("\(unit.display(item.weather.temperatureFahrenheit(for: temperatureSource)))\(unit.symbol)")
                     .font(.headline.weight(.semibold))
                 HStack(spacing: 3) {
                     Image(systemName: "drop")
@@ -81,6 +87,6 @@ private struct HourlyTile: View {
 
     private var accessibilityLabel: String {
         let time = index == 0 ? "Now" : item.weather.date.formatted(date: .omitted, time: .shortened)
-        return "\(time), temperature \(unit.display(item.weather.temperatureFahrenheit))\(unit.symbol), dew point \(unit.display(item.weather.dewPointFahrenheit))\(unit.symbol)"
+        return "\(time), \(temperatureSource.temperatureLabel.lowercased()) \(unit.display(item.weather.temperatureFahrenheit(for: temperatureSource)))\(unit.symbol), dew point \(unit.display(item.weather.dewPointFahrenheit))\(unit.symbol)"
     }
 }
