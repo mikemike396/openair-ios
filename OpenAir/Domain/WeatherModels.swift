@@ -138,7 +138,7 @@ enum TemperatureEvaluationSource: String, Codable, CaseIterable, Identifiable, S
     var title: String {
         switch self {
         case .actual:
-            "Actual temperature"
+            "Actual"
         case .feelsLike:
             "Feels like"
         }
