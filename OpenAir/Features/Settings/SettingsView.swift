@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var isShowingTipJar = false
+    @State private var isShowingTipView = false
 
     var body: some View {
         NavigationStack {
@@ -11,7 +11,7 @@ struct SettingsView: View {
                 ComfortSettingsSection()
                 AlertSettingsSection()
                 SupportAndAboutSettingsSections {
-                    isShowingTipJar = true
+                    isShowingTipView = true
                 }
             }
             .navigationTitle("Settings")
@@ -22,8 +22,8 @@ struct SettingsView: View {
                 }
             }
         }
-        .sheet(isPresented: $isShowingTipJar) {
-            TipJarView()
+        .sheet(isPresented: $isShowingTipView) {
+            TipView()
         }
     }
 }

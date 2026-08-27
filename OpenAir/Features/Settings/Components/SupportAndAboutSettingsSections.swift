@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SupportAndAboutSettingsSections: View {
-    let showTipJar: () -> Void
+    let showTipView: () -> Void
 
     var body: some View {
         Section("Support") {
@@ -15,7 +15,7 @@ struct SupportAndAboutSettingsSections: View {
                 Label("Contribute on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
             }
             Button {
-                showTipJar()
+                showTipView()
             } label: {
                 Label("Leave a Tip", systemImage: "heart")
             }

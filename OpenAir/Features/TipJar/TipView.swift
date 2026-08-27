@@ -1,7 +1,7 @@
 import StoreKit
 import SwiftUI
 
-struct TipJarView: View {
+struct TipView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var alert: TipPurchaseAlert?
 
@@ -22,9 +22,9 @@ struct TipJarView: View {
                 }
 
                 StoreView(ids: TipProductID.allIdentifiers)
-                .productViewStyle(.compact)
-                .productDescription(.hidden)
-                .storeButton(.hidden, for: .restorePurchases, .cancellation)
+                    .productViewStyle(.compact)
+                    .productDescription(.hidden)
+                    .storeButton(.hidden, for: .restorePurchases, .cancellation)
 
                 Spacer(minLength: 0)
             }
