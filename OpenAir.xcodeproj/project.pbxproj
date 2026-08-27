@@ -93,6 +93,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Resources/Info.plist,
+				Resources/OpenAir.storekit,
 			);
 			target = A00000000000000000000030 /* OpenAir */;
 		};

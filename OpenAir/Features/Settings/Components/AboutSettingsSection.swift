@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AboutSettingsSection: View {
+    let showTipJar: () -> Void
+
     var body: some View {
         Section("About") {
             Link(destination: .openAirSupportEmail) {
@@ -11,6 +13,11 @@ struct AboutSettingsSection: View {
             }
             Link(destination: .appStoreReview) {
                 LabeledContent("Rate OpenAir", value: "App Store")
+            }
+            Button {
+                showTipJar()
+            } label: {
+                LabeledContent("Support OpenAir", value: "Leave a tip")
             }
             LabeledContent("Version", value: "\(String.appVersion) (\(String.buildNumber))")
             WeatherLegalLinkView()
