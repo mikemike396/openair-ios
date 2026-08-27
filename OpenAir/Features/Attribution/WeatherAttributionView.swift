@@ -59,13 +59,18 @@ struct WeatherLegalLinkView: View {
         Group {
             if let attribution {
                 Link(destination: attribution.legalPageURL) {
-                    LabeledContent("Weather legal attribution", value: "Apple Weather")
+                    Label("Apple Weather Attribution", systemImage: "cloud.sun")
                 }
                 .accessibilityLabel("Apple Weather legal attribution")
             } else {
-                LabeledContent("Weather legal attribution", value: "Loading…")
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Loading Apple Weather legal attribution")
+                HStack {
+                    Label("Apple Weather Attribution", systemImage: "cloud.sun")
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Loading Apple Weather legal attribution")
             }
         }
         .task {

@@ -10,7 +10,7 @@ struct SettingsView: View {
                 LocationSettingsSection()
                 ComfortSettingsSection()
                 AlertSettingsSection()
-                AboutSettingsSection {
+                SupportAndAboutSettingsSections {
                     isShowingTipJar = true
                 }
             }

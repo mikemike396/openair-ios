@@ -21,17 +21,14 @@ struct TipJarView: View {
                         .multilineTextAlignment(.center)
                 }
 
-                StoreView(ids: TipProductID.allIdentifiers) { _ in
-                    Image(systemName: "heart.fill")
-                }
+                StoreView(ids: TipProductID.allIdentifiers)
                 .productViewStyle(.compact)
+                .productDescription(.hidden)
                 .storeButton(.hidden, for: .restorePurchases, .cancellation)
 
                 Spacer(minLength: 0)
             }
             .padding()
-            .navigationTitle("Tip Jar")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

@@ -1,29 +1,33 @@
 import SwiftUI
 
-struct AboutSettingsSection: View {
+struct SupportAndAboutSettingsSections: View {
     let showTipJar: () -> Void
 
     var body: some View {
-        Section("About") {
+        Section("Support") {
             Link(destination: .openAirSupportEmail) {
-                LabeledContent("Support", value: String.openAirSupportEmail)
-            }
-            Link(destination: .githubRepo) {
-                LabeledContent("Open source / contribute", value: "GitHub")
+                Label("Email Support", systemImage: "envelope")
             }
             Link(destination: .appStoreReview) {
-                LabeledContent("Rate OpenAir", value: "App Store")
+                Label("Rate OpenAir", systemImage: "star")
+            }
+            Link(destination: .githubRepo) {
+                Label("Contribute on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
             }
             Button {
                 showTipJar()
             } label: {
-                LabeledContent("Support OpenAir", value: "Leave a tip")
+                Label("Leave a Tip", systemImage: "heart")
             }
+        }
+
+        Section {
             LabeledContent("Version", value: "\(String.appVersion) (\(String.buildNumber))")
             WeatherLegalLinkView()
+        } header: {
+            Text("About")
+        } footer: {
             Text("OpenAir uses outdoor conditions only. It does not measure indoor temperature, humidity, air quality, or safety hazards.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
     }
 }
