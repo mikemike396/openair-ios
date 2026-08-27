@@ -3,7 +3,7 @@ import SwiftUI
 
 struct TipJarView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var alert: TipJarAlert?
+    @State private var alert: TipPurchaseAlert?
 
     var body: some View {
         NavigationStack {

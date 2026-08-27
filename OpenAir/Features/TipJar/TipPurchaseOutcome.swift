@@ -6,35 +6,43 @@ enum TipPurchaseOutcome: Equatable, Sendable {
     case cancelled
     case failed
 
-    var alert: TipJarAlert? {
+    var alert: TipPurchaseAlert? {
         switch self {
         case .purchased:
-            TipJarAlert(
-                title: "Thank You",
-                message: "Your support helps keep OpenAir improving."
-            )
+            .thankYou
         case .pending:
-            TipJarAlert(
-                title: "Tip Pending",
-                message: "The App Store will complete your tip after it is approved."
-            )
+            .pending
         case .failed:
-            TipJarAlert(
-                title: "Tip Not Completed",
-                message: "The purchase could not be verified. Please try again."
-            )
+            .failed
         case .cancelled:
             nil
         }
     }
 }
 
-struct TipJarAlert: Identifiable, Equatable, Sendable {
-    let id = UUID()
-    let title: String
-    let message: String
+enum TipPurchaseAlert: Identifiable, Equatable, Sendable {
+    case thankYou
+    case pending
+    case failed
 
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.title == rhs.title && lhs.message == rhs.message
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .thankYou: "Thank You"
+        case .pending: "Tip Pending"
+        case .failed: "Tip Not Completed"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .thankYou:
+            "Your support helps maintain and improve OpenAir."
+        case .pending:
+            "The App Store will complete your tip after it is approved."
+        case .failed:
+            "The tip could not be completed. Please try again."
+        }
     }
 }
