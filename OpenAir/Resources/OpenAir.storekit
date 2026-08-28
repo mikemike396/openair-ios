@@ -1,0 +1,72 @@
+{
+  "identifier" : "F6A1D3A4-FF0C-4AB1-9A0E-26F83FE049A1",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "911AA986-9D18-49B6-82E3-9382DB4230EB",
+      "localizations" : [
+        {
+          "description" : "An optional tip to support OpenAir.",
+          "displayName" : "Small Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.openairapp.openair.tip.small",
+      "referenceName" : "Small Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6CB0CC32-BF33-4E41-9362-CFFB7AA65A6A",
+      "localizations" : [
+        {
+          "description" : "An optional tip to support OpenAir.",
+          "displayName" : "Medium Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.openairapp.openair.tip.medium",
+      "referenceName" : "Medium Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "81532149-7F13-4AAE-98E0-99277B35DFA6",
+      "localizations" : [
+        {
+          "description" : "An optional tip to support OpenAir.",
+          "displayName" : "Large Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.openairapp.openair.tip.large",
+      "referenceName" : "Large Tip",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6777466080",
+    "_developerTeamID" : "99Z3NY9PHK",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 1
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

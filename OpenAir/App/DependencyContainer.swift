@@ -5,6 +5,7 @@ final class DependencyContainer {
     let userPreferenceStore: UserPreferenceStoring
     let appReviewManager: AppReviewManager
     let appStore: AppStore
+    let tipTransactionObserver: TipTransactionObserver
 
     init() {
         let userPreferenceStore = UserPreferenceStore()
@@ -18,6 +19,7 @@ final class DependencyContainer {
         self.userPreferenceStore = userPreferenceStore
         self.appReviewManager = appReviewManager
         self.appStore = appStore
+        self.tipTransactionObserver = TipTransactionObserver()
         
         setup()
     }
