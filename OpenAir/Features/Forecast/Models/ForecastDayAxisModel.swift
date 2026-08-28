@@ -17,52 +17,114 @@ struct ForecastDayAxisLabel: Identifiable, Equatable {
     ) -> [ForecastDayAxisLabel] {
         guard width > 0, domain.upperBound > domain.lowerBound else { return [] }
 
-        let labelInset = min(labelWidth / 2, width / 2)
-        var visibleLabels: [ForecastDayAxisLabel] = []
-
-        for span in daySpans(for: domain, calendar: calendar) {
-            let startPosition = width * fraction(for: span.start, in: domain)
-            let endPosition = width * fraction(for: span.end, in: domain)
-            let position = width * fraction(for: span.midpoint, in: domain)
-
-            guard endPosition - startPosition >= labelWidth else { continue }
-            guard labelInset...width - labelInset ~= position else { continue }
-
-            let label = ForecastDayAxisLabel(
-                date: span.start,
-                text: weekdayLabel(for: span.start, calendar: calendar, locale: locale),
-                position: position
+        let duration = domain.upperBound.timeIntervalSince(domain.lowerBound)
+        if duration <= 48 * 60 * 60 {
+            return hourlyLabels(
+                for: domain,
+                width: width,
+                calendar: calendar,
+                locale: locale,
+                labelWidth: labelWidth,
+                minimumSpacing: minimumSpacing
             )
-
-            if visibleLabels.isEmpty || label.position - (visibleLabels.last?.position ?? 0) >= minimumSpacing {
-                visibleLabels.append(label)
-            }
         }
 
-        return visibleLabels
+        return dailyLabels(
+            for: domain,
+            width: width,
+            calendar: calendar,
+            locale: locale,
+            labelWidth: labelWidth,
+            minimumSpacing: minimumSpacing,
+            dayInterval: duration <= 5 * 24 * 60 * 60 ? 1 : 2
+        )
     }
 
-    private static func daySpans(
+    private static func hourlyLabels(
         for domain: ClosedRange<Date>,
-        calendar: Calendar
-    ) -> [DaySpan] {
-        guard domain.upperBound > domain.lowerBound else { return [] }
+        width: CGFloat,
+        calendar: Calendar,
+        locale: Locale,
+        labelWidth: CGFloat,
+        minimumSpacing: CGFloat
+    ) -> [ForecastDayAxisLabel] {
+        let duration = domain.upperBound.timeIntervalSince(domain.lowerBound)
+        let intervalHours = duration <= 24 * 60 * 60 ? 4 : 6
+        let labelInset = min(labelWidth / 2, width / 2)
+        let effectiveMinimumSpacing = min(minimumSpacing, 38)
+        var labels: [ForecastDayAxisLabel] = []
+        var marker = calendar.dateInterval(of: .hour, for: domain.lowerBound)?.start ?? domain.lowerBound
 
-        var spans: [DaySpan] = []
-        var start = domain.lowerBound
-
-        while start < domain.upperBound {
-            let startOfDay = calendar.startOfDay(for: start)
-            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
-                break
-            }
-
-            let end = min(nextDay, domain.upperBound)
-            spans.append(DaySpan(start: start, end: end))
-            start = end
+        while marker < domain.lowerBound || calendar.component(.hour, from: marker) % intervalHours != 0 {
+            guard let nextHour = calendar.date(byAdding: .hour, value: 1, to: marker) else { return labels }
+            marker = nextHour
         }
 
-        return spans
+        while marker < domain.upperBound {
+            let position = width * fraction(for: marker, in: domain)
+            if labelInset...width - labelInset ~= position,
+               labels.isEmpty || position - (labels.last?.position ?? 0) >= effectiveMinimumSpacing
+            {
+                labels.append(
+                    ForecastDayAxisLabel(
+                        date: marker,
+                        text: hourlyLabel(for: marker, calendar: calendar, locale: locale),
+                        position: position
+                    )
+                )
+            }
+
+            guard let nextMarker = calendar.date(byAdding: .hour, value: intervalHours, to: marker) else {
+                return labels
+            }
+            marker = nextMarker
+        }
+
+        return labels
+    }
+
+    private static func dailyLabels(
+        for domain: ClosedRange<Date>,
+        width: CGFloat,
+        calendar: Calendar,
+        locale: Locale,
+        labelWidth: CGFloat,
+        minimumSpacing: CGFloat,
+        dayInterval: Int
+    ) -> [ForecastDayAxisLabel] {
+        let labelInset = min(labelWidth / 2, width / 2)
+        var labels: [ForecastDayAxisLabel] = []
+        var day = calendar.startOfDay(for: domain.lowerBound)
+
+        guard let firstDay = calendar.date(byAdding: .day, value: 1, to: day) else { return [] }
+        day = firstDay
+
+        while day < domain.upperBound {
+            let position = width * fraction(for: midpoint(of: day, calendar: calendar), in: domain)
+            if labelInset...width - labelInset ~= position,
+               labels.isEmpty || position - (labels.last?.position ?? 0) >= minimumSpacing
+            {
+                labels.append(
+                    ForecastDayAxisLabel(
+                        date: day,
+                        text: dailyLabel(for: day, calendar: calendar, locale: locale),
+                        position: position
+                    )
+                )
+            }
+
+            guard let nextDay = calendar.date(byAdding: .day, value: dayInterval, to: day) else {
+                return labels
+            }
+            day = nextDay
+        }
+
+        return labels
+    }
+
+    private static func midpoint(of day: Date, calendar: Calendar) -> Date {
+        guard let nextDay = calendar.date(byAdding: .day, value: 1, to: day) else { return day }
+        return day.addingTimeInterval(nextDay.timeIntervalSince(day) / 2)
     }
 
     private static func fraction(for date: Date, in domain: ClosedRange<Date>) -> CGFloat {
@@ -71,8 +133,27 @@ struct ForecastDayAxisLabel: Identifiable, Equatable {
         return CGFloat(min(max(date.timeIntervalSince(domain.lowerBound) / duration, 0), 1))
     }
 
-    private static func weekdayLabel(for date: Date, calendar: Calendar, locale: Locale) -> String {
+    private static func hourlyLabel(
+        for date: Date,
+        calendar: Calendar,
+        locale: Locale
+    ) -> String {
         date.formatted(
+            Date.FormatStyle(
+                locale: locale,
+                calendar: calendar,
+                timeZone: calendar.timeZone
+            )
+            .hour(.defaultDigits(amPM: .abbreviated))
+        )
+    }
+
+    private static func dailyLabel(
+        for date: Date,
+        calendar: Calendar,
+        locale: Locale
+    ) -> String {
+        let weekday = date.formatted(
             Date.FormatStyle(
                 locale: locale,
                 calendar: calendar,
@@ -80,15 +161,15 @@ struct ForecastDayAxisLabel: Identifiable, Equatable {
             )
             .weekday(.abbreviated)
         )
-    }
-
-    private struct DaySpan {
-        let start: Date
-        let end: Date
-
-        var midpoint: Date {
-            start.addingTimeInterval(end.timeIntervalSince(start) / 2)
-        }
+        let day = date.formatted(
+            Date.FormatStyle(
+                locale: locale,
+                calendar: calendar,
+                timeZone: calendar.timeZone
+            )
+            .day()
+        )
+        return "\(weekday) \(day)"
     }
 }
 

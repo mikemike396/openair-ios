@@ -805,6 +805,7 @@ private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?
     var lastKnownCurrentLocation: SavedPlace?
+    var forecastRange = ForecastRange.tenDays
     var reviewSignificantEventCount = 0
     var lastReviewRequestAttemptAt: Date?
     private var storedPreferences: ComfortPreferences?

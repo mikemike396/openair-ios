@@ -10,6 +10,7 @@ final class DefaultNoOpUserPreferenceStore: UserPreferenceStoring {
     var savedPlace: SavedPlace? = nil
     var lastKnownCurrentLocation: SavedPlace? = nil
     var preferences: ComfortPreferences = .init()
+    var forecastRange: ForecastRange = .tenDays
     var reviewSignificantEventCount: Int = 0
     var lastReviewRequestAttemptAt: Date? = nil
 }

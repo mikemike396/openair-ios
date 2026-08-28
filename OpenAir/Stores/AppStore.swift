@@ -80,6 +80,15 @@ final class AppStore {
         }
     }
 
+    var forecastRange: ForecastRange {
+        get {
+            userPreferences.forecastRange
+        }
+        set {
+            userPreferences.forecastRange = newValue
+        }
+    }
+
     init(
         weather: WeatherProviding = WeatherKitClient(),
         location: LocationProviding = LocationClient(),

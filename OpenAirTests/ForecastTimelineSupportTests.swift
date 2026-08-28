@@ -92,9 +92,9 @@ struct ForecastTimelineSupportTests {
     }
 
     @Test
-    func testDayAxisLabelsDropTooNarrowLeadingDay() throws {
-        let start = try date(hour: 23, minute: 50)
-        let end = try #require(calendar.date(byAdding: .hour, value: 48, to: start))
+    func testOneDayAxisUsesFourHourTimeLabels() throws {
+        let start = try date(hour: 10)
+        let end = try #require(calendar.date(byAdding: .hour, value: 24, to: start))
 
         let labels = ForecastDayAxisLabel.labels(
             for: start...end,
@@ -103,11 +103,11 @@ struct ForecastTimelineSupportTests {
             locale: Locale(identifier: "en_US")
         )
 
-        #expect(labels.map(\.text) == ["Tue", "Wed"])
+        #expect(normalized(labels.map(\.text)) == ["12 PM", "4 PM", "8 PM", "12 AM", "4 AM", "8 AM"])
     }
 
     @Test
-    func testDayAxisLabelsUseWeekdaysWhenSpansFit() throws {
+    func testTwoDayAxisUsesSingleLineTimeLabels() throws {
         let start = try date(hour: 20)
         let end = try #require(calendar.date(byAdding: .hour, value: 48, to: start))
 
@@ -118,22 +118,38 @@ struct ForecastTimelineSupportTests {
             locale: Locale(identifier: "en_US")
         )
 
-        #expect(labels.map(\.text) == ["Mon", "Tue", "Wed"])
+        #expect(labels.allSatisfy { !$0.text.contains("\n") })
+        #expect(normalized(labels.map(\.text)).contains("12 AM"))
     }
 
     @Test
-    func testDayAxisLabelsDropLaterLabelsWhenSpacingIsTooTight() throws {
+    func testFiveDayAxisUsesCompactWeekdayAndDayLabels() throws {
         let start = try date(hour: 20)
-        let end = try #require(calendar.date(byAdding: .hour, value: 48, to: start))
+        let end = try #require(calendar.date(byAdding: .hour, value: 120, to: start))
 
         let labels = ForecastDayAxisLabel.labels(
             for: start...end,
-            width: 110,
+            width: 620,
             calendar: calendar,
             locale: Locale(identifier: "en_US")
         )
 
-        #expect(labels.map(\.text) == ["Tue"])
+        #expect(labels.map(\.text) == ["Tue 9", "Wed 10", "Thu 11", "Fri 12", "Sat 13"])
+    }
+
+    @Test
+    func testTenDayAxisLabelsEveryOtherDayAtPhoneWidth() throws {
+        let start = try date(hour: 20)
+        let end = try #require(calendar.date(byAdding: .hour, value: 240, to: start))
+
+        let labels = ForecastDayAxisLabel.labels(
+            for: start...end,
+            width: 280,
+            calendar: calendar,
+            locale: Locale(identifier: "en_US")
+        )
+
+        #expect(labels.map(\.text) == ["Thu 11", "Sat 13", "Mon 15", "Wed 17"])
     }
 
     @Test
@@ -192,5 +208,9 @@ struct ForecastTimelineSupportTests {
         let startOfDay = try #require(calendar.date(from: startOfDayComponents))
         let date = try #require(calendar.date(byAdding: .hour, value: hour, to: startOfDay))
         return try #require(calendar.date(byAdding: .minute, value: minute, to: date))
+    }
+
+    private func normalized(_ labels: [String]) -> [String] {
+        labels.map { $0.replacingOccurrences(of: "\u{202F}", with: " ") }
     }
 }

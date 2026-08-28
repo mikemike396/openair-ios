@@ -5,9 +5,9 @@ import Testing
 @Suite
 struct ForecastChartDataTests {
     @Test
-    func buildsAtMostFortyEightConvertedTimelineItems() {
+    func buildsConvertedTimelineItemsForTheFullForecastHorizon() {
         let start = Date(timeIntervalSince1970: 1_800_000_000)
-        let sourceItems = (0..<50).map { offset in
+        let sourceItems = (0..<HourlyForecastHorizon.hourCount).map { offset in
             forecastItem(
                 date: start.addingTimeInterval(Double(offset) * 60 * 60),
                 temperature: 68,
@@ -21,11 +21,11 @@ struct ForecastChartDataTests {
             preferences: ComfortPreferences()
         )
 
-        #expect(data.items.count == 48)
+        #expect(data.items.count == HourlyForecastHorizon.hourCount)
         #expect(data.items[0].temperature == 20)
         #expect(data.items[0].dewPoint == 10)
         #expect(data.xDomain.lowerBound == start)
-        #expect(data.xDomain.upperBound == start.addingTimeInterval(48 * 60 * 60))
+        #expect(data.xDomain.upperBound == start.addingTimeInterval(Double(HourlyForecastHorizon.hourCount) * 60 * 60))
     }
 
     @Test

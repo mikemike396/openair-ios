@@ -72,6 +72,7 @@ private final class ReviewUserPreferenceStore: UserPreferenceStoring {
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?
     var lastKnownCurrentLocation: SavedPlace?
+    var forecastRange = ForecastRange.tenDays
     var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
     var reviewSignificantEventCount = 0
     var lastReviewRequestAttemptAt: Date?

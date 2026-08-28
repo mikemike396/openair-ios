@@ -13,12 +13,12 @@ struct ForecastDayAxisView: View {
                     ForEach(labels(for: proxy.size.width)) { label in
                         Text(label.text)
                             .frame(width: 44)
-                            .position(x: label.position, y: 11)
+                            .position(x: label.position, y: 10)
                     }
                 }
             }
         }
-        .font(.caption)
+        .font(.caption2)
         .foregroundStyle(.secondary)
         .accessibilityHidden(true)
     }

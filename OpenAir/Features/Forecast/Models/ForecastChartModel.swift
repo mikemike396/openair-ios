@@ -87,7 +87,7 @@ struct ForecastChartData {
         unit: TemperatureUnit,
         preferences: ComfortPreferences
     ) {
-        let timelineItems = Array(items.prefix(48)).map {
+        let timelineItems = items.map {
             ForecastTimelineItem(
                 weather: $0.weather,
                 status: $0.recommendation.status,
