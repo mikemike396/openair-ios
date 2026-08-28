@@ -13,6 +13,7 @@ struct UserPreferenceStoreTests {
         #expect(store.savedPlace == nil)
         #expect(store.lastKnownCurrentLocation == nil)
         #expect(store.preferences == .default(for: Locale(identifier: "en_US")))
+        #expect(store.forecastRange == .tenDays)
         #expect(store.reviewSignificantEventCount == 0)
         #expect(store.lastReviewRequestAttemptAt == nil)
     }
@@ -68,6 +69,16 @@ struct UserPreferenceStoreTests {
         let restored = fixture.makeStore()
 
         #expect(restored.preferences == preferences)
+    }
+
+    @Test
+    func forecastRangePersists() async {
+        let fixture = UserPreferenceStoreFixture()
+        fixture.makeStore().forecastRange = .fiveDays
+
+        let restored = fixture.makeStore()
+
+        #expect(restored.forecastRange == .fiveDays)
     }
 
     @Test

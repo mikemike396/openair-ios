@@ -17,12 +17,13 @@ extension RecommendationStatus {
 }
 
 struct WeatherCard<Content: View>: View {
+    let contentPadding: CGFloat
     @ViewBuilder let content: Content
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         content
-            .padding(20)
+            .padding(contentPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 24)
@@ -33,6 +34,11 @@ struct WeatherCard<Content: View>: View {
                 RoundedRectangle(cornerRadius: 24)
                     .stroke(borderColor, lineWidth: borderWidth)
             }
+    }
+
+    init(contentPadding: CGFloat = 20, @ViewBuilder content: () -> Content) {
+        self.contentPadding = contentPadding
+        self.content = content()
     }
 
     private var cardOpacity: Double {

@@ -3,6 +3,7 @@ import SwiftUI
 struct HourlyList: View {
     let plan: RecommendationPlan
     let preferences: ComfortPreferences
+    @Binding var forecastRange: ForecastRange
     private let cardHorizontalPadding: CGFloat = 20
 
     private var unit: TemperatureUnit {
@@ -22,6 +23,7 @@ struct HourlyList: View {
                                 ForecastView(
                                     plan: plan,
                                     preferences: preferences,
+                                    forecastRange: $forecastRange,
                                     initialSelectedDate: item.weather.date
                                 )
                             } label: {

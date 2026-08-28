@@ -67,15 +67,36 @@ struct DashboardView: View {
                         isRefreshing: store.refreshState == .refreshing
                     )
                     NavigationLink {
-                        ForecastView(plan: plan, preferences: store.preferences)
+                        ForecastView(
+                            plan: plan,
+                            preferences: store.preferences,
+                            forecastRange: Binding(
+                                get: { store.forecastRange },
+                                set: { store.forecastRange = $0 }
+                            )
+                        )
                     } label: {
                         TodayPlanCard(windows: plan.windows)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityHint("Opens the 48-hour forecast")
-                    HourlyList(plan: plan, preferences: store.preferences)
+                    .accessibilityHint("Opens the 10-day forecast")
+                    HourlyList(
+                        plan: plan,
+                        preferences: store.preferences,
+                        forecastRange: Binding(
+                            get: { store.forecastRange },
+                            set: { store.forecastRange = $0 }
+                        )
+                    )
                     NavigationLink {
-                        ForecastView(plan: plan, preferences: store.preferences)
+                        ForecastView(
+                            plan: plan,
+                            preferences: store.preferences,
+                            forecastRange: Binding(
+                                get: { store.forecastRange },
+                                set: { store.forecastRange = $0 }
+                            )
+                        )
                     } label: {
                         Label("View forecast", systemImage: "chart.xyaxis.line")
                             .frame(maxWidth: .infinity)

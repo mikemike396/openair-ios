@@ -4,12 +4,14 @@ struct ForecastTimelineCard: View {
     private let chartData: ForecastChartData
     let unit: TemperatureUnit
     let initialSelectedDate: Date?
+    let rangeTitle: String
 
     init(
         items: [(weather: HourlyWeather, recommendation: Recommendation)],
         unit: TemperatureUnit,
         preferences: ComfortPreferences,
-        initialSelectedDate: Date?
+        initialSelectedDate: Date?,
+        rangeTitle: String
     ) {
         self.chartData = ForecastChartData(
             items: items,
@@ -18,6 +20,7 @@ struct ForecastTimelineCard: View {
         )
         self.unit = unit
         self.initialSelectedDate = initialSelectedDate
+        self.rangeTitle = rangeTitle
     }
 
     var body: some View {
@@ -25,7 +28,8 @@ struct ForecastTimelineCard: View {
             Content(
                 chartData: chartData,
                 unit: unit,
-                initialSelectedDate: initialSelectedDate
+                initialSelectedDate: initialSelectedDate,
+                rangeTitle: rangeTitle
             )
         }
     }
@@ -34,15 +38,18 @@ struct ForecastTimelineCard: View {
 private struct Content: View {
     let chartData: ForecastChartData
     let unit: TemperatureUnit
+    let rangeTitle: String
     @State private var selectedDate: Date?
 
     init(
         chartData: ForecastChartData,
         unit: TemperatureUnit,
-        initialSelectedDate: Date?
+        initialSelectedDate: Date?,
+        rangeTitle: String
     ) {
         self.chartData = chartData
         self.unit = unit
+        self.rangeTitle = rangeTitle
         _selectedDate = State(
             initialValue: chartData.nearestItem(to: initialSelectedDate ?? .now)?.date
         )
@@ -53,9 +60,9 @@ private struct Content: View {
 
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("48-hour outlook")
+                Text("\(rangeTitle) outlook")
                     .font(.title3.bold())
-                Text("Temperature, dew point, and window status")
+                Text(dateRangeText)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -81,6 +88,17 @@ private struct Content: View {
                 .frame(minHeight: 220)
             }
         }
+    }
+
+    private var dateRangeText: String {
+        guard let firstDate = chartData.items.first?.date,
+              let lastDate = chartData.items.last?.date
+        else {
+            return ""
+        }
+
+        let format = Date.FormatStyle().month(.abbreviated).day()
+        return "\(firstDate.formatted(format)) – \(lastDate.formatted(format))"
     }
 }
 
@@ -153,7 +171,7 @@ private struct LineCharts: View {
             ForecastDayAxisView(
                 xDomain: chartData.xDomain
             )
-            .frame(height: 22)
+            .frame(height: 20)
         }
     }
 }
