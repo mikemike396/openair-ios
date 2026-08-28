@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct HourlyDetailsCard: View {
-    let items: [(weather: HourlyWeather, recommendation: Recommendation)]
     let unit: TemperatureUnit
     let temperatureSource: TemperatureEvaluationSource
     private let days: [HourlyDetailsDay]
@@ -14,7 +13,6 @@ struct HourlyDetailsCard: View {
         unit: TemperatureUnit,
         temperatureSource: TemperatureEvaluationSource
     ) {
-        self.items = items
         self.unit = unit
         self.temperatureSource = temperatureSource
         let days = HourlyDetailsDay.groups(for: items)
