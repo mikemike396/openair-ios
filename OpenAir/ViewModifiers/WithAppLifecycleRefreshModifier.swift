@@ -16,11 +16,11 @@ private struct AppLifecycleRefreshModifier: ViewModifier {
             .task {
                 if scenePhase == .active { await store.start() }
             }
-            .alert("Keep weather updated as you travel", isPresented: $store.showsBackgroundLocationExplanation) {
+            .alert("Weather where you are", isPresented: $store.showsBackgroundLocationExplanation) {
                 Button("Continue") { store.dismissBackgroundLocationExplanation(requestAlways: true) }
                 Button("Not Now", role: .cancel) { store.dismissBackgroundLocationExplanation(requestAlways: false) }
             } message: {
-                Text("Allow “Always” location access to update your local weather, widgets, and window alerts in the background. Otherwise, your location updates only while using OpenAir.")
+                Text("Allow “Always” location access to keep your weather, widgets, and window alerts updated as you travel.")
             }
             .onChange(of: scenePhase) { _, newPhase in
                 // Inactive includes system permission sheets; stop only on background.
