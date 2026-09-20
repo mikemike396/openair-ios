@@ -28,6 +28,8 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.weather</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>OpenAir follows your location as you travel to keep weather, widgets, and window alerts local, even when the app is closed.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>OpenAir uses your location to fetch local weather and tell you when conditions are suitable for opening windows.</string>
 	<key>UIApplicationSceneManifest</key>

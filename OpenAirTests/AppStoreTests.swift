@@ -647,13 +647,15 @@ struct AppStoreTests {
         WeatherCache(url: cacheURL).save(cached)
         markOnboardingCompleted()
         let weather = WeatherSpy(snapshots: [refreshed])
-        let store = makeStore(weather: weather)
+        let location = LocationStub(result: .success(cached.coordinate))
+        let store = makeStore(weather: weather, location: location)
 
         let result = await store.start()
 
         let fetchCount = await weather.fetchCount
         #expect(result == .skipped)
         #expect(fetchCount == 0)
+        #expect(location.requestLocationCount == 1)
         guard case .loaded(let snapshot, _) = store.loadState else {
             Issue.record("Expected cached dashboard state")
             return
@@ -802,6 +804,7 @@ private func appStoreTestSnapshot(fetchedAt: Date) -> WeatherSnapshot {
     )
 }
 private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
+    var hasExplainedBackgroundLocation = false
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?
     var lastKnownCurrentLocation: SavedPlace?
@@ -826,13 +829,27 @@ private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
     }
 }
 private final class LocationStub: LocationProviding {
-    let result: Result<Coordinate, any Error>
+    var onLocationChange: ((Coordinate) -> Void)?
+    var onAuthorizationChange: ((CLAuthorizationStatus) -> Void)?
+    private(set) var alwaysRequests = 0
+    private(set) var monitoringEnabled = false
+    private(set) var monitoringForeground = false
+    var statusOverride: CLAuthorizationStatus?
+    func requestAlwaysAuthorization() { alwaysRequests += 1 }
+    func setMonitoring(enabled: Bool, foreground: Bool) {
+        monitoringEnabled = enabled
+        monitoringForeground = foreground
+    }
+
+    var result: Result<Coordinate, any Error>
     let placename: String?
+    var requestHandler: (() async throws -> Coordinate)?
     private(set) var requestLocationCount = 0
     var authorizationStatus: CLAuthorizationStatus {
+        if let statusOverride { return statusOverride }
         switch result {
-        case .success: .authorizedWhenInUse
-        case .failure: .denied
+        case .success: return .authorizedWhenInUse
+        case .failure: return .denied
         }
     }
 
@@ -844,6 +861,7 @@ private final class LocationStub: LocationProviding {
     func requestAuthorization() {}
     func requestLocation() async throws -> Coordinate {
         requestLocationCount += 1
+        if let requestHandler { return try await requestHandler() }
         return try result.get()
     }
     func placename(for coordinate: Coordinate) async -> String? { placename }
@@ -990,4 +1008,454 @@ private struct NotificationStub: NotificationScheduling {
     func authorizationStatus() async -> UNAuthorizationStatus { .denied }
     func requestAuthorization() async throws -> Bool { false }
     func replaceNotifications(plan: RecommendationPlan, locationName: String, enabled: Bool) async {}
+}
+
+@Suite
+struct AutomaticLocationTests {
+    private let origin = Coordinate(latitude: 39.7391, longitude: -75.5398)
+    private let destination = Coordinate(latitude: 39.95, longitude: -75.16)
+
+    @Test(arguments: [false, true])
+    func manualSelectionSupersedesPendingCurrentLocation(fails: Bool) async {
+        let fixture = TravelFixture()
+        let lookup = SuspendedLocationLookup()
+        fixture.location.requestHandler = { try await lookup.request() }
+        let pending = Task { await fixture.store.useCurrentLocation() }
+        await lookup.waitUntilRequested()
+        #expect(fixture.store.locationSelection.isChoosingCurrentLocation)
+        let manual = SavedPlace(name: "Chosen city", coordinate: destination)
+        await fixture.store.chooseAndRefresh(place: manual)
+        lookup.finish(fails: fails)
+        #expect(await pending.value == false)
+        #expect(fixture.store.savedPlace == manual)
+        #expect(fixture.snapshot?.locationName == "Chosen city")
+        #expect(fixture.store.locationSelection.errorMessage == nil)
+        #expect(!fixture.store.locationSelection.isChoosingCurrentLocation)
+    }
+
+    @Test(arguments: [false, true])
+    func failedAutomaticSwitchPreservesManualCity(completedOnboarding: Bool) async {
+        let fixture = TravelFixture(completedOnboarding: completedOnboarding)
+        let manual = SavedPlace(name: "Home", coordinate: origin)
+        await fixture.store.chooseAndRefresh(place: manual)
+        fixture.location.result = .failure(LocationError.denied)
+        #expect(await fixture.store.useCurrentLocation() == false)
+        #expect(fixture.store.savedPlace == manual)
+        #expect(fixture.preferences.savedPlace == manual)
+        #expect(!fixture.location.monitoringEnabled)
+        #expect(fixture.store.locationSelection.errorMessage != nil)
+        if completedOnboarding { #expect(fixture.snapshot?.locationName == "Home") }
+    }
+
+    @Test(arguments: [CLAuthorizationStatus.denied, .restricted, .authorizedWhenInUse, .authorizedAlways])
+    func locationGuidanceDistinguishesBlockedAccess(status: CLAuthorizationStatus) {
+        let fixture = TravelFixture()
+        fixture.location.onAuthorizationChange?(status)
+        #expect(fixture.store.locationAccessBlocked == (status == .denied || status == .restricted))
+        #expect(fixture.store.needsAlwaysLocationNotice == (status == .authorizedWhenInUse))
+    }
+
+    @Test
+    func activationChecksLocationEvenWithFreshWeather() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.location.result = .success(destination)
+        let result = await fixture.store.refreshOnActivation()
+        #expect(result == .succeeded)
+        #expect(fixture.location.requestLocationCount == 2)
+        #expect(fixture.snapshot?.coordinate == destination)
+    }
+
+    @Test
+    func smallMovementSkipsWeatherButRetainsLatestLocation() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        let nearby = Coordinate(latitude: origin.latitude + 0.001, longitude: origin.longitude)
+        let result = await fixture.store.refreshForLocation(nearby)
+        #expect(result == .skipped)
+        #expect(fixture.snapshot?.coordinate == origin)
+        #expect(fixture.preferences.lastKnownCurrentLocation?.coordinate == nearby)
+        #expect(fixture.weather.fetchCount == 1)
+    }
+
+    @Test
+    func movementPublishesWeatherWidgetsAndNotificationsWithoutRequestingLocationOrReview() async {
+        let fixture = TravelFixture()
+        fixture.location.statusOverride = .authorizedAlways
+        fixture.location.onAuthorizationChange?(.authorizedAlways)
+        await fixture.store.refreshForLocation(destination)
+        #expect(fixture.location.requestLocationCount == 0)
+        #expect(fixture.snapshot?.coordinate == destination)
+        #expect(fixture.widgets.publishedLocationNames == ["Travel city"])
+        #expect(fixture.notifications.names == ["Travel city"])
+        #expect(fixture.preferences.reviewSignificantEventCount == 0)
+    }
+
+    @Test
+    func manualCityStopsMonitoringAndIgnoresMovement() async {
+        let fixture = TravelFixture()
+        fixture.store.setForeground(true)
+        #expect(fixture.location.monitoringEnabled)
+        let manual = SavedPlace(name: "Home", coordinate: origin)
+        await fixture.store.chooseAndRefresh(place: manual)
+        #expect(!fixture.location.monitoringEnabled)
+        #expect(!fixture.store.needsAlwaysLocationNotice)
+        #expect(await fixture.store.refreshForLocation(destination) == .skipped)
+        #expect(fixture.snapshot?.coordinate == origin)
+        #expect(fixture.location.requestLocationCount == 0)
+    }
+
+    @Test
+    func permissionExplanationAppearsOnceAndNoticeTracksAccess() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.store.setForeground(true)
+        #expect(fixture.store.showsBackgroundLocationExplanation)
+        #expect(fixture.store.needsAlwaysLocationNotice)
+        fixture.store.dismissBackgroundLocationExplanation(requestAlways: true)
+        #expect(fixture.location.alwaysRequests == 1)
+        fixture.store.setForeground(false)
+        fixture.store.setForeground(true)
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        fixture.location.statusOverride = .authorizedAlways
+        fixture.location.onAuthorizationChange?(.authorizedAlways)
+        #expect(!fixture.store.needsAlwaysLocationNotice)
+        fixture.location.statusOverride = .denied
+        fixture.location.onAuthorizationChange?(.denied)
+        #expect(!fixture.store.needsAlwaysLocationNotice)
+        #expect(fixture.store.locationAccessBlocked)
+        #expect(await fixture.store.refreshForLocation(destination) == .skipped)
+    }
+
+    @Test
+    func newUserSeesExplanationOnNextVisitNotAfterOnboarding() async {
+        let fixture = TravelFixture(completedOnboarding: false)
+        fixture.store.setForeground(true)
+        await fixture.store.completeOnboarding()
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.preferences.hasExplainedBackgroundLocation)
+        // Active callbacks from permission sheets aren't a new visit.
+        await fixture.store.refreshOnActivation()
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        fixture.store.setForeground(false)
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.showsBackgroundLocationExplanation)
+    }
+
+    @Test
+    func existingUserWaitsForDashboardBeforeExplanation() async {
+        let fixture = TravelFixture()
+        fixture.weather.suspendNext = true
+        let activation = Task { await fixture.store.refreshOnActivation() }
+        await fixture.weather.waitForSuspension()
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        fixture.weather.resume()
+        _ = await activation.value
+        #expect(fixture.store.showsBackgroundLocationExplanation)
+    }
+
+    @Test
+    func failedInitialLoadDoesNotShowExplanation() async {
+        let fixture = TravelFixture()
+        fixture.weather.fails = true
+        await fixture.store.refreshOnActivation()
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.preferences.hasExplainedBackgroundLocation)
+    }
+
+    @Test
+    func decliningAlwaysKeepsForegroundLocationWorking() async {
+        let fixture = TravelFixture()
+        fixture.store.setForeground(true)
+        fixture.store.dismissBackgroundLocationExplanation(requestAlways: false)
+        #expect(fixture.location.alwaysRequests == 0)
+        #expect(fixture.location.monitoringEnabled)
+        #expect(await fixture.store.refreshOnActivation() == .succeeded)
+    }
+
+    @Test
+    func launchRestoresMonitoringWithoutForegroundPermissionPrompt() {
+        let fixture = TravelFixture()
+        fixture.location.statusOverride = .authorizedAlways
+        fixture.store.synchronizeLocationMonitoring()
+        #expect(fixture.location.monitoringEnabled)
+        #expect(!fixture.location.monitoringForeground)
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(fixture.location.requestLocationCount == 0)
+    }
+
+    @Test
+    func newestMovementSurvivesAnInFlightFetch() async {
+        let fixture = TravelFixture()
+        fixture.weather.suspendNext = true
+        let initial = Task { await fixture.store.refreshForLocation(origin) }
+        await fixture.weather.waitForSuspension()
+        await fixture.store.refreshForLocation(Coordinate(latitude: 39.8, longitude: -75.3))
+        await fixture.store.refreshForLocation(destination)
+        fixture.weather.resume()
+        _ = await initial.value
+        #expect(fixture.weather.coordinates == [origin, destination])
+        #expect(fixture.snapshot?.coordinate == destination)
+    }
+
+    @Test
+    func cityChangeDiscardsOldWeatherAndRefreshesSelectedCity() async {
+        let fixture = TravelFixture()
+        fixture.weather.suspendNext = true
+        let initial = Task { await fixture.store.refreshForLocation(origin) }
+        await fixture.weather.waitForSuspension()
+        await fixture.store.chooseAndRefresh(place: SavedPlace(name: "Selected city", coordinate: destination))
+        fixture.weather.resume()
+        _ = await initial.value
+        #expect(fixture.snapshot?.coordinate == destination)
+        #expect(fixture.widgets.publishedLocationNames == ["Selected city"])
+        #expect(fixture.notifications.names == ["Selected city"])
+    }
+
+    @Test
+    func revokedPermissionDiscardsInFlightLocationWeather() async {
+        let fixture = TravelFixture()
+        fixture.weather.suspendNext = true
+        let initial = Task { await fixture.store.refreshForLocation(origin) }
+        await fixture.weather.waitForSuspension()
+        fixture.location.statusOverride = .denied
+        fixture.location.onAuthorizationChange?(.denied)
+        fixture.weather.resume()
+        _ = await initial.value
+        #expect(fixture.widgets.publishedLocationNames.isEmpty)
+        #expect(fixture.notifications.names.isEmpty)
+        guard case .failed = fixture.store.loadState else {
+            Issue.record("Revoked permission must not leave an invalidated request loading")
+            return
+        }
+    }
+
+    @Test
+    func failedTravelRefreshPreservesWeatherAndRetriesAtLatestLocation() async {
+        let fixture = TravelFixture()
+        await fixture.store.refreshForLocation(origin)
+        fixture.weather.fails = true
+        #expect(await fixture.store.refreshForLocation(destination) == .failed)
+        #expect(fixture.snapshot?.coordinate == origin)
+        #expect(fixture.preferences.lastKnownCurrentLocation?.coordinate == destination)
+        fixture.weather.fails = false
+        #expect(await fixture.store.refreshForBackground() == .succeeded)
+        #expect(fixture.snapshot?.coordinate == destination)
+        #expect(fixture.location.requestLocationCount == 0)
+    }
+}
+
+private final class TravelFixture {
+    let preferences = InMemoryUserPreferenceStore()
+    let location = LocationStub(result: .success(.init(latitude: 39.7391, longitude: -75.5398)), placename: "Travel city")
+    let weather = TravelWeatherProvider()
+    let widgets = WidgetSnapshotPublisherSpy()
+    let notifications = TravelNotificationSpy()
+    let store: AppStore
+
+    init(completedOnboarding: Bool = true) {
+        preferences.hasCompletedOnboarding = completedOnboarding
+        store = AppStore(weather: weather, location: location, places: PlaceSearchStub(),
+                         notifications: notifications,
+                         cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "travel-\(UUID()).json")),
+                         widgetPublisher: widgets, userPreferences: preferences,
+                         appReviewManager: AppReviewManager(userPreferences: preferences))
+    }
+
+    var snapshot: WeatherSnapshot? {
+        if case .loaded(let snapshot, _) = store.loadState { return snapshot }
+        return nil
+    }
+}
+
+@MainActor
+private final class TravelWeatherProvider: WeatherProviding {
+    var coordinates: [Coordinate] = []
+    var fetchCount: Int { coordinates.count }
+    var suspendNext = false
+    var fails = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var suspensionWaiter: CheckedContinuation<Void, Never>?
+
+    func fetchWeather(for coordinate: Coordinate, locationName: String) async throws -> WeatherSnapshot {
+        coordinates.append(coordinate)
+        if suspendNext {
+            suspendNext = false
+            await withCheckedContinuation { continuation in
+                self.continuation = continuation
+                suspensionWaiter?.resume()
+                suspensionWaiter = nil
+            }
+        }
+        if fails { throw WeatherProviderError.unavailable }
+        let base = WeatherSnapshot.preview
+        return WeatherSnapshot(locationName: locationName, coordinate: coordinate, fetchedAt: .now,
+                               current: base.current, hourly: base.hourly)
+    }
+
+    func waitForSuspension() async {
+        if continuation != nil { return }
+        await withCheckedContinuation { suspensionWaiter = $0 }
+    }
+
+    func resume() {
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
+private final class TravelNotificationSpy: NotificationScheduling {
+    var names: [String] = []
+    var status: UNAuthorizationStatus = .authorized
+    var requestedStatus: UNAuthorizationStatus = .authorized
+    var requestCount = 0
+    func authorizationStatus() async -> UNAuthorizationStatus { status }
+    func requestAuthorization() async throws -> Bool {
+        requestCount += 1
+        status = requestedStatus
+        return status == .authorized
+    }
+    func replaceNotifications(plan: RecommendationPlan, locationName: String, enabled: Bool) async {
+        names.append(locationName)
+    }
+}
+
+
+@Suite
+struct AlertPermissionTests {
+    @Test
+    func activationReadsPermissionEvenBeforeOnboarding() async {
+        let fixture = TravelFixture()
+        fixture.preferences.hasCompletedOnboarding = false
+        #expect(await fixture.store.refreshOnActivation() == .skipped)
+        #expect(fixture.store.notificationStatus == .authorized)
+        #expect(fixture.notifications.requestCount == 0)
+        fixture.notifications.status = .denied
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.notificationStatus == .denied)
+    }
+
+    @Test
+    func enablingAlertsRequestsPermissionAndSchedulesLoadedForecast() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .notDetermined
+        await fixture.store.usePreviewWeather()
+        await fixture.store.setAlertsEnabled(true)
+        #expect(fixture.store.preferences.alertsEnabled)
+        #expect(fixture.notifications.requestCount == 1)
+        #expect(fixture.store.notificationStatus == .authorized)
+        #expect(!fixture.store.isRequestingNotificationPermission)
+        #expect(!fixture.notifications.names.isEmpty)
+    }
+
+    @Test(arguments: [UNAuthorizationStatus.authorized, .denied, .provisional])
+    func existingPermissionDoesNotPromptAgain(status: UNAuthorizationStatus) async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = status
+        await fixture.store.setAlertsEnabled(true)
+        #expect(fixture.notifications.requestCount == 0)
+        #expect(fixture.store.notificationStatus == status)
+        #expect(fixture.store.alertsEffectivelyEnabled == (status != .denied))
+        #expect(fixture.store.preferences.alertsEnabled == (status != .denied))
+    }
+
+    @Test
+    func deniedRequestLeavesAlertsOff() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .notDetermined
+        fixture.notifications.requestedStatus = .denied
+        #expect(await fixture.store.setAlertsEnabled(true) == false)
+        #expect(!fixture.store.preferences.alertsEnabled)
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+    }
+
+    @Test
+    func grantingPermissionInSettingsCompletesPendingEnable() async {
+        let fixture = TravelFixture()
+        fixture.preferences.hasCompletedOnboarding = false
+        fixture.notifications.status = .denied
+        await fixture.store.setAlertsEnabled(true)
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        fixture.store.enableAlertsWhenPermissionGranted()
+        #expect(fixture.store.preferences.alertsEnabled)
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        await fixture.store.refreshOnActivation()
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        fixture.notifications.status = .authorized
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.alertsEffectivelyEnabled)
+        #expect(fixture.notifications.requestCount == 0)
+    }
+
+    @Test
+    func cancellingPermissionAlertDoesNotEnableAfterExternalPermissionChange() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .denied
+        await fixture.store.setAlertsEnabled(true)
+        // Cancel does not save a pending enable request.
+        fixture.notifications.status = .authorized
+        await fixture.store.refreshNotificationPermission()
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        #expect(!fixture.store.preferences.alertsEnabled)
+    }
+
+    @Test
+    func revokingPermissionTurnsEffectiveSwitchOff() async {
+        let fixture = TravelFixture()
+        await fixture.store.setAlertsEnabled(true)
+        #expect(fixture.store.alertsEffectivelyEnabled)
+        fixture.notifications.status = .denied
+        await fixture.store.refreshNotificationPermission()
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        fixture.notifications.status = .authorized
+        await fixture.store.refreshNotificationPermission()
+        #expect(fixture.store.alertsEffectivelyEnabled)
+        await fixture.store.setAlertsEnabled(false)
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+    }
+
+    @Test
+    func disablingAlertsDoesNotRequestPermission() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .notDetermined
+        await fixture.store.setAlertsEnabled(false)
+        #expect(!fixture.store.preferences.alertsEnabled)
+        #expect(fixture.notifications.requestCount == 0)
+    }
+
+    @Test
+    func declinedRequestUpdatesLabelAndDoesNotRepeatPrompt() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .notDetermined
+        fixture.notifications.requestedStatus = .denied
+        await fixture.store.requestNotificationPermission()
+        #expect(fixture.store.notificationStatus == .denied)
+        await fixture.store.requestNotificationPermission()
+        #expect(fixture.notifications.requestCount == 1)
+    }
+}
+
+@MainActor
+private final class SuspendedLocationLookup {
+    private var continuation: CheckedContinuation<Coordinate, any Error>?
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func request() async throws -> Coordinate {
+        try await withCheckedThrowingContinuation {
+            continuation = $0
+            waiter?.resume()
+            waiter = nil
+        }
+    }
+
+    func waitUntilRequested() async {
+        if continuation != nil { return }
+        await withCheckedContinuation { waiter = $0 }
+    }
+
+    func finish(fails: Bool) {
+        if fails { continuation?.resume(throwing: LocationError.unavailable) }
+        else { continuation?.resume(returning: .init(latitude: 41, longitude: -82)) }
+        continuation = nil
+    }
 }

@@ -1,9 +1,11 @@
 import SwiftUI
+import UIKit
 
 struct LocationSettingsSection: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.openURL) private var openURL
     @State private var query = ""
-    @State private var isChoosingCurrentLocation = false
+    private var selection: LocationSelectionModel { store.locationSelection }
 
     var body: some View {
         Section("Location") {
@@ -15,27 +17,43 @@ struct LocationSettingsSection: View {
                 currentLocationButton(title: "Refresh Current Location", loadingTitle: "Refreshing Location")
             }
 
-            if isChoosingCurrentLocation {
-                ProgressView()
-            }
-
-            if let searchError = store.searchError {
+            if let searchError = selection.errorMessage {
                 Text(searchError)
                     .font(.footnote)
                     .foregroundStyle(.red)
             }
 
-            TextField("Search another city", text: $query)
-                .onSubmit { Task { await store.searchPlaces(query) } }
+            TextField("Search for a city", text: $query)
+                .onSubmit { Task { await selection.searchPlaces(query) } }
                 .task(id: query) {
-                    await store.searchPlacesAfterDebounce(query)
+                    await selection.searchPlaces(query, debounce: true)
                 }
 
-            ForEach(store.searchResults.prefix(4)) { place in
+            ForEach(selection.searchResults.prefix(4)) { place in
                 Button(place.name) {
                     Task {
                         query = ""
                         await store.chooseAndRefresh(place: place)
+                    }
+                }
+            }
+
+            if store.needsAlwaysLocationNotice || (store.locationAccessBlocked && (store.savedPlace == nil || selection.errorMessage != nil)) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label {
+                        Text(store.locationAccessBlocked ? "Location access is off" : "Update weather in the background")
+                    } icon: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    Text(store.locationAccessBlocked
+                         ? "Allow location access in Settings to use your current location, or search for a city above."
+                         : "Allow location access Always to keep weather updated as you travel, even when OpenAir is closed.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                     }
                 }
             }
@@ -46,12 +64,20 @@ struct LocationSettingsSection: View {
         Button {
             Task { await chooseCurrentLocation() }
         } label: {
-            Label(
-                isChoosingCurrentLocation ? loadingTitle : title,
-                systemImage: "location.fill"
-            )
+            HStack {
+                Label(
+                    selection.isChoosingCurrentLocation ? loadingTitle : title,
+                    systemImage: "location.fill"
+                )
+                Spacer()
+                if selection.isChoosingCurrentLocation {
+                    ProgressView()
+                        .tint(.secondary)
+                        .accessibilityHidden(true)
+                }
+            }
         }
-        .disabled(isChoosingCurrentLocation)
+        .disabled(!selection.canUseCurrentLocation)
     }
 
     private var currentLocationName: String {
@@ -62,8 +88,6 @@ struct LocationSettingsSection: View {
     }
 
     private func chooseCurrentLocation() async {
-        isChoosingCurrentLocation = true
         _ = await store.useCurrentLocation()
-        isChoosingCurrentLocation = false
     }
 }

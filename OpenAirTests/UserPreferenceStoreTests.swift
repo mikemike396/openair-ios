@@ -10,6 +10,7 @@ struct UserPreferenceStoreTests {
         let store = fixture.makeStore(locale: Locale(identifier: "en_US"))
 
         #expect(!store.hasCompletedOnboarding)
+        #expect(!store.hasExplainedBackgroundLocation)
         #expect(store.savedPlace == nil)
         #expect(store.lastKnownCurrentLocation == nil)
         #expect(store.preferences == .default(for: Locale(identifier: "en_US")))
@@ -26,6 +27,13 @@ struct UserPreferenceStoreTests {
         let restored = fixture.makeStore()
 
         #expect(restored.hasCompletedOnboarding)
+    }
+
+    @Test
+    func backgroundLocationExplanationPersists() async {
+        let fixture = UserPreferenceStoreFixture()
+        fixture.makeStore().hasExplainedBackgroundLocation = true
+        #expect(fixture.makeStore().hasExplainedBackgroundLocation)
     }
 
     @Test
