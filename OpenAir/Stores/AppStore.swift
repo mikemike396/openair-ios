@@ -29,7 +29,7 @@ enum RefreshState: Equatable {
 final class AppStore {
     private let weather: any WeatherProviding
     let location: any LocationProviding
-    private let places: any PlaceSearching
+    let locationSelection: LocationSelectionModel
     private let evaluator: any RecommendationEvaluating
     private let notifications: any NotificationScheduling
     private let cache: WeatherCache
@@ -37,28 +37,40 @@ final class AppStore {
     private let appReviewManager: AppReviewManager
     private var userPreferences: any UserPreferenceStoring
 
+    // View state
     var loadState: DashboardLoadState = .idle
     private(set) var refreshState: RefreshState = .idle
     private(set) var locationAuthorization: CLAuthorizationStatus
     var showsBackgroundLocationExplanation = false
-    private var isForeground = false
-    private var defersBackgroundLocationExplanation: Bool
-    private var weatherContextVersion = 0
-    private var locationSelectionVersion = 0
-    private struct RefreshRequest {
-        let keepsLoadedState: Bool
-        let updateLocation: Bool
-        let coordinate: Coordinate?
-        let onlyIfNeeded: Bool
-    }
-    private var pendingRefresh: RefreshRequest?
-    private var locationWork: Task<Void, Never>?
-    private var locationBackgroundTask: UIBackgroundTaskIdentifier = .invalid
-    var searchResults: [SavedPlace] = []
-    var isSearching = false
-    var searchError: String?
     var notificationStatus: UNAuthorizationStatus = .notDetermined
     private(set) var isRequestingNotificationPermission = false
+
+    // Location lifecycle
+    private var isForeground = false
+    private var defersBackgroundLocationExplanation: Bool
+    private var locationWork: Task<Void, Never>?
+    private var locationBackgroundTask: UIBackgroundTaskIdentifier = .invalid
+
+    // Invalidates weather results when location selection or access changes.
+    private var weatherContextVersion = 0
+    // Invalidates a pending location choice only when another selection is made.
+    // Permission changes must still allow that choice to report its error.
+    private var locationSelectionVersion = 0
+
+    // Refresh queue
+    private enum RefreshLocationSource {
+        case currentLocation
+        case deliveredLocation(Coordinate)
+        case savedLocation
+    }
+
+    private struct RefreshRequest {
+        let keepsLoadedState: Bool
+        let source: RefreshLocationSource
+        let onlyIfNeeded: Bool
+    }
+
+    private var pendingRefresh: RefreshRequest?
 
     var hasCompletedOnboarding: Bool {
         get {
@@ -125,7 +137,7 @@ final class AppStore {
         self.weather = weather
         self.location = location
         self.locationAuthorization = location.authorizationStatus
-        self.places = places
+        self.locationSelection = LocationSelectionModel(places: places)
         self.evaluator = evaluator
         self.notifications = notifications
         self.cache = cache
@@ -221,7 +233,7 @@ final class AppStore {
             }
         }
         if refreshState == .refreshing {
-            pendingRefresh = RefreshRequest(keepsLoadedState: true, updateLocation: false, coordinate: coordinate, onlyIfNeeded: true)
+            pendingRefresh = RefreshRequest(keepsLoadedState: true, source: .deliveredLocation(coordinate), onlyIfNeeded: true)
             return
         }
         locationWork = Task { [weak self] in
@@ -241,7 +253,7 @@ final class AppStore {
     func refreshForLocation(_ coordinate: Coordinate) async -> RefreshResult {
         guard hasCompletedOnboarding, savedPlace == nil,
               locationAuthorization == .authorizedWhenInUse || locationAuthorization == .authorizedAlways else { return .skipped }
-        return await performRefresh(keepsLoadedState: true, updateLocation: false, coordinate: coordinate, onlyIfNeeded: true)
+        return await performRefresh(keepsLoadedState: true, source: .deliveredLocation(coordinate), onlyIfNeeded: true)
     }
 
     @discardableResult
@@ -306,49 +318,9 @@ final class AppStore {
         await refresh()
     }
 
-    func searchPlaces(_ query: String) async {
-        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else {
-            searchResults = []
-            searchError = nil
-            return
-        }
-
-        isSearching = true
-        defer { isSearching = false }
-        do {
-            searchResults = try await places.search(query: query)
-            searchError = nil
-        } catch is CancellationError {
-            return
-        } catch {
-            searchError = error.localizedDescription
-            searchResults = []
-        }
-    }
-
-    func searchPlacesAfterDebounce(_ query: String) async {
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedQuery.count >= 2 else {
-            clearSearchResults()
-            return
-        }
-
-        try? await Task.sleep(for: .milliseconds(300))
-        guard !Task.isCancelled else { return }
-
-        await searchPlaces(trimmedQuery)
-    }
-
-    func clearSearchResults() {
-        searchResults = []
-        searchError = nil
-    }
-
     func choose(place: SavedPlace) {
         savedPlace = place
-        searchResults = []
-        searchError = nil
+        locationSelection.clearSearchResults()
     }
 
     func chooseAndRefresh(place: SavedPlace) async {
@@ -358,6 +330,8 @@ final class AppStore {
     }
 
     func useCurrentLocation() async -> Bool {
+        guard locationSelection.beginCurrentLocation() else { return false }
+        defer { locationSelection.endCurrentLocation() }
         let selectionVersion = locationSelectionVersion
         let coordinate: Coordinate
         do {
@@ -368,21 +342,22 @@ final class AppStore {
             guard selectionVersion == locationSelectionVersion else { return false }
             savedPlace = nil
             lastKnownCurrentLocation = SavedPlace(name: name, coordinate: coordinate)
-            searchResults = []
-            searchError = nil
+            locationSelection.clearSearchResults()
         } catch {
             guard selectionVersion == locationSelectionVersion else { return false }
-            searchError = error.localizedDescription
+            locationSelection.errorMessage = error.localizedDescription
             return false
         }
         guard hasCompletedOnboarding else { return true }
-        let result = await performRefresh(keepsLoadedState: true, updateLocation: false, coordinate: coordinate)
+        let committedSelectionVersion = locationSelectionVersion
+        let result = await performRefresh(keepsLoadedState: true, source: .deliveredLocation(coordinate))
+        guard committedSelectionVersion == locationSelectionVersion else { return false }
         if result == .failed {
-            searchError = locationAuthorization == .denied || locationAuthorization == .restricted
+            locationSelection.errorMessage = locationAuthorization == .denied || locationAuthorization == .restricted
                 ? LocationError.denied.localizedDescription : LocationError.unavailable.localizedDescription
             return false
         }
-        searchError = nil
+        locationSelection.errorMessage = nil
         offerBackgroundLocationExplanation()
         return true
     }
@@ -409,7 +384,7 @@ final class AppStore {
     ///   - If no last-known current location exists, the refresh is skipped successfully.
     @discardableResult
     func refreshForBackground() async -> RefreshResult {
-        await performRefresh(keepsLoadedState: true, updateLocation: false)
+        await performRefresh(keepsLoadedState: true, source: .savedLocation)
     }
     
     /// Refreshes weather only when the current loaded forecast is old enough.
@@ -453,15 +428,16 @@ final class AppStore {
     @discardableResult
     private func performRefresh(
         keepsLoadedState: Bool,
-        updateLocation: Bool = true,
-        coordinate: Coordinate? = nil,
+        source: RefreshLocationSource = .currentLocation,
         onlyIfNeeded: Bool = false
     ) async -> RefreshResult {
-        let request = RefreshRequest(keepsLoadedState: keepsLoadedState, updateLocation: updateLocation,
-                                     coordinate: coordinate, onlyIfNeeded: onlyIfNeeded)
+        let request = RefreshRequest(keepsLoadedState: keepsLoadedState, source: source, onlyIfNeeded: onlyIfNeeded)
         guard refreshState != .refreshing else {
             // A scheduled fetch must not replace a newer movement event.
-            if pendingRefresh == nil || coordinate != nil || updateLocation {
+            switch source {
+            case .savedLocation:
+                if pendingRefresh == nil { pendingRefresh = request }
+            case .currentLocation, .deliveredLocation:
                 pendingRefresh = request
             }
             return .skipped
@@ -503,7 +479,7 @@ final class AppStore {
         }
 
         do {
-            guard let target = try await targetForWeatherRefresh(updateLocation: request.updateLocation, coordinate: request.coordinate)
+            guard let target = try await targetForWeatherRefresh(source: request.source)
             else { return .skipped }
             try Task.checkCancellation()
             guard contextVersion == weatherContextVersion else { return .skipped }
@@ -542,18 +518,21 @@ final class AppStore {
         appReviewManager.recordSignificantEvent()
     }
 
-    private func targetForWeatherRefresh(updateLocation: Bool, coordinate: Coordinate? = nil) async throws -> (coordinate: Coordinate, name: String)? {
+    private func targetForWeatherRefresh(source: RefreshLocationSource) async throws -> (coordinate: Coordinate, name: String)? {
+        // The user's selected city takes precedence over every automatic source.
         if let savedPlace {
             return (savedPlace.coordinate, savedPlace.name)
         }
-        
-        if let coordinate { return try await resolveCurrentLocationTarget(coordinate: coordinate) }
-        guard updateLocation
-        else {
+
+        switch source {
+        case .currentLocation:
+            return try await resolveCurrentLocationTarget()
+        case .deliveredLocation(let coordinate):
+            return try await resolveCurrentLocationTarget(coordinate: coordinate)
+        case .savedLocation:
             guard let lastKnownCurrentLocation else { return nil }
             return (lastKnownCurrentLocation.coordinate, lastKnownCurrentLocation.name)
         }
-        return try await resolveCurrentLocationTarget()
     }
 
     private func resolveCurrentLocationTarget(coordinate deliveredCoordinate: Coordinate? = nil) async throws -> (coordinate: Coordinate, name: String) {

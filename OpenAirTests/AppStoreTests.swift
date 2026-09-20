@@ -843,6 +843,7 @@ private final class LocationStub: LocationProviding {
 
     var result: Result<Coordinate, any Error>
     let placename: String?
+    var requestHandler: (() async throws -> Coordinate)?
     private(set) var requestLocationCount = 0
     var authorizationStatus: CLAuthorizationStatus {
         if let statusOverride { return statusOverride }
@@ -860,6 +861,7 @@ private final class LocationStub: LocationProviding {
     func requestAuthorization() {}
     func requestLocation() async throws -> Coordinate {
         requestLocationCount += 1
+        if let requestHandler { return try await requestHandler() }
         return try result.get()
     }
     func placename(for coordinate: Coordinate) async -> String? { placename }
@@ -1014,6 +1016,24 @@ struct AutomaticLocationTests {
     private let destination = Coordinate(latitude: 39.95, longitude: -75.16)
 
     @Test(arguments: [false, true])
+    func manualSelectionSupersedesPendingCurrentLocation(fails: Bool) async {
+        let fixture = TravelFixture()
+        let lookup = SuspendedLocationLookup()
+        fixture.location.requestHandler = { try await lookup.request() }
+        let pending = Task { await fixture.store.useCurrentLocation() }
+        await lookup.waitUntilRequested()
+        #expect(fixture.store.locationSelection.isChoosingCurrentLocation)
+        let manual = SavedPlace(name: "Chosen city", coordinate: destination)
+        await fixture.store.chooseAndRefresh(place: manual)
+        lookup.finish(fails: fails)
+        #expect(await pending.value == false)
+        #expect(fixture.store.savedPlace == manual)
+        #expect(fixture.snapshot?.locationName == "Chosen city")
+        #expect(fixture.store.locationSelection.errorMessage == nil)
+        #expect(!fixture.store.locationSelection.isChoosingCurrentLocation)
+    }
+
+    @Test(arguments: [false, true])
     func failedAutomaticSwitchPreservesManualCity(completedOnboarding: Bool) async {
         let fixture = TravelFixture(completedOnboarding: completedOnboarding)
         let manual = SavedPlace(name: "Home", coordinate: origin)
@@ -1023,7 +1043,7 @@ struct AutomaticLocationTests {
         #expect(fixture.store.savedPlace == manual)
         #expect(fixture.preferences.savedPlace == manual)
         #expect(!fixture.location.monitoringEnabled)
-        #expect(fixture.store.searchError != nil)
+        #expect(fixture.store.locationSelection.errorMessage != nil)
         if completedOnboarding { #expect(fixture.snapshot?.locationName == "Home") }
     }
 
@@ -1412,5 +1432,30 @@ struct AlertPermissionTests {
         #expect(fixture.store.notificationStatus == .denied)
         await fixture.store.requestNotificationPermission()
         #expect(fixture.notifications.requestCount == 1)
+    }
+}
+
+@MainActor
+private final class SuspendedLocationLookup {
+    private var continuation: CheckedContinuation<Coordinate, any Error>?
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func request() async throws -> Coordinate {
+        try await withCheckedThrowingContinuation {
+            continuation = $0
+            waiter?.resume()
+            waiter = nil
+        }
+    }
+
+    func waitUntilRequested() async {
+        if continuation != nil { return }
+        await withCheckedContinuation { waiter = $0 }
+    }
+
+    func finish(fails: Bool) {
+        if fails { continuation?.resume(throwing: LocationError.unavailable) }
+        else { continuation?.resume(returning: .init(latitude: 41, longitude: -82)) }
+        continuation = nil
     }
 }

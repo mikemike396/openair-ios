@@ -6,8 +6,7 @@ struct OnboardingView: View {
     @State private var page = 0
     @State private var query = ""
     @State private var hasChosenLocation = false
-    @State private var isChoosingCurrentLocation = false
-    @State private var currentLocationMessage: String?
+    private var selection: LocationSelectionModel { store.locationSelection }
 
     @FocusState private var isSearchFocused: Bool
 
@@ -46,21 +45,21 @@ struct OnboardingView: View {
                                     OnboardingLocationPage(
                                         query: $query,
                                         isSearchFocused: $isSearchFocused,
-                                        isChoosingCurrentLocation: isChoosingCurrentLocation,
-                                        currentLocationMessage: currentLocationMessage,
+                                        isChoosingCurrentLocation: selection.isChoosingCurrentLocation,
+                                        currentLocationMessage: selection.errorMessage,
                                         selectedLocationLabel: selectedLocationLabel,
                                         savedPlace: store.savedPlace,
-                                        searchResults: Array(store.searchResults.prefix(4)),
-                                        isSearching: store.isSearching,
+                                        searchResults: Array(selection.searchResults.prefix(4)),
+                                        isSearching: selection.isSearching,
                                         searchResultsAnchor: searchResultsAnchor,
                                         chooseCurrentLocation: {
                                             Task { await chooseCurrentLocation() }
                                         },
                                         submitSearch: {
-                                            Task { await store.searchPlaces(query) }
+                                            Task { await selection.searchPlaces(query) }
                                         },
                                         searchAfterDebounce: { query in
-                                            await store.searchPlacesAfterDebounce(query)
+                                            await selection.searchPlaces(query, debounce: true)
                                         },
                                         choosePlace: choosePlace
                                     )
@@ -140,7 +139,7 @@ struct OnboardingView: View {
     private var canContinue: Bool {
         switch page {
         case 1:
-            (hasChosenLocation || store.savedPlace != nil) && !isChoosingCurrentLocation
+            store.savedPlace != nil || (hasChosenLocation && !selection.isChoosingCurrentLocation)
         default:
             true
         }
@@ -158,18 +157,13 @@ struct OnboardingView: View {
     }
 
     private func chooseCurrentLocation() async {
-        isChoosingCurrentLocation = true
-        currentLocationMessage = nil
-
         let didChoose = await store.useCurrentLocation()
 
-        isChoosingCurrentLocation = false
         hasChosenLocation = didChoose
-        currentLocationMessage = didChoose ? nil : store.searchError
 
         if didChoose {
             query = ""
-            store.clearSearchResults()
+            selection.clearSearchResults()
             isSearchFocused = false
         }
     }
@@ -178,7 +172,7 @@ struct OnboardingView: View {
         store.choose(place: place)
         query = ""
         hasChosenLocation = true
-        currentLocationMessage = nil
+        selection.errorMessage = nil
         isSearchFocused = false
     }
 }
