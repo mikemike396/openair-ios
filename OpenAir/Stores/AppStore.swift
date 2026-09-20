@@ -259,11 +259,32 @@ final class AppStore {
         await refreshNotificationPermission()
     }
 
-    func setAlertsEnabled(_ enabled: Bool) async {
+    var notificationsAllowed: Bool {
+        switch notificationStatus {
+        case .authorized, .provisional, .ephemeral: true
+        default: false
+        }
+    }
+
+    var alertsEffectivelyEnabled: Bool {
+        preferences.alertsEnabled && notificationsAllowed
+    }
+
+    /// Keep the user's choice across the trip to Settings (and an app relaunch).
+    /// The visible switch remains off until notification permission is granted.
+    func enableAlertsWhenPermissionGranted() {
         var updated = preferences
-        updated.alertsEnabled = enabled
+        updated.alertsEnabled = true
         preferences = updated.normalized
+    }
+
+    @discardableResult
+    func setAlertsEnabled(_ enabled: Bool) async -> Bool {
         if enabled { await requestNotificationPermission() }
+        var updated = preferences
+        updated.alertsEnabled = enabled && notificationsAllowed
+        preferences = updated.normalized
+        return updated.alertsEnabled
     }
 
     func completeOnboarding() async {

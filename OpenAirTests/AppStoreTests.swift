@@ -1275,6 +1275,63 @@ struct AlertPermissionTests {
         await fixture.store.setAlertsEnabled(true)
         #expect(fixture.notifications.requestCount == 0)
         #expect(fixture.store.notificationStatus == status)
+        #expect(fixture.store.alertsEffectivelyEnabled == (status != .denied))
+        #expect(fixture.store.preferences.alertsEnabled == (status != .denied))
+    }
+
+    @Test
+    func deniedRequestLeavesAlertsOff() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .notDetermined
+        fixture.notifications.requestedStatus = .denied
+        #expect(await fixture.store.setAlertsEnabled(true) == false)
+        #expect(!fixture.store.preferences.alertsEnabled)
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+    }
+
+    @Test
+    func grantingPermissionInSettingsCompletesPendingEnable() async {
+        let fixture = TravelFixture()
+        fixture.preferences.hasCompletedOnboarding = false
+        fixture.notifications.status = .denied
+        await fixture.store.setAlertsEnabled(true)
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        fixture.store.enableAlertsWhenPermissionGranted()
+        #expect(fixture.store.preferences.alertsEnabled)
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        await fixture.store.refreshOnActivation()
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        fixture.notifications.status = .authorized
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.alertsEffectivelyEnabled)
+        #expect(fixture.notifications.requestCount == 0)
+    }
+
+    @Test
+    func cancellingPermissionAlertDoesNotEnableAfterExternalPermissionChange() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .denied
+        await fixture.store.setAlertsEnabled(true)
+        // Cancel does not save a pending enable request.
+        fixture.notifications.status = .authorized
+        await fixture.store.refreshNotificationPermission()
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        #expect(!fixture.store.preferences.alertsEnabled)
+    }
+
+    @Test
+    func revokingPermissionTurnsEffectiveSwitchOff() async {
+        let fixture = TravelFixture()
+        await fixture.store.setAlertsEnabled(true)
+        #expect(fixture.store.alertsEffectivelyEnabled)
+        fixture.notifications.status = .denied
+        await fixture.store.refreshNotificationPermission()
+        #expect(!fixture.store.alertsEffectivelyEnabled)
+        fixture.notifications.status = .authorized
+        await fixture.store.refreshNotificationPermission()
+        #expect(fixture.store.alertsEffectivelyEnabled)
+        await fixture.store.setAlertsEnabled(false)
+        #expect(!fixture.store.alertsEffectivelyEnabled)
     }
 
     @Test
