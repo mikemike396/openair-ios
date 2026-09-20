@@ -1226,9 +1226,74 @@ private final class TravelWeatherProvider: WeatherProviding {
 
 private final class TravelNotificationSpy: NotificationScheduling {
     var names: [String] = []
-    func authorizationStatus() async -> UNAuthorizationStatus { .authorized }
-    func requestAuthorization() async throws -> Bool { true }
+    var status: UNAuthorizationStatus = .authorized
+    var requestedStatus: UNAuthorizationStatus = .authorized
+    var requestCount = 0
+    func authorizationStatus() async -> UNAuthorizationStatus { status }
+    func requestAuthorization() async throws -> Bool {
+        requestCount += 1
+        status = requestedStatus
+        return status == .authorized
+    }
     func replaceNotifications(plan: RecommendationPlan, locationName: String, enabled: Bool) async {
         names.append(locationName)
+    }
+}
+
+
+@Suite
+struct AlertPermissionTests {
+    @Test
+    func activationReadsPermissionEvenBeforeOnboarding() async {
+        let fixture = TravelFixture()
+        fixture.preferences.hasCompletedOnboarding = false
+        #expect(await fixture.store.refreshOnActivation() == .skipped)
+        #expect(fixture.store.notificationStatus == .authorized)
+        #expect(fixture.notifications.requestCount == 0)
+        fixture.notifications.status = .denied
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.notificationStatus == .denied)
+    }
+
+    @Test
+    func enablingAlertsRequestsPermissionAndSchedulesLoadedForecast() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .notDetermined
+        await fixture.store.usePreviewWeather()
+        await fixture.store.setAlertsEnabled(true)
+        #expect(fixture.store.preferences.alertsEnabled)
+        #expect(fixture.notifications.requestCount == 1)
+        #expect(fixture.store.notificationStatus == .authorized)
+        #expect(!fixture.store.isRequestingNotificationPermission)
+        #expect(!fixture.notifications.names.isEmpty)
+    }
+
+    @Test(arguments: [UNAuthorizationStatus.authorized, .denied, .provisional])
+    func existingPermissionDoesNotPromptAgain(status: UNAuthorizationStatus) async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = status
+        await fixture.store.setAlertsEnabled(true)
+        #expect(fixture.notifications.requestCount == 0)
+        #expect(fixture.store.notificationStatus == status)
+    }
+
+    @Test
+    func disablingAlertsDoesNotRequestPermission() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .notDetermined
+        await fixture.store.setAlertsEnabled(false)
+        #expect(!fixture.store.preferences.alertsEnabled)
+        #expect(fixture.notifications.requestCount == 0)
+    }
+
+    @Test
+    func declinedRequestUpdatesLabelAndDoesNotRepeatPrompt() async {
+        let fixture = TravelFixture()
+        fixture.notifications.status = .notDetermined
+        fixture.notifications.requestedStatus = .denied
+        await fixture.store.requestNotificationPermission()
+        #expect(fixture.store.notificationStatus == .denied)
+        await fixture.store.requestNotificationPermission()
+        #expect(fixture.notifications.requestCount == 1)
     }
 }

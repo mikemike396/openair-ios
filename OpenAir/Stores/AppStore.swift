@@ -56,6 +56,7 @@ final class AppStore {
     var isSearching = false
     var searchError: String?
     var notificationStatus: UNAuthorizationStatus = .notDetermined
+    private(set) var isRequestingNotificationPermission = false
 
     var hasCompletedOnboarding: Bool {
         get {
@@ -185,6 +186,7 @@ final class AppStore {
     @discardableResult
     func refreshOnActivation() async -> RefreshResult {
         setForeground(true)
+        await refreshNotificationPermission()
         guard hasCompletedOnboarding else { return .skipped }
         if savedPlace != nil { return await refreshIfNeeded() }
         let result = await performRefresh(keepsLoadedState: true, onlyIfNeeded: true)
@@ -232,15 +234,36 @@ final class AppStore {
 
     @discardableResult
     func start() async -> RefreshResult {
-        setForeground(true)
+        await refreshOnActivation()
+    }
+
+    func refreshNotificationPermission() async {
+        let previousStatus = notificationStatus
         notificationStatus = await notifications.authorizationStatus()
-        guard hasCompletedOnboarding else { return .skipped }
-        return await refreshOnActivation()
+        if notificationStatus != previousStatus,
+           case .loaded(let snapshot, let plan) = loadState {
+            await notifications.replaceNotifications(
+                plan: plan, locationName: snapshot.locationName, enabled: preferences.alertsEnabled
+            )
+        }
     }
 
     func requestNotificationPermission() async {
-        _ = try? await notifications.requestAuthorization()
-        notificationStatus = await notifications.authorizationStatus()
+        guard !isRequestingNotificationPermission else { return }
+        isRequestingNotificationPermission = true
+        defer { isRequestingNotificationPermission = false }
+        await refreshNotificationPermission()
+        if notificationStatus == .notDetermined {
+            _ = try? await notifications.requestAuthorization()
+        }
+        await refreshNotificationPermission()
+    }
+
+    func setAlertsEnabled(_ enabled: Bool) async {
+        var updated = preferences
+        updated.alertsEnabled = enabled
+        preferences = updated.normalized
+        if enabled { await requestNotificationPermission() }
     }
 
     func completeOnboarding() async {
