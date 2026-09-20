@@ -17,19 +17,6 @@ struct LocationSettingsSection: View {
                 currentLocationButton(title: "Refresh Current Location", loadingTitle: "Refreshing Location")
             }
 
-            if store.needsAlwaysLocationNotice {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Background location is off", systemImage: "location.slash")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Allow location access Always to keep weather updated as you travel, even when OpenAir is closed.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Button("Open Settings") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                    }
-                }
-            }
-
             if isChoosingCurrentLocation {
                 ProgressView()
             }
@@ -40,7 +27,7 @@ struct LocationSettingsSection: View {
                     .foregroundStyle(.red)
             }
 
-            TextField("Search another city", text: $query)
+            TextField("Search for a city", text: $query)
                 .onSubmit { Task { await store.searchPlaces(query) } }
                 .task(id: query) {
                     await store.searchPlacesAfterDebounce(query)
@@ -51,6 +38,24 @@ struct LocationSettingsSection: View {
                     Task {
                         query = ""
                         await store.chooseAndRefresh(place: place)
+                    }
+                }
+            }
+
+            if store.needsAlwaysLocationNotice {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label {
+                        Text("Update weather in the background")
+                    } icon: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    Text("Allow location access Always to keep weather updated as you travel, even when OpenAir is closed.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                     }
                 }
             }

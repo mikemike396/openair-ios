@@ -42,6 +42,7 @@ final class AppStore {
     private(set) var locationAuthorization: CLAuthorizationStatus
     var showsBackgroundLocationExplanation = false
     private var isForeground = false
+    private var defersBackgroundLocationExplanation: Bool
     private var locationGeneration = 0
     private struct RefreshRequest {
         let keepsLoadedState: Bool
@@ -128,6 +129,7 @@ final class AppStore {
         self.cache = cache
         self.widgetPublisher = widgetPublisher
         self.userPreferences = userPreferences
+        self.defersBackgroundLocationExplanation = !userPreferences.hasCompletedOnboarding
         self.appReviewManager = appReviewManager
         if hasCompletedOnboarding, let cached = cache.load() {
             let plan = evaluator.plan(snapshot: cached, preferences: preferences)
@@ -152,6 +154,9 @@ final class AppStore {
 
     func setForeground(_ foreground: Bool) {
         isForeground = foreground
+        if !foreground && hasCompletedOnboarding {
+            defersBackgroundLocationExplanation = false
+        }
         locationAuthorization = location.authorizationStatus
         synchronizeLocationMonitoring()
         if foreground { offerBackgroundLocationExplanation() }
@@ -169,7 +174,8 @@ final class AppStore {
     }
 
     private func offerBackgroundLocationExplanation() {
-        guard isForeground, hasCompletedOnboarding, savedPlace == nil,
+        guard isForeground, hasCompletedOnboarding, !defersBackgroundLocationExplanation,
+              case .loaded = loadState, savedPlace == nil,
               locationAuthorization == .authorizedWhenInUse,
               !userPreferences.hasExplainedBackgroundLocation else { return }
         showsBackgroundLocationExplanation = true
@@ -460,6 +466,7 @@ final class AppStore {
         }
         scheduleBackgroundRefresh()
         endLocationBackgroundTask()
+        offerBackgroundLocationExplanation()
         return firstResult ?? .skipped
     }
 

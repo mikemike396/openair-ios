@@ -1066,6 +1066,7 @@ struct AutomaticLocationTests {
     @Test
     func permissionExplanationAppearsOnceAndNoticeTracksAccess() async {
         let fixture = TravelFixture()
+        await fixture.store.refresh()
         fixture.store.setForeground(true)
         #expect(fixture.store.showsBackgroundLocationExplanation)
         #expect(fixture.store.needsAlwaysLocationNotice)
@@ -1081,6 +1082,42 @@ struct AutomaticLocationTests {
         fixture.location.onAuthorizationChange?(.denied)
         #expect(fixture.store.needsAlwaysLocationNotice)
         #expect(await fixture.store.refreshForLocation(destination) == .skipped)
+    }
+
+    @Test
+    func newUserSeesExplanationOnNextVisitNotAfterOnboarding() async {
+        let fixture = TravelFixture(completedOnboarding: false)
+        fixture.store.setForeground(true)
+        await fixture.store.completeOnboarding()
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.preferences.hasExplainedBackgroundLocation)
+        // Active callbacks from permission sheets aren't a new visit.
+        await fixture.store.refreshOnActivation()
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        fixture.store.setForeground(false)
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.showsBackgroundLocationExplanation)
+    }
+
+    @Test
+    func existingUserWaitsForDashboardBeforeExplanation() async {
+        let fixture = TravelFixture()
+        fixture.weather.suspendNext = true
+        let activation = Task { await fixture.store.refreshOnActivation() }
+        await fixture.weather.waitForSuspension()
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        fixture.weather.resume()
+        _ = await activation.value
+        #expect(fixture.store.showsBackgroundLocationExplanation)
+    }
+
+    @Test
+    func failedInitialLoadDoesNotShowExplanation() async {
+        let fixture = TravelFixture()
+        fixture.weather.fails = true
+        await fixture.store.refreshOnActivation()
+        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.preferences.hasExplainedBackgroundLocation)
     }
 
     @Test
@@ -1173,8 +1210,8 @@ private final class TravelFixture {
     let notifications = TravelNotificationSpy()
     let store: AppStore
 
-    init() {
-        preferences.hasCompletedOnboarding = true
+    init(completedOnboarding: Bool = true) {
+        preferences.hasCompletedOnboarding = completedOnboarding
         store = AppStore(weather: weather, location: location, places: PlaceSearchStub(),
                          notifications: notifications,
                          cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "travel-\(UUID()).json")),
