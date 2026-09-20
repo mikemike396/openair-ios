@@ -17,10 +17,6 @@ struct LocationSettingsSection: View {
                 currentLocationButton(title: "Refresh Current Location", loadingTitle: "Refreshing Location")
             }
 
-            if selection.isChoosingCurrentLocation {
-                ProgressView()
-            }
-
             if let searchError = selection.errorMessage {
                 Text(searchError)
                     .font(.footnote)
@@ -68,10 +64,18 @@ struct LocationSettingsSection: View {
         Button {
             Task { await chooseCurrentLocation() }
         } label: {
-            Label(
-                selection.isChoosingCurrentLocation ? loadingTitle : title,
-                systemImage: "location.fill"
-            )
+            HStack {
+                Label(
+                    selection.isChoosingCurrentLocation ? loadingTitle : title,
+                    systemImage: "location.fill"
+                )
+                Spacer()
+                if selection.isChoosingCurrentLocation {
+                    ProgressView()
+                        .tint(.secondary)
+                        .accessibilityHidden(true)
+                }
+            }
         }
         .disabled(!selection.canUseCurrentLocation)
     }
