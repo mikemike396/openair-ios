@@ -1,6 +1,10 @@
 import SwiftUI
+import UIKit
+import UserNotifications
 
 struct OnboardingNotificationsPage: View {
+    @Environment(\.openURL) private var openURL
+    let authorizationStatus: UNAuthorizationStatus
     let statusLabel: String
     let requestPermission: () -> Void
 
@@ -18,8 +22,15 @@ struct OnboardingNotificationsPage: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            Button("Allow Notifications", systemImage: "bell.fill", action: requestPermission)
+            if authorizationStatus == .denied {
+                Button("Open Settings", systemImage: "gearshape") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                }
                 .buttonStyle(.glassProminent)
+            } else if authorizationStatus == .notDetermined {
+                Button("Allow Notifications", systemImage: "bell.fill", action: requestPermission)
+                    .buttonStyle(.glassProminent)
+            }
 
             Text(statusLabel)
                 .font(.footnote)

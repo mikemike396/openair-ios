@@ -42,16 +42,18 @@ struct LocationSettingsSection: View {
                 }
             }
 
-            if store.needsAlwaysLocationNotice {
+            if store.needsAlwaysLocationNotice || (store.locationAccessBlocked && (store.savedPlace == nil || store.searchError != nil)) {
                 VStack(alignment: .leading, spacing: 8) {
                     Label {
-                        Text("Update weather in the background")
+                        Text(store.locationAccessBlocked ? "Location access is off" : "Update weather in the background")
                     } icon: {
                         Image(systemName: "info.circle")
                             .foregroundStyle(.secondary)
                     }
                     .font(.subheadline.weight(.semibold))
-                    Text("Allow location access Always to keep weather updated as you travel, even when OpenAir is closed.")
+                    Text(store.locationAccessBlocked
+                         ? "Allow location access in Settings to use your current location, or search for a city above."
+                         : "Allow location access Always to keep weather updated as you travel, even when OpenAir is closed.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Button("Open Settings") {

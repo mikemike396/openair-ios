@@ -66,6 +66,7 @@ struct OnboardingView: View {
                                     )
                                 default:
                                     OnboardingNotificationsPage(
+                                        authorizationStatus: store.notificationStatus,
                                         statusLabel: notificationLabel,
                                         requestPermission: {
                                             Task { await store.requestNotificationPermission() }

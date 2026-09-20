@@ -1013,6 +1013,28 @@ struct AutomaticLocationTests {
     private let origin = Coordinate(latitude: 39.7391, longitude: -75.5398)
     private let destination = Coordinate(latitude: 39.95, longitude: -75.16)
 
+    @Test(arguments: [false, true])
+    func failedAutomaticSwitchPreservesManualCity(completedOnboarding: Bool) async {
+        let fixture = TravelFixture(completedOnboarding: completedOnboarding)
+        let manual = SavedPlace(name: "Home", coordinate: origin)
+        await fixture.store.chooseAndRefresh(place: manual)
+        fixture.location.result = .failure(LocationError.denied)
+        #expect(await fixture.store.useCurrentLocation() == false)
+        #expect(fixture.store.savedPlace == manual)
+        #expect(fixture.preferences.savedPlace == manual)
+        #expect(!fixture.location.monitoringEnabled)
+        #expect(fixture.store.searchError != nil)
+        if completedOnboarding { #expect(fixture.snapshot?.locationName == "Home") }
+    }
+
+    @Test(arguments: [CLAuthorizationStatus.denied, .restricted, .authorizedWhenInUse, .authorizedAlways])
+    func locationGuidanceDistinguishesBlockedAccess(status: CLAuthorizationStatus) {
+        let fixture = TravelFixture()
+        fixture.location.onAuthorizationChange?(status)
+        #expect(fixture.store.locationAccessBlocked == (status == .denied || status == .restricted))
+        #expect(fixture.store.needsAlwaysLocationNotice == (status == .authorizedWhenInUse))
+    }
+
     @Test
     func activationChecksLocationEvenWithFreshWeather() async {
         let fixture = TravelFixture()
@@ -1080,7 +1102,8 @@ struct AutomaticLocationTests {
         #expect(!fixture.store.needsAlwaysLocationNotice)
         fixture.location.statusOverride = .denied
         fixture.location.onAuthorizationChange?(.denied)
-        #expect(fixture.store.needsAlwaysLocationNotice)
+        #expect(!fixture.store.needsAlwaysLocationNotice)
+        #expect(fixture.store.locationAccessBlocked)
         #expect(await fixture.store.refreshForLocation(destination) == .skipped)
     }
 
