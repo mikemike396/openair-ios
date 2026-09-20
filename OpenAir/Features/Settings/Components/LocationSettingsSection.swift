@@ -1,7 +1,9 @@
 import SwiftUI
+import UIKit
 
 struct LocationSettingsSection: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.openURL) private var openURL
     @State private var query = ""
     @State private var isChoosingCurrentLocation = false
 
@@ -13,6 +15,19 @@ struct LocationSettingsSection: View {
             } else {
                 LabeledContent("Current city", value: currentLocationName)
                 currentLocationButton(title: "Refresh Current Location", loadingTitle: "Refreshing Location")
+            }
+
+            if store.needsAlwaysLocationNotice {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Background location is off", systemImage: "location.slash")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Allow location access Always to keep weather updated as you travel, even when OpenAir is closed.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                    }
+                }
             }
 
             if isChoosingCurrentLocation {

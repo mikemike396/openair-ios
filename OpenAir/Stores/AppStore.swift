@@ -4,6 +4,7 @@ import Foundation
 import Observation
 import OSLog
 import UserNotifications
+import UIKit
 
 enum DashboardLoadState {
     case idle
@@ -38,6 +39,19 @@ final class AppStore {
 
     var loadState: DashboardLoadState = .idle
     private(set) var refreshState: RefreshState = .idle
+    private(set) var locationAuthorization: CLAuthorizationStatus
+    var showsBackgroundLocationExplanation = false
+    private var isForeground = false
+    private var locationGeneration = 0
+    private struct RefreshRequest {
+        let keepsLoadedState: Bool
+        let updateLocation: Bool
+        let coordinate: Coordinate?
+        let onlyIfNeeded: Bool
+    }
+    private var pendingRefresh: RefreshRequest?
+    private var locationWork: Task<Void, Never>?
+    private var locationBackgroundTask: UIBackgroundTaskIdentifier = .invalid
     var searchResults: [SavedPlace] = []
     var isSearching = false
     var searchError: String?
@@ -58,6 +72,10 @@ final class AppStore {
         }
         set {
             userPreferences.savedPlace = newValue
+            locationGeneration += 1
+            pendingRefresh = nil
+            showsBackgroundLocationExplanation = false
+            synchronizeLocationMonitoring()
         }
     }
 
@@ -102,6 +120,7 @@ final class AppStore {
     ) {
         self.weather = weather
         self.location = location
+        self.locationAuthorization = location.authorizationStatus
         self.places = places
         self.evaluator = evaluator
         self.notifications = notifications
@@ -113,13 +132,110 @@ final class AppStore {
             let plan = evaluator.plan(snapshot: cached, preferences: preferences)
             loadState = .loaded(snapshot: cached, plan: plan)
         }
+        location.onLocationChange = { [weak self] coordinate in
+            self?.receiveLocation(coordinate)
+        }
+        location.onAuthorizationChange = { [weak self] status in
+            self?.authorizationChanged(status)
+        }
+    }
+
+    var needsAlwaysLocationNotice: Bool {
+        savedPlace == nil && locationAuthorization != .authorizedAlways
+    }
+
+    // Called during application launch too, before any scene exists.
+    func synchronizeLocationMonitoring() {
+        location.setMonitoring(enabled: hasCompletedOnboarding && savedPlace == nil, foreground: isForeground)
+    }
+
+    func setForeground(_ foreground: Bool) {
+        isForeground = foreground
+        locationAuthorization = location.authorizationStatus
+        synchronizeLocationMonitoring()
+        if foreground { offerBackgroundLocationExplanation() }
+    }
+
+    private func authorizationChanged(_ status: CLAuthorizationStatus) {
+        locationAuthorization = status
+        if savedPlace == nil && (status == .denied || status == .restricted) {
+            locationGeneration += 1
+            pendingRefresh = nil
+        }
+        synchronizeLocationMonitoring()
+        if status == .authorizedAlways { showsBackgroundLocationExplanation = false }
+        offerBackgroundLocationExplanation()
+    }
+
+    private func offerBackgroundLocationExplanation() {
+        guard isForeground, hasCompletedOnboarding, savedPlace == nil,
+              locationAuthorization == .authorizedWhenInUse,
+              !userPreferences.hasExplainedBackgroundLocation else { return }
+        showsBackgroundLocationExplanation = true
+    }
+
+    func dismissBackgroundLocationExplanation(requestAlways: Bool) {
+        userPreferences.hasExplainedBackgroundLocation = true
+        showsBackgroundLocationExplanation = false
+        if requestAlways && isForeground && savedPlace == nil {
+            location.requestAlwaysAuthorization()
+        }
+    }
+
+    @discardableResult
+    func refreshOnActivation() async -> RefreshResult {
+        setForeground(true)
+        guard hasCompletedOnboarding else { return .skipped }
+        if savedPlace != nil { return await refreshIfNeeded() }
+        let result = await performRefresh(keepsLoadedState: true, onlyIfNeeded: true)
+        if isForeground { recordSignificantEventIfNeeded(for: result) }
+        return result
+    }
+
+    private func receiveLocation(_ coordinate: Coordinate) {
+        guard hasCompletedOnboarding, savedPlace == nil,
+              locationAuthorization == .authorizedAlways || (isForeground && locationAuthorization == .authorizedWhenInUse) else { return }
+        // Hold a bounded execution allowance for geocoding, weather, and publishing.
+        if locationBackgroundTask == .invalid {
+            locationBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Update local weather") { [weak self] in
+                Task { @MainActor in
+                    self?.locationGeneration += 1
+                    self?.pendingRefresh = nil
+                    self?.locationWork?.cancel()
+                    self?.endLocationBackgroundTask()
+                }
+            }
+        }
+        if refreshState == .refreshing {
+            pendingRefresh = RefreshRequest(keepsLoadedState: true, updateLocation: false, coordinate: coordinate, onlyIfNeeded: true)
+            return
+        }
+        locationWork = Task { [weak self] in
+            guard let self else { return }
+            _ = await refreshForLocation(coordinate)
+            if refreshState != .refreshing { endLocationBackgroundTask() }
+        }
+    }
+
+    private func endLocationBackgroundTask() {
+        guard locationBackgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(locationBackgroundTask)
+        locationBackgroundTask = .invalid
+    }
+
+    @discardableResult
+    func refreshForLocation(_ coordinate: Coordinate) async -> RefreshResult {
+        guard hasCompletedOnboarding, savedPlace == nil,
+              locationAuthorization == .authorizedWhenInUse || locationAuthorization == .authorizedAlways else { return .skipped }
+        return await performRefresh(keepsLoadedState: true, updateLocation: false, coordinate: coordinate, onlyIfNeeded: true)
     }
 
     @discardableResult
     func start() async -> RefreshResult {
+        setForeground(true)
         notificationStatus = await notifications.authorizationStatus()
         guard hasCompletedOnboarding else { return .skipped }
-        return await refreshIfNeeded()
+        return await refreshOnActivation()
     }
 
     func requestNotificationPermission() async {
@@ -129,6 +245,8 @@ final class AppStore {
 
     func completeOnboarding() async {
         hasCompletedOnboarding = true
+        synchronizeLocationMonitoring()
+        offerBackgroundLocationExplanation()
         await refresh()
     }
 
@@ -186,17 +304,25 @@ final class AppStore {
     func useCurrentLocation() async -> Bool {
         savedPlace = nil
         searchResults = []
-        do {
-            _ = try await resolveCurrentLocationTarget()
-            searchError = nil
-            if hasCompletedOnboarding {
-                await performRefresh(keepsLoadedState: false, updateLocation: false)
+        if !hasCompletedOnboarding {
+            do {
+                _ = try await resolveCurrentLocationTarget()
+                searchError = nil
+                return true
+            } catch {
+                searchError = error.localizedDescription
+                return false
             }
-            return true
-        } catch {
-            searchError = error.localizedDescription
+        }
+        let result = await performRefresh(keepsLoadedState: true)
+        if result == .failed {
+            searchError = locationAuthorization == .denied || locationAuthorization == .restricted
+                ? LocationError.denied.localizedDescription : LocationError.unavailable.localizedDescription
             return false
         }
+        searchError = nil
+        offerBackgroundLocationExplanation()
+        return true
     }
 
     /// Refreshes weather for the selected location.
@@ -233,7 +359,7 @@ final class AppStore {
     /// does refresh loaded data, it keeps the current forecast visible while fetching.
     @discardableResult
     func refreshIfNeeded(now: Date = .now) async -> RefreshResult {
-        guard hasCompletedOnboarding else { return .skipped }
+        guard hasCompletedOnboarding, refreshState != .refreshing else { return .skipped }
 
         switch loadState {
         case .idle, .failed:
@@ -265,28 +391,68 @@ final class AppStore {
     @discardableResult
     private func performRefresh(
         keepsLoadedState: Bool,
-        updateLocation: Bool = true
+        updateLocation: Bool = true,
+        coordinate: Coordinate? = nil,
+        onlyIfNeeded: Bool = false
     ) async -> RefreshResult {
-        guard refreshState != .refreshing else { return .skipped }
+        let request = RefreshRequest(keepsLoadedState: keepsLoadedState, updateLocation: updateLocation,
+                                     coordinate: coordinate, onlyIfNeeded: onlyIfNeeded)
+        guard refreshState != .refreshing else {
+            // A scheduled fetch must not replace a newer movement event.
+            if pendingRefresh == nil || coordinate != nil || updateLocation {
+                pendingRefresh = request
+            }
+            return .skipped
+        }
         refreshState = .refreshing
+        var next: RefreshRequest? = request
+        var firstResult: RefreshResult?
+        while let current = next {
+            let result = await executeRefresh(current)
+            if firstResult == nil { firstResult = result }
+            next = Task.isCancelled ? nil : pendingRefresh
+            pendingRefresh = nil
+            refreshState = next != nil ? .refreshing : (result == .failed ? .failed : .idle)
+        }
+        scheduleBackgroundRefresh()
+        endLocationBackgroundTask()
+        return firstResult ?? .skipped
+    }
 
+    private func executeRefresh(_ request: RefreshRequest) async -> RefreshResult {
+        let generation = locationGeneration
         let existingSnapshot: WeatherSnapshot?
-        if keepsLoadedState,
-           case .loaded(let snapshot, _) = loadState {
-            existingSnapshot = snapshot
-        } else {
-            existingSnapshot = nil
-            loadState = .loading
+        if case .loaded(let snapshot, _) = loadState { existingSnapshot = snapshot }
+        else { existingSnapshot = nil }
+        if !request.keepsLoadedState || existingSnapshot == nil { loadState = .loading }
+        defer {
+            // A permission or mode change can invalidate a request before it publishes.
+            // Never leave the dashboard stuck in that request's loading state.
+            if case .loading = loadState {
+                if let existingSnapshot {
+                    loadState = .loaded(snapshot: existingSnapshot, plan: evaluator.plan(snapshot: existingSnapshot, preferences: preferences))
+                } else if locationAuthorization == .denied || locationAuthorization == .restricted {
+                    loadState = .failed(message: LocationError.denied.localizedDescription, cached: nil)
+                } else {
+                    loadState = .idle
+                }
+            }
         }
 
         do {
-            guard let target = try await targetForWeatherRefresh(updateLocation: updateLocation)
-            else {
-                scheduleBackgroundRefresh()
-                refreshState = .idle
+            guard let target = try await targetForWeatherRefresh(updateLocation: request.updateLocation, coordinate: request.coordinate)
+            else { return .skipped }
+            try Task.checkCancellation()
+            guard generation == locationGeneration else { return .skipped }
+            if request.onlyIfNeeded, let snapshot = existingSnapshot,
+               Date.now.timeIntervalSince(snapshot.fetchedAt) < .foregroundRefreshInterval,
+               snapshot.coordinate.clLocation.distance(from: target.coordinate.clLocation) < 1_000 {
+                publishLoadedSnapshot()
                 return .skipped
             }
             let snapshot = try await weather.fetchWeather(for: target.coordinate, locationName: target.name)
+            try Task.checkCancellation()
+            guard generation == locationGeneration else { return .skipped }
             cache.save(snapshot)
             let plan = evaluator.plan(snapshot: snapshot, preferences: preferences)
             loadState = .loaded(snapshot: snapshot, plan: plan)
@@ -296,19 +462,14 @@ final class AppStore {
                 locationName: snapshot.locationName,
                 enabled: preferences.alertsEnabled
             )
-            scheduleBackgroundRefresh()
-            refreshState = .idle
             return .succeeded
         } catch {
-            scheduleBackgroundRefresh()
+            guard generation == locationGeneration else { return .skipped }
             if let cached = existingSnapshot ?? cache.load() {
-                let plan = evaluator.plan(snapshot: cached, preferences: preferences)
-                loadState = .loaded(snapshot: cached, plan: plan)
-                widgetPublisher.publish(weather: cached, plan: plan, preferences: preferences)
+                loadState = .loaded(snapshot: cached, plan: evaluator.plan(snapshot: cached, preferences: preferences))
             } else {
                 loadState = .failed(message: error.localizedDescription, cached: nil)
             }
-            refreshState = .failed
             return .failed
         }
     }
@@ -318,11 +479,12 @@ final class AppStore {
         appReviewManager.recordSignificantEvent()
     }
 
-    private func targetForWeatherRefresh(updateLocation: Bool) async throws -> (coordinate: Coordinate, name: String)? {
+    private func targetForWeatherRefresh(updateLocation: Bool, coordinate: Coordinate? = nil) async throws -> (coordinate: Coordinate, name: String)? {
         if let savedPlace {
             return (savedPlace.coordinate, savedPlace.name)
         }
         
+        if let coordinate { return try await resolveCurrentLocationTarget(coordinate: coordinate) }
         guard updateLocation
         else {
             guard let lastKnownCurrentLocation else { return nil }
@@ -331,9 +493,14 @@ final class AppStore {
         return try await resolveCurrentLocationTarget()
     }
 
-    private func resolveCurrentLocationTarget() async throws -> (coordinate: Coordinate, name: String) {
-        let coordinate = try await location.requestLocation()
+    private func resolveCurrentLocationTarget(coordinate deliveredCoordinate: Coordinate? = nil) async throws -> (coordinate: Coordinate, name: String) {
+        let generation = locationGeneration
+        let coordinate: Coordinate
+        if let deliveredCoordinate { coordinate = deliveredCoordinate }
+        else { coordinate = try await location.requestLocation() }
         let name = await location.placename(for: coordinate) ?? "Current Location"
+        try Task.checkCancellation()
+        guard generation == locationGeneration, savedPlace == nil else { throw CancellationError() }
         lastKnownCurrentLocation = SavedPlace(name: name, coordinate: coordinate)
         return (coordinate, name)
     }
