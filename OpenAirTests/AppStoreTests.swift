@@ -1110,13 +1110,13 @@ struct AutomaticLocationTests {
         let fixture = TravelFixture()
         await fixture.store.refresh()
         fixture.store.setForeground(true)
-        #expect(fixture.store.showsBackgroundLocationExplanation)
+        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
         #expect(fixture.store.needsAlwaysLocationNotice)
         fixture.store.dismissBackgroundLocationExplanation(requestAlways: true)
         #expect(fixture.location.alwaysRequests == 1)
         fixture.store.setForeground(false)
         fixture.store.setForeground(true)
-        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
         fixture.location.statusOverride = .authorizedAlways
         fixture.location.onAuthorizationChange?(.authorizedAlways)
         #expect(!fixture.store.needsAlwaysLocationNotice)
@@ -1132,14 +1132,31 @@ struct AutomaticLocationTests {
         let fixture = TravelFixture(completedOnboarding: false)
         fixture.store.setForeground(true)
         await fixture.store.completeOnboarding()
-        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
         #expect(!fixture.preferences.hasExplainedBackgroundLocation)
         // Active callbacks from permission sheets aren't a new visit.
         await fixture.store.refreshOnActivation()
-        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
         fixture.store.setForeground(false)
         await fixture.store.refreshOnActivation()
-        #expect(fixture.store.showsBackgroundLocationExplanation)
+        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
+    }
+
+    @Test
+    func cachedUpgradeRemainsEligibleUntilUserResponds() {
+        let fixture = TravelFixture(cachedSnapshot: .preview)
+        #expect(fixture.snapshot != nil)
+        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
+        fixture.store.setForeground(true)
+        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
+        #expect(fixture.weather.fetchCount == 0)
+        #expect(!fixture.preferences.hasExplainedBackgroundLocation)
+        fixture.store.setForeground(false)
+        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
+        fixture.store.setForeground(true)
+        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
+        fixture.store.dismissBackgroundLocationExplanation(requestAlways: false)
+        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
     }
 
     @Test
@@ -1148,10 +1165,10 @@ struct AutomaticLocationTests {
         fixture.weather.suspendNext = true
         let activation = Task { await fixture.store.refreshOnActivation() }
         await fixture.weather.waitForSuspension()
-        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
         fixture.weather.resume()
         _ = await activation.value
-        #expect(fixture.store.showsBackgroundLocationExplanation)
+        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
     }
 
     @Test
@@ -1159,7 +1176,7 @@ struct AutomaticLocationTests {
         let fixture = TravelFixture()
         fixture.weather.fails = true
         await fixture.store.refreshOnActivation()
-        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
         #expect(!fixture.preferences.hasExplainedBackgroundLocation)
     }
 
@@ -1180,7 +1197,7 @@ struct AutomaticLocationTests {
         fixture.store.synchronizeLocationMonitoring()
         #expect(fixture.location.monitoringEnabled)
         #expect(!fixture.location.monitoringForeground)
-        #expect(!fixture.store.showsBackgroundLocationExplanation)
+        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
         #expect(fixture.location.requestLocationCount == 0)
     }
 
@@ -1253,11 +1270,13 @@ private final class TravelFixture {
     let notifications = TravelNotificationSpy()
     let store: AppStore
 
-    init(completedOnboarding: Bool = true) {
+    init(completedOnboarding: Bool = true, cachedSnapshot: WeatherSnapshot? = nil) {
         preferences.hasCompletedOnboarding = completedOnboarding
+        let cache = WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "travel-\(UUID()).json"))
+        if let cachedSnapshot { cache.save(cachedSnapshot) }
         store = AppStore(weather: weather, location: location, places: PlaceSearchStub(),
                          notifications: notifications,
-                         cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "travel-\(UUID()).json")),
+                         cache: cache,
                          widgetPublisher: widgets, userPreferences: preferences,
                          appReviewManager: AppReviewManager(userPreferences: preferences))
     }

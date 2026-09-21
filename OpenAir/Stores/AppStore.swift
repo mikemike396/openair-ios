@@ -41,7 +41,6 @@ final class AppStore {
     var loadState: DashboardLoadState = .idle
     private(set) var refreshState: RefreshState = .idle
     private(set) var locationAuthorization: CLAuthorizationStatus
-    var showsBackgroundLocationExplanation = false
     var notificationStatus: UNAuthorizationStatus = .notDetermined
     private(set) var isRequestingNotificationPermission = false
 
@@ -90,7 +89,6 @@ final class AppStore {
             locationSelectionVersion += 1
             weatherContextVersion += 1
             pendingRefresh = nil
-            showsBackgroundLocationExplanation = false
             synchronizeLocationMonitoring()
         }
     }
@@ -177,7 +175,6 @@ final class AppStore {
         }
         locationAuthorization = location.authorizationStatus
         synchronizeLocationMonitoring()
-        if foreground { offerBackgroundLocationExplanation() }
     }
 
     private func authorizationChanged(_ status: CLAuthorizationStatus) {
@@ -187,21 +184,18 @@ final class AppStore {
             pendingRefresh = nil
         }
         synchronizeLocationMonitoring()
-        if status == .authorizedAlways { showsBackgroundLocationExplanation = false }
-        offerBackgroundLocationExplanation()
     }
 
-    private func offerBackgroundLocationExplanation() {
+    var shouldOfferBackgroundLocationExplanation: Bool {
         guard isForeground, hasCompletedOnboarding, !defersBackgroundLocationExplanation,
               case .loaded = loadState, savedPlace == nil,
               locationAuthorization == .authorizedWhenInUse,
-              !userPreferences.hasExplainedBackgroundLocation else { return }
-        showsBackgroundLocationExplanation = true
+              !userPreferences.hasExplainedBackgroundLocation else { return false }
+        return true
     }
 
     func dismissBackgroundLocationExplanation(requestAlways: Bool) {
         userPreferences.hasExplainedBackgroundLocation = true
-        showsBackgroundLocationExplanation = false
         if requestAlways && isForeground && savedPlace == nil {
             location.requestAlwaysAuthorization()
         }
@@ -314,7 +308,6 @@ final class AppStore {
     func completeOnboarding() async {
         hasCompletedOnboarding = true
         synchronizeLocationMonitoring()
-        offerBackgroundLocationExplanation()
         await refresh()
     }
 
@@ -358,7 +351,6 @@ final class AppStore {
             return false
         }
         locationSelection.errorMessage = nil
-        offerBackgroundLocationExplanation()
         return true
     }
 
@@ -454,7 +446,6 @@ final class AppStore {
         }
         scheduleBackgroundRefresh()
         endLocationBackgroundTask()
-        offerBackgroundLocationExplanation()
         return firstResult ?? .skipped
     }
 
