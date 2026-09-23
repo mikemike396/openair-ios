@@ -1113,6 +1113,46 @@ struct AutomaticLocationTests {
         #expect(fixture.location.placenameCount == 1)
     }
 
+    @Test(arguments: [999.0, 1_001.0])
+    func movementRefreshesOnlyBeyondOneKilometer(meters: Double) async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        let calibration = Coordinate(latitude: origin.latitude + 0.01, longitude: origin.longitude)
+        let metersPerDegree = origin.clLocation.distance(from: calibration.clLocation) / 0.01
+        let moved = Coordinate(
+            latitude: origin.latitude + meters / metersPerDegree,
+            longitude: origin.longitude
+        )
+        let measuredDistance = origin.clLocation.distance(from: moved.clLocation)
+        #expect(abs(measuredDistance - meters) < 0.1)
+
+        let result = await fixture.store.refreshForLocation(moved)
+
+        #expect(result == (meters < 1_000 ? .skipped : .succeeded))
+        #expect(fixture.weather.fetchCount == (meters < 1_000 ? 1 : 2))
+        #expect(fixture.location.placenameCount == (meters < 1_000 ? 1 : 2))
+        #expect(fixture.preferences.lastKnownCurrentLocation?.coordinate == moved)
+    }
+
+    @Test(arguments: [14 * 60 + 59.0, 15 * 60 + 1.0])
+    func activationRefreshesAtFifteenMinuteBoundary(age: Double) async {
+        let cached = WeatherSnapshot(
+            locationName: "Travel city",
+            coordinate: origin,
+            fetchedAt: Date.now.addingTimeInterval(-age),
+            current: WeatherSnapshot.preview.current,
+            hourly: WeatherSnapshot.preview.hourly
+        )
+        let fixture = TravelFixture(cachedSnapshot: cached)
+
+        let result = await fixture.store.refreshOnActivation()
+
+        #expect(result == (age < 15 * 60 ? .skipped : .succeeded))
+        #expect(fixture.location.requestLocationCount == 1)
+        #expect(fixture.weather.fetchCount == (age < 15 * 60 ? 0 : 1))
+        #expect(fixture.location.placenameCount == (age < 15 * 60 ? 0 : 1))
+    }
+
     @Test
     func movementPublishesWeatherWidgetsAndNotificationsWithoutRequestingLocationOrReview() async {
         let fixture = TravelFixture()
