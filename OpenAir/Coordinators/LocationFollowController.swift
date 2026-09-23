@@ -61,7 +61,7 @@ final class LocationFollowController {
         if foreground && pendingAlwaysAuthorization {
             finishAlwaysAuthorizationAttempt()
         }
-        if authorizationStatus != .authorizedAlways {
+        if foreground && authorizationStatus != .authorizedAlways {
             preferences.followLocationInBackground = false
         }
         synchronizeMonitoring()
@@ -107,6 +107,12 @@ final class LocationFollowController {
 
     func dismissPermissionAlert() {
         showsPermissionAlert = false
+    }
+
+    /// Remember the user's explicit Settings handoff without showing the switch as on yet.
+    func enableFollowingAfterSettings() {
+        preferences.followLocationInBackground = true
+        synchronizeMonitoring()
     }
 
     private func authorizationChanged(_ status: CLAuthorizationStatus) {

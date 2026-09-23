@@ -1229,6 +1229,62 @@ struct AutomaticLocationTests {
     }
 
     @Test
+    func grantingAlwaysInSettingsCompletesBackgroundFollowingRequest() {
+        let fixture = TravelFixture()
+        fixture.store.setForeground(true)
+        fixture.store.followLocationInBackground = true
+        fixture.store.setForeground(true) // The system prompt kept When In Use access.
+        #expect(fixture.store.showsBackgroundFollowPermissionAlert)
+
+        fixture.store.enableBackgroundFollowingAfterSettings()
+        #expect(!fixture.store.followLocationInBackground)
+        #expect(fixture.preferences.followLocationInBackground == true)
+        #expect(!fixture.location.monitoringEnabled)
+
+        fixture.store.setForeground(false)
+        fixture.location.statusOverride = .authorizedAlways
+        fixture.location.onAuthorizationChange?(.authorizedAlways)
+        fixture.store.setForeground(true)
+
+        #expect(fixture.store.followLocationInBackground)
+        #expect(fixture.location.monitoringEnabled)
+    }
+
+    @Test
+    func returningFromSettingsWithoutAlwaysKeepsFollowingOff() {
+        let fixture = TravelFixture()
+        fixture.store.setForeground(true)
+        fixture.store.followLocationInBackground = true
+        fixture.store.setForeground(true)
+        fixture.store.enableBackgroundFollowingAfterSettings()
+
+        fixture.store.setForeground(false)
+        fixture.store.setForeground(true)
+
+        #expect(!fixture.store.followLocationInBackground)
+        #expect(fixture.preferences.followLocationInBackground == false)
+        #expect(!fixture.location.monitoringEnabled)
+    }
+
+    @Test
+    func settingsHandoffSurvivesAppRestartAfterAlwaysIsGranted() {
+        let preferences = InMemoryUserPreferenceStore()
+        preferences.hasCompletedOnboarding = true
+        let before = LocationStub(result: .success(origin), placename: "Travel city")
+        let originalController = LocationFollowController(location: before, preferences: preferences)
+        originalController.enableFollowingAfterSettings()
+        #expect(preferences.followLocationInBackground == true)
+
+        let after = LocationStub(result: .success(origin), placename: "Travel city")
+        after.statusOverride = .authorizedAlways
+        let restoredController = LocationFollowController(location: after, preferences: preferences)
+        restoredController.setEligible(true)
+
+        #expect(restoredController.isFollowing)
+        #expect(after.monitoringEnabled)
+    }
+
+    @Test
     func alreadyDeniedBackgroundFollowingShowsSettingsAlertWithoutRequestingAgain() {
         let fixture = TravelFixture()
         fixture.preferences.hasRequestedAlwaysLocationAccess = true

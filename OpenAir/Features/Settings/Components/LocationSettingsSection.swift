@@ -38,10 +38,13 @@ struct LocationSettingsSection: View {
         )) {
             Button("Not Now", role: .cancel) {}
             Button("Open Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    store.enableBackgroundFollowingAfterSettings()
+                    openURL(url)
+                }
             }
         } message: {
-            Text("Allow Always location access in Settings, then turn on this switch to follow your location while OpenAir is closed.")
+            Text("Allow Always location access in Settings. If granted, background following turns on when you return.")
         }
 
         Section("Choose a City") {

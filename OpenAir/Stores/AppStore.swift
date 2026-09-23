@@ -215,6 +215,10 @@ final class AppStore {
         locationFollow.dismissPermissionAlert()
     }
 
+    func enableBackgroundFollowingAfterSettings() {
+        locationFollow.enableFollowingAfterSettings()
+    }
+
     func dismissBackgroundFollowTip() {
         userPreferences.backgroundFollowTipState = .consumed
         travelTipVisible = false
