@@ -8,26 +8,54 @@ struct LocationSettingsSection: View {
     private var selection: LocationSelectionModel { store.locationSelection }
 
     var body: some View {
-        Section("Location") {
-            if let place = store.savedPlace {
-                LabeledContent("Selected city", value: place.name)
+        Section {
+            activeLocationRow
+
+            if store.savedPlace != nil {
                 currentLocationButton(title: "Use Current Location", loadingTitle: "Finding Location")
             } else {
-                LabeledContent("Current city", value: currentLocationName)
-                currentLocationButton(title: "Refresh Current Location", loadingTitle: "Refreshing Location")
+                Toggle("Follow location in background", isOn: Binding(
+                    get: { store.followLocationInBackground },
+                    set: { store.followLocationInBackground = $0 }
+                ))
             }
 
-            if let searchError = selection.errorMessage {
-                Text(searchError)
+            if selection.errorSource == .currentLocation, let error = selection.errorMessage {
+                Text(error)
                     .font(.footnote)
                     .foregroundStyle(.red)
             }
+        } header: {
+            Text("Weather Location")
+        } footer: {
+            if store.savedPlace == nil {
+                Text(Self.followingFooter(isEnabled: store.followLocationInBackground))
+            }
+        }
+        .alert("Background following is off", isPresented: Binding(
+            get: { store.showsBackgroundFollowPermissionAlert },
+            set: { if !$0 { store.dismissBackgroundFollowPermissionAlert() } }
+        )) {
+            Button("Not Now", role: .cancel) {}
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            }
+        } message: {
+            Text("Allow Always location access in Settings, then turn on this switch to follow your location while OpenAir is closed.")
+        }
 
-            TextField("Search for a city", text: $query)
+        Section("Choose a City") {
+            TextField("Search to switch to a city", text: $query)
                 .onSubmit { Task { await selection.searchPlaces(query) } }
                 .task(id: query) {
                     await selection.searchPlaces(query, debounce: true)
                 }
+
+            if selection.errorSource == .citySearch, let error = selection.errorMessage {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
 
             ForEach(selection.searchResults.prefix(4)) { place in
                 Button(place.name) {
@@ -37,27 +65,35 @@ struct LocationSettingsSection: View {
                     }
                 }
             }
-
-            if store.needsAlwaysLocationNotice || (store.locationAccessBlocked && (store.savedPlace == nil || selection.errorMessage != nil)) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label {
-                        Text(store.locationAccessBlocked ? "Location access is off" : "Update weather in the background")
-                    } icon: {
-                        Image(systemName: "info.circle")
-                            .foregroundStyle(.secondary)
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    Text(store.locationAccessBlocked
-                         ? "Allow location access in Settings to use your current location, or search for a city above."
-                         : "Allow location access Always to keep weather updated as you travel, even when OpenAir is closed.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Button("Open Settings") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                    }
-                }
-            }
         }
+    }
+
+    static func followingFooter(isEnabled: Bool) -> String {
+        if isEnabled {
+            "OpenAir can follow significant location changes in the background and refresh weather and alerts. iOS controls when updates arrive."
+        } else {
+            "When off, OpenAir checks location while in use and when reopened. Background weather and alerts use the last known place."
+        }
+    }
+
+    private var activeLocationRow: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(store.savedPlace?.name ?? "Current Location")
+                Text(store.savedPlace == nil ? currentLocationName : "Selected City")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(Color.accentColor)
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            store.savedPlace.map { "Active weather location: selected city, \($0.name)" }
+                ?? "Active weather location: current location, \(currentLocationName)"
+        )
     }
 
     private func currentLocationButton(title: String, loadingTitle: String) -> some View {
@@ -81,6 +117,9 @@ struct LocationSettingsSection: View {
     }
 
     private var currentLocationName: String {
+        if let lastKnownCurrentLocation = store.lastKnownCurrentLocation {
+            return lastKnownCurrentLocation.name
+        }
         guard case .loaded(let snapshot, _) = store.loadState else {
             return "Current location"
         }

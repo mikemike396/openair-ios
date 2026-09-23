@@ -5,6 +5,16 @@ import Testing
 @MainActor
 struct LocationSelectionModelTests {
     @Test
+    func currentLocationErrorIsScopedToItsSection() {
+        let model = LocationSelectionModel(places: SuspendedPlaceSearch())
+        model.showCurrentLocationError("Location unavailable")
+        #expect(model.errorSource == .currentLocation)
+        model.clearSearchResults()
+        #expect(model.errorSource == nil)
+        #expect(model.errorMessage == nil)
+    }
+
+    @Test
     func searchAllowsCurrentLocationAndOnlyNewestResultsPublish() async {
         let places = SuspendedPlaceSearch()
         let model = LocationSelectionModel(places: places)

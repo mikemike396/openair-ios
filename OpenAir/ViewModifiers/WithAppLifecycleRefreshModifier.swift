@@ -10,27 +10,10 @@ private struct AppLifecycleRefreshModifier: ViewModifier {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(AppStore.self) private var store
 
-    @State private var showsBackgroundLocationExplanation = false
-
-    private var canPresentLocationExplanation: Bool {
-        scenePhase == .active
-            && store.shouldOfferBackgroundLocationExplanation
-    }
-
     func body(content: Content) -> some View {
         content
             .task {
                 if scenePhase == .active { await store.start() }
-            }
-            .task(id: canPresentLocationExplanation) {
-                guard canPresentLocationExplanation, !Task.isCancelled else { return }
-                showsBackgroundLocationExplanation = true
-            }
-            .alert("Weather where you are", isPresented: $showsBackgroundLocationExplanation) {
-                Button("Continue") { store.dismissBackgroundLocationExplanation(requestAlways: true) }
-                Button("Not Now", role: .cancel) { store.dismissBackgroundLocationExplanation(requestAlways: false) }
-            } message: {
-                Text("Allow “Always” location access to keep your weather, widgets, and window alerts updated as you travel.")
             }
             .onChange(of: scenePhase) { _, newPhase in
                 // Inactive includes system permission sheets; stop only on background.

@@ -9,6 +9,9 @@ fileprivate extension String {
     static let forecastRange = "forecastRange"
     static let reviewSignificantEventCount = "reviewSignificantEventCount"
     static let lastReviewRequestAttemptAt = "lastReviewRequestAttemptAt"
+    static let followLocationInBackground = "followLocationInBackground"
+    static let hasRequestedAlwaysLocationAccess = "hasRequestedAlwaysLocationAccess"
+    static let recommendationStabilization = "recommendationStabilization"
 }
 
 protocol UserPreferenceStoring {
@@ -16,6 +19,9 @@ protocol UserPreferenceStoring {
     var hasExplainedBackgroundLocation: Bool { get set }
     var savedPlace: SavedPlace? { get set }
     var lastKnownCurrentLocation: SavedPlace? { get set }
+    var followLocationInBackground: Bool? { get set }
+    var hasRequestedAlwaysLocationAccess: Bool { get set }
+    var recommendationStabilization: RecommendationStabilizationState? { get set }
     var preferences: ComfortPreferences { get set }
     var forecastRange: ForecastRange { get set }
     var reviewSignificantEventCount: Int { get set }
@@ -93,6 +99,21 @@ final class UserPreferenceStore: UserPreferenceStoring {
                 newValue: newValue
             )
         }
+    }
+
+    var followLocationInBackground: Bool? {
+        get { getter(keyPath: \.followLocationInBackground, key: .followLocationInBackground, defaultValue: nil) }
+        set { setter(keyPath: \.followLocationInBackground, key: .followLocationInBackground, newValue: newValue) }
+    }
+
+    var hasRequestedAlwaysLocationAccess: Bool {
+        get { getter(keyPath: \.hasRequestedAlwaysLocationAccess, key: .hasRequestedAlwaysLocationAccess, defaultValue: false) }
+        set { setter(keyPath: \.hasRequestedAlwaysLocationAccess, key: .hasRequestedAlwaysLocationAccess, newValue: newValue) }
+    }
+
+    var recommendationStabilization: RecommendationStabilizationState? {
+        get { getter(keyPath: \.recommendationStabilization, key: .recommendationStabilization, defaultValue: nil) }
+        set { setter(keyPath: \.recommendationStabilization, key: .recommendationStabilization, newValue: newValue) }
     }
 
     var preferences: ComfortPreferences {

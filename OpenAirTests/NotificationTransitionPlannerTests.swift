@@ -94,6 +94,36 @@ struct NotificationTransitionPlannerTests {
         #expect(transitions.map(\.status) == [.keepClosed, .open])
     }
 
+    @Test
+    func rainClosureDoesNotScheduleForecastOpenAlert() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let forecast = plan(now: now, recommendations: [
+            .init(status: .open, reasons: []),
+            .init(status: .keepClosed, reasons: [.activePrecipitation]),
+            .init(status: .keepClosed, reasons: [.recentRain]),
+            .init(status: .open, reasons: [])
+        ])
+        #expect(NotificationTransitionPlanner().transitions(in: forecast, after: now).map(\.status) == [.keepClosed])
+    }
+
+    @Test
+    func immediateAlertDeduplicatesRecentMatchingStatusAndPlace() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        #expect(!ImmediateAlertDeduplicator.shouldSend(
+            signature: "open|Home", now: now,
+            recentSignature: "open|Home", recentDate: now.addingTimeInterval(-60), delivered: []
+        ))
+        #expect(!ImmediateAlertDeduplicator.shouldSend(
+            signature: "open|Home", now: now,
+            recentSignature: nil, recentDate: nil,
+            delivered: [("open|Home", now.addingTimeInterval(-60))]
+        ))
+        #expect(ImmediateAlertDeduplicator.shouldSend(
+            signature: "open|Home", now: now,
+            recentSignature: "keepClosed|Home", recentDate: now.addingTimeInterval(-60), delivered: []
+        ))
+    }
+
     private func plan(
         now: Date,
         recommendations: [Recommendation]

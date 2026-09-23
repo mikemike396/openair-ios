@@ -7,12 +7,13 @@ struct AlertSettingsSection: View {
     @State private var showsPermissionAlert = false
 
     var body: some View {
-        Section("Alerts") {
+        Section {
             Toggle("Open and close alerts", isOn: alertsEnabled)
                 .disabled(store.isRequestingNotificationPermission)
+        } header: {
+            Text("Alerts")
+        } footer: {
             Text("Alerts use the latest downloaded forecast. iOS may delay or skip background refreshes.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
         .task { await store.refreshNotificationPermission() }
         .alert("Notifications are disabled", isPresented: $showsPermissionAlert) {
