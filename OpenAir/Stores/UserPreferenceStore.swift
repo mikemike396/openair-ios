@@ -11,7 +11,15 @@ fileprivate extension String {
     static let lastReviewRequestAttemptAt = "lastReviewRequestAttemptAt"
     static let followLocationInBackground = "followLocationInBackground"
     static let hasRequestedAlwaysLocationAccess = "hasRequestedAlwaysLocationAccess"
+    static let backgroundFollowTipState = "backgroundFollowTipState"
     static let recommendationStabilization = "recommendationStabilization"
+}
+
+enum BackgroundFollowTipState: Codable, Equatable {
+    case uninitialized
+    case tracking(Coordinate)
+    case pending
+    case consumed
 }
 
 protocol UserPreferenceStoring {
@@ -21,6 +29,7 @@ protocol UserPreferenceStoring {
     var lastKnownCurrentLocation: SavedPlace? { get set }
     var followLocationInBackground: Bool? { get set }
     var hasRequestedAlwaysLocationAccess: Bool { get set }
+    var backgroundFollowTipState: BackgroundFollowTipState { get set }
     var recommendationStabilization: RecommendationStabilizationState? { get set }
     var preferences: ComfortPreferences { get set }
     var forecastRange: ForecastRange { get set }
@@ -109,6 +118,11 @@ final class UserPreferenceStore: UserPreferenceStoring {
     var hasRequestedAlwaysLocationAccess: Bool {
         get { getter(keyPath: \.hasRequestedAlwaysLocationAccess, key: .hasRequestedAlwaysLocationAccess, defaultValue: false) }
         set { setter(keyPath: \.hasRequestedAlwaysLocationAccess, key: .hasRequestedAlwaysLocationAccess, newValue: newValue) }
+    }
+
+    var backgroundFollowTipState: BackgroundFollowTipState {
+        get { getter(keyPath: \.backgroundFollowTipState, key: .backgroundFollowTipState, defaultValue: .uninitialized) }
+        set { setter(keyPath: \.backgroundFollowTipState, key: .backgroundFollowTipState, newValue: newValue) }
     }
 
     var recommendationStabilization: RecommendationStabilizationState? {

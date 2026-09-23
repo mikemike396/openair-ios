@@ -66,6 +66,9 @@ struct DashboardView: View {
                         temperatureSource: store.preferences.temperatureEvaluationSource,
                         isRefreshing: store.refreshState == .refreshing
                     )
+                    if store.showsBackgroundFollowTip {
+                        backgroundFollowTip
+                    }
                     NavigationLink {
                         ForecastView(
                             plan: plan,
@@ -127,5 +130,32 @@ struct DashboardView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.openAirAmber.opacity(0.12), in: .rect(cornerRadius: 14))
+    }
+
+    private var backgroundFollowTip: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Traveling?", systemImage: "location.fill")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    store.dismissBackgroundFollowTip()
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .accessibilityLabel("Dismiss background following tip")
+            }
+            Text("Let OpenAir follow your weather when the app is closed.")
+                .font(.subheadline)
+            Button("Set up background following") {
+                store.dismissBackgroundFollowTip()
+                showingSettings = true
+            }
+            .buttonStyle(.glass)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.openAirTeal.opacity(0.12), in: .rect(cornerRadius: 18))
+        .accessibilityIdentifier("backgroundFollowTip")
     }
 }

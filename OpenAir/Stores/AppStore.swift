@@ -54,6 +54,22 @@ final class AppStore {
     private var pendingBackgroundFollowAuthorization = false
     private var backgroundAuthorizationFallbackTask: Task<Void, Never>?
     private(set) var showsBackgroundFollowPermissionAlert = false
+    private var travelTipVisible = false
+
+    var showsBackgroundFollowTip: Bool {
+        travelTipVisible && canDisplayBackgroundFollowTip
+    }
+
+    private var canDisplayBackgroundFollowTip: Bool {
+        hasCompletedOnboarding && savedPlace == nil &&
+            locationAuthorization == .authorizedWhenInUse &&
+            !followLocationInBackground &&
+            !userPreferences.hasRequestedAlwaysLocationAccess
+    }
+
+    private var canSuggestBackgroundFollowing: Bool {
+        canDisplayBackgroundFollowTip && userPreferences.backgroundFollowTipState != .consumed
+    }
 
     // Invalidates weather results when location selection or access changes.
     private var weatherContextVersion = 0
@@ -93,6 +109,12 @@ final class AppStore {
         set {
             guard userPreferences.savedPlace != newValue else { return }
             userPreferences.savedPlace = newValue
+            if newValue != nil {
+                if userPreferences.backgroundFollowTipState != .consumed {
+                    userPreferences.backgroundFollowTipState = .uninitialized
+                }
+                travelTipVisible = false
+            }
             locationSelectionVersion += 1
             weatherContextVersion += 1
             pendingRefresh = nil
@@ -142,6 +164,7 @@ final class AppStore {
         set {
             locationAuthorization = location.authorizationStatus
             if newValue && locationAuthorization != .authorizedAlways {
+                dismissBackgroundFollowTip()
                 userPreferences.followLocationInBackground = false
                 if locationAuthorization == .authorizedWhenInUse &&
                     !userPreferences.hasRequestedAlwaysLocationAccess {
@@ -171,6 +194,7 @@ final class AppStore {
             backgroundAuthorizationFallbackTask?.cancel()
             showsBackgroundFollowPermissionAlert = false
             userPreferences.followLocationInBackground = newValue
+            if newValue { dismissBackgroundFollowTip() }
             if !newValue {
                 locationWork?.cancel()
                 locationWork = nil
@@ -213,6 +237,11 @@ final class AppStore {
         } else if location.authorizationStatus != .authorizedAlways {
             self.userPreferences.followLocationInBackground = false
         }
+        if userPreferences.savedPlace == nil,
+           userPreferences.backgroundFollowTipState == .uninitialized,
+           let coordinate = userPreferences.lastKnownCurrentLocation?.coordinate {
+            self.userPreferences.backgroundFollowTipState = .tracking(coordinate)
+        }
         if hasCompletedOnboarding, let cached = cache.load() {
             let base = evaluator.plan(snapshot: cached, preferences: preferences)
             let plan = stabilization.plan(for: cached, base: base, preferences: preferences, fresh: false)
@@ -230,6 +259,11 @@ final class AppStore {
 
     func dismissBackgroundFollowPermissionAlert() {
         showsBackgroundFollowPermissionAlert = false
+    }
+
+    func dismissBackgroundFollowTip() {
+        userPreferences.backgroundFollowTipState = .consumed
+        travelTipVisible = false
     }
 
     var locationAccessBlocked: Bool {
@@ -258,6 +292,7 @@ final class AppStore {
 
     func setForeground(_ foreground: Bool) {
         isForeground = foreground
+        if !foreground { travelTipVisible = false }
         locationAuthorization = location.authorizationStatus
         if foreground && pendingBackgroundFollowAuthorization {
             finishBackgroundFollowAuthorizationAttempt()
@@ -306,6 +341,11 @@ final class AppStore {
         guard hasCompletedOnboarding else { return .skipped }
         if savedPlace != nil { return await refreshIfNeeded() }
         let result = await performRefresh(keepsLoadedState: true, onlyIfNeeded: true)
+        if isForeground && !travelTipVisible &&
+            userPreferences.backgroundFollowTipState == .pending && canSuggestBackgroundFollowing {
+            travelTipVisible = true
+            userPreferences.backgroundFollowTipState = .consumed
+        }
         if isForeground { recordSignificantEventIfNeeded(for: result) }
         return result
     }
@@ -619,6 +659,23 @@ final class AppStore {
                 locationName: snapshot.locationName,
                 enabled: preferences.alertsEnabled
             )
+            if canSuggestBackgroundFollowing {
+                switch request.source {
+                case .currentLocation, .deliveredLocation:
+                    switch userPreferences.backgroundFollowTipState {
+                    case .tracking(let origin):
+                        if isForeground && origin.clLocation.distance(from: snapshot.coordinate.clLocation) >= 5_000 {
+                            userPreferences.backgroundFollowTipState = .pending
+                        }
+                    case .uninitialized:
+                        userPreferences.backgroundFollowTipState = .tracking(snapshot.coordinate)
+                    case .pending, .consumed:
+                        break
+                    }
+                case .savedLocation:
+                    break
+                }
+            }
             if !isForeground, preferences.alertsEnabled,
                let previousStatus, previousStatus != plan.current.status {
                 await notifications.notifyCurrentChange(

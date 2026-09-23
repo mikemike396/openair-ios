@@ -75,6 +75,7 @@ private final class ReviewUserPreferenceStore: UserPreferenceStoring {
     var lastKnownCurrentLocation: SavedPlace?
     var followLocationInBackground: Bool?
     var hasRequestedAlwaysLocationAccess = false
+    var backgroundFollowTipState: BackgroundFollowTipState = .uninitialized
     var recommendationStabilization: RecommendationStabilizationState?
     var forecastRange = ForecastRange.tenDays
     var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))

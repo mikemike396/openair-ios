@@ -837,6 +837,7 @@ private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
     var lastKnownCurrentLocation: SavedPlace?
     var followLocationInBackground: Bool?
     var hasRequestedAlwaysLocationAccess = false
+    var backgroundFollowTipState: BackgroundFollowTipState = .uninitialized
     var recommendationStabilization: RecommendationStabilizationState?
     var forecastRange = ForecastRange.tenDays
     var reviewSignificantEventCount = 0
@@ -1292,6 +1293,117 @@ struct AutomaticLocationTests {
         #expect(await fixture.store.checkForegroundLocation() == .succeeded)
         #expect(fixture.weather.fetchCount == 2)
         #expect(fixture.location.placenameCount == 2)
+    }
+
+    @Test
+    func travelDetectedOnReturnShowsBackgroundFollowTipAfterRefresh() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.location.result = .success(destination)
+
+        #expect(await fixture.store.refreshOnActivation() == .succeeded)
+        #expect(fixture.snapshot?.coordinate == destination)
+        #expect(fixture.store.showsBackgroundFollowTip)
+        #expect(fixture.preferences.backgroundFollowTipState == .consumed)
+        #expect(fixture.location.alwaysRequests == 0)
+
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.showsBackgroundFollowTip)
+
+        fixture.store.setForeground(false)
+        #expect(!fixture.store.showsBackgroundFollowTip)
+        await fixture.store.refreshOnActivation()
+        #expect(!fixture.store.showsBackgroundFollowTip)
+    }
+
+    @Test
+    func dismissingTravelTipHidesItImmediately() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.location.result = .success(destination)
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.showsBackgroundFollowTip)
+
+        fixture.store.dismissBackgroundFollowTip()
+        #expect(!fixture.store.showsBackgroundFollowTip)
+        #expect(fixture.preferences.backgroundFollowTipState == .consumed)
+    }
+
+    @Test
+    func foregroundTravelQueuesTipUntilNextVisit() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.store.setForeground(true)
+        fixture.location.result = .success(destination)
+
+        #expect(await fixture.store.checkForegroundLocation() == .succeeded)
+        #expect(fixture.preferences.backgroundFollowTipState == .pending)
+        #expect(!fixture.store.showsBackgroundFollowTip)
+
+        fixture.store.setForeground(false)
+        #expect(await fixture.store.refreshOnActivation() == .skipped)
+        #expect(fixture.store.showsBackgroundFollowTip)
+        #expect(fixture.preferences.backgroundFollowTipState == .consumed)
+        #expect(fixture.weather.fetchCount == 2)
+    }
+
+    @Test
+    func shortMoveAndFailedTravelFetchDoNotQueueTip() async {
+        let shortMove = TravelFixture()
+        await shortMove.store.refresh()
+        shortMove.location.result = .success(Coordinate(latitude: origin.latitude + 0.001, longitude: origin.longitude))
+        #expect(await shortMove.store.refreshOnActivation() == .skipped)
+        #expect(shortMove.preferences.backgroundFollowTipState == .tracking(origin))
+
+        let failedMove = TravelFixture()
+        await failedMove.store.refresh()
+        failedMove.weather.fails = true
+        failedMove.location.result = .success(destination)
+        #expect(await failedMove.store.refreshOnActivation() == .failed)
+        #expect(failedMove.preferences.backgroundFollowTipState == .tracking(origin))
+        #expect(!failedMove.store.showsBackgroundFollowTip)
+
+        failedMove.weather.fails = false
+        #expect(await failedMove.store.refreshOnActivation() == .succeeded)
+        #expect(failedMove.store.showsBackgroundFollowTip)
+    }
+
+    @Test
+    func severalShortMovesAccumulateTowardTravelTip() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.store.setForeground(true)
+        let firstMove = Coordinate(latitude: origin.latitude + 0.025, longitude: origin.longitude)
+        let secondMove = Coordinate(latitude: origin.latitude + 0.055, longitude: origin.longitude)
+
+        #expect(await fixture.store.refreshForLocation(firstMove) == .succeeded)
+        #expect(fixture.preferences.backgroundFollowTipState == .tracking(origin))
+        #expect(await fixture.store.refreshForLocation(secondMove) == .succeeded)
+        #expect(fixture.preferences.backgroundFollowTipState == .pending)
+        #expect(!fixture.store.showsBackgroundFollowTip)
+    }
+
+    @Test
+    func manualCityAndPriorPermissionChoiceSuppressTravelTip() async {
+        let manualCity = TravelFixture()
+        await manualCity.store.refresh()
+        manualCity.store.setForeground(true)
+        manualCity.location.result = .success(destination)
+        await manualCity.store.checkForegroundLocation()
+        #expect(manualCity.preferences.backgroundFollowTipState == .pending)
+        await manualCity.store.chooseAndRefresh(place: SavedPlace(name: "Home", coordinate: origin))
+        #expect(manualCity.preferences.backgroundFollowTipState == .uninitialized)
+        manualCity.store.setForeground(false)
+        await manualCity.store.refreshOnActivation()
+        #expect(!manualCity.store.showsBackgroundFollowTip)
+
+        let priorChoice = TravelFixture()
+        priorChoice.preferences.hasRequestedAlwaysLocationAccess = true
+        await priorChoice.store.refresh()
+        priorChoice.location.result = .success(destination)
+        #expect(await priorChoice.store.refreshOnActivation() == .succeeded)
+        #expect(priorChoice.preferences.backgroundFollowTipState == .uninitialized)
+        #expect(!priorChoice.store.showsBackgroundFollowTip)
     }
 
     @Test

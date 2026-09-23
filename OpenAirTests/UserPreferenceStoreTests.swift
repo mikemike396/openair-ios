@@ -15,6 +15,7 @@ struct UserPreferenceStoreTests {
         #expect(store.lastKnownCurrentLocation == nil)
         #expect(store.followLocationInBackground == nil)
         #expect(!store.hasRequestedAlwaysLocationAccess)
+        #expect(store.backgroundFollowTipState == .uninitialized)
         #expect(store.recommendationStabilization == nil)
         #expect(store.preferences == .default(for: Locale(identifier: "en_US")))
         #expect(store.forecastRange == .tenDays)
@@ -37,6 +38,23 @@ struct UserPreferenceStoreTests {
         let fixture = UserPreferenceStoreFixture()
         fixture.makeStore().hasExplainedBackgroundLocation = true
         #expect(fixture.makeStore().hasExplainedBackgroundLocation)
+    }
+
+    @Test
+    func backgroundFollowTipStatePersists() {
+        let fixture = UserPreferenceStoreFixture()
+        let store = fixture.makeStore()
+        let states: [BackgroundFollowTipState] = [
+            .uninitialized,
+            .tracking(Coordinate(latitude: 39.7, longitude: -75.5)),
+            .pending,
+            .consumed
+        ]
+
+        for state in states {
+            store.backgroundFollowTipState = state
+            #expect(fixture.makeStore().backgroundFollowTipState == state)
+        }
     }
 
     @Test

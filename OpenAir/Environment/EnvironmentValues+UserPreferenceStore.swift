@@ -12,6 +12,7 @@ final class DefaultNoOpUserPreferenceStore: UserPreferenceStoring {
     var lastKnownCurrentLocation: SavedPlace? = nil
     var followLocationInBackground: Bool? = nil
     var hasRequestedAlwaysLocationAccess = false
+    var backgroundFollowTipState: BackgroundFollowTipState = .uninitialized
     var recommendationStabilization: RecommendationStabilizationState? = nil
     var preferences: ComfortPreferences = .init()
     var forecastRange: ForecastRange = .tenDays
