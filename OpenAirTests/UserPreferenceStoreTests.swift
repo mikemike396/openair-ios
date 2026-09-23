@@ -10,9 +10,12 @@ struct UserPreferenceStoreTests {
         let store = fixture.makeStore(locale: Locale(identifier: "en_US"))
 
         #expect(!store.hasCompletedOnboarding)
-        #expect(!store.hasExplainedBackgroundLocation)
         #expect(store.savedPlace == nil)
         #expect(store.lastKnownCurrentLocation == nil)
+        #expect(store.followLocationInBackground == nil)
+        #expect(!store.hasRequestedAlwaysLocationAccess)
+        #expect(store.backgroundFollowTipState == .uninitialized)
+        #expect(store.recommendationStabilization == nil)
         #expect(store.preferences == .default(for: Locale(identifier: "en_US")))
         #expect(store.forecastRange == .tenDays)
         #expect(store.reviewSignificantEventCount == 0)
@@ -30,10 +33,20 @@ struct UserPreferenceStoreTests {
     }
 
     @Test
-    func backgroundLocationExplanationPersists() async {
+    func backgroundFollowTipStatePersists() {
         let fixture = UserPreferenceStoreFixture()
-        fixture.makeStore().hasExplainedBackgroundLocation = true
-        #expect(fixture.makeStore().hasExplainedBackgroundLocation)
+        let store = fixture.makeStore()
+        let states: [BackgroundFollowTipState] = [
+            .uninitialized,
+            .tracking(Coordinate(latitude: 39.7, longitude: -75.5)),
+            .pending,
+            .consumed
+        ]
+
+        for state in states {
+            store.backgroundFollowTipState = state
+            #expect(fixture.makeStore().backgroundFollowTipState == state)
+        }
     }
 
     @Test
@@ -62,6 +75,30 @@ struct UserPreferenceStoreTests {
         let restored = fixture.makeStore()
 
         #expect(restored.lastKnownCurrentLocation == place)
+    }
+
+    @Test
+    func followingChoiceAndRecommendationHistoryPersist() {
+        let fixture = UserPreferenceStoreFixture()
+        let store = fixture.makeStore()
+        let rainAt = Date(timeIntervalSince1970: 1_800_000_000)
+        store.followLocationInBackground = true
+        store.hasRequestedAlwaysLocationAccess = true
+        store.recommendationStabilization = RecommendationStabilizationState(
+            coordinate: .init(latitude: 39.7, longitude: -75.5),
+            effective: .init(status: .keepClosed, reasons: [.recentRain]),
+            pendingStatus: nil,
+            pendingSince: nil,
+            lastRainAt: rainAt,
+            awaitingRainRecovery: true,
+            lastObservationAt: rainAt
+        )
+
+        let restored = fixture.makeStore()
+        #expect(restored.followLocationInBackground == true)
+        #expect(restored.hasRequestedAlwaysLocationAccess)
+        #expect(restored.recommendationStabilization?.lastRainAt == rainAt)
+        #expect(restored.recommendationStabilization?.effective?.reasons == [.recentRain])
     }
 
     @Test

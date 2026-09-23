@@ -69,10 +69,13 @@ struct AppReviewManagerTests {
     }
 }
 private final class ReviewUserPreferenceStore: UserPreferenceStoring {
-    var hasExplainedBackgroundLocation = false
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?
     var lastKnownCurrentLocation: SavedPlace?
+    var followLocationInBackground: Bool?
+    var hasRequestedAlwaysLocationAccess = false
+    var backgroundFollowTipState: BackgroundFollowTipState = .uninitialized
+    var recommendationStabilization: RecommendationStabilizationState?
     var forecastRange = ForecastRange.tenDays
     var preferences = ComfortPreferences.default(for: Locale(identifier: "en_US"))
     var reviewSignificantEventCount = 0

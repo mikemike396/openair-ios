@@ -33,7 +33,6 @@ final class LocationClient: NSObject, LocationProviding, @preconcurrency CLLocat
     private var timeout: Task<Void, Never>?
     private var monitoringEnabled = false
     private var foreground = false
-    private var updating = false
     private var significantChanges = false
     private var latestFixDate = Date.distantPast
     var onLocationChange: ((Coordinate) -> Void)?
@@ -45,7 +44,6 @@ final class LocationClient: NSObject, LocationProviding, @preconcurrency CLLocat
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
-        manager.distanceFilter = 500
         requestManager.delegate = self
         requestManager.desiredAccuracy = kCLLocationAccuracyKilometer
     }
@@ -68,13 +66,6 @@ final class LocationClient: NSObject, LocationProviding, @preconcurrency CLLocat
     }
 
     private func updateMonitoring() {
-        let authorized = authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse
-        let shouldUpdate = monitoringEnabled && foreground && authorized
-        if shouldUpdate != updating {
-            updating = shouldUpdate
-            if shouldUpdate { manager.startUpdatingLocation() }
-            else { manager.stopUpdatingLocation() }
-        }
         let shouldMonitor = monitoringEnabled && authorizationStatus == .authorizedAlways
             && CLLocationManager.significantLocationChangeMonitoringAvailable()
         if shouldMonitor != significantChanges {

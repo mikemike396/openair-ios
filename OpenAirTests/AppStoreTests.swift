@@ -616,6 +616,33 @@ struct AppStoreTests {
     }
 
     @Test
+    func failedFetchDoesNotAdvancePersistedRainRecovery() async {
+        let rainAt = Date().addingTimeInterval(-90 * 60)
+        let cached = Self.snapshot(fetchedAt: rainAt)
+        WeatherCache(url: cacheURL).save(cached)
+        markOnboardingCompleted()
+        userPreferences.recommendationStabilization = RecommendationStabilizationState(
+            coordinate: cached.coordinate,
+            effective: .init(status: .keepClosed, reasons: [.recentRain]),
+            pendingStatus: nil,
+            pendingSince: nil,
+            lastRainAt: rainAt,
+            awaitingRainRecovery: true,
+            lastObservationAt: rainAt
+        )
+        let store = makeStore(weather: FailingWeatherProvider())
+
+        #expect(await store.refresh(keepsLoadedState: true) == .failed)
+        #expect(userPreferences.recommendationStabilization?.lastRainAt == rainAt)
+        #expect(userPreferences.recommendationStabilization?.lastObservationAt == rainAt)
+        guard case .loaded(_, let plan) = store.loadState else {
+            Issue.record("Expected cached recommendation after failed fetch")
+            return
+        }
+        #expect(plan.current.reasons.contains(.recentRain))
+    }
+
+    @Test
     func testCachePreservingRefreshReturnsSuccessForBackgroundCompletion() async {
         let refreshed = Self.snapshot(fetchedAt: Date())
         let store = makeStore(weather: WeatherSpy(snapshots: [refreshed]))
@@ -804,10 +831,13 @@ private func appStoreTestSnapshot(fetchedAt: Date) -> WeatherSnapshot {
     )
 }
 private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
-    var hasExplainedBackgroundLocation = false
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?
     var lastKnownCurrentLocation: SavedPlace?
+    var followLocationInBackground: Bool?
+    var hasRequestedAlwaysLocationAccess = false
+    var backgroundFollowTipState: BackgroundFollowTipState = .uninitialized
+    var recommendationStabilization: RecommendationStabilizationState?
     var forecastRange = ForecastRange.tenDays
     var reviewSignificantEventCount = 0
     var lastReviewRequestAttemptAt: Date?
@@ -837,7 +867,7 @@ private final class LocationStub: LocationProviding {
     var statusOverride: CLAuthorizationStatus?
     func requestAlwaysAuthorization() { alwaysRequests += 1 }
     func setMonitoring(enabled: Bool, foreground: Bool) {
-        monitoringEnabled = enabled
+        monitoringEnabled = enabled && authorizationStatus == .authorizedAlways
         monitoringForeground = foreground
     }
 
@@ -845,6 +875,7 @@ private final class LocationStub: LocationProviding {
     let placename: String?
     var requestHandler: (() async throws -> Coordinate)?
     private(set) var requestLocationCount = 0
+    private(set) var placenameCount = 0
     var authorizationStatus: CLAuthorizationStatus {
         if let statusOverride { return statusOverride }
         switch result {
@@ -864,7 +895,10 @@ private final class LocationStub: LocationProviding {
         if let requestHandler { return try await requestHandler() }
         return try result.get()
     }
-    func placename(for coordinate: Coordinate) async -> String? { placename }
+    func placename(for coordinate: Coordinate) async -> String? {
+        placenameCount += 1
+        return placename
+    }
 }
 
 private struct PlaceSearchStub: PlaceSearching {
@@ -1052,7 +1086,7 @@ struct AutomaticLocationTests {
         let fixture = TravelFixture()
         fixture.location.onAuthorizationChange?(status)
         #expect(fixture.store.locationAccessBlocked == (status == .denied || status == .restricted))
-        #expect(fixture.store.needsAlwaysLocationNotice == (status == .authorizedWhenInUse))
+        #expect(!fixture.store.showsBackgroundFollowPermissionAlert)
     }
 
     @Test
@@ -1076,6 +1110,47 @@ struct AutomaticLocationTests {
         #expect(fixture.snapshot?.coordinate == origin)
         #expect(fixture.preferences.lastKnownCurrentLocation?.coordinate == nearby)
         #expect(fixture.weather.fetchCount == 1)
+        #expect(fixture.location.placenameCount == 1)
+    }
+
+    @Test(arguments: [999.0, 1_001.0])
+    func movementRefreshesOnlyBeyondOneKilometer(meters: Double) async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        let calibration = Coordinate(latitude: origin.latitude + 0.01, longitude: origin.longitude)
+        let metersPerDegree = origin.clLocation.distance(from: calibration.clLocation) / 0.01
+        let moved = Coordinate(
+            latitude: origin.latitude + meters / metersPerDegree,
+            longitude: origin.longitude
+        )
+        let measuredDistance = origin.clLocation.distance(from: moved.clLocation)
+        #expect(abs(measuredDistance - meters) < 0.1)
+
+        let result = await fixture.store.refreshForLocation(moved)
+
+        #expect(result == (meters < 1_000 ? .skipped : .succeeded))
+        #expect(fixture.weather.fetchCount == (meters < 1_000 ? 1 : 2))
+        #expect(fixture.location.placenameCount == (meters < 1_000 ? 1 : 2))
+        #expect(fixture.preferences.lastKnownCurrentLocation?.coordinate == moved)
+    }
+
+    @Test(arguments: [14 * 60 + 59.0, 15 * 60 + 1.0])
+    func activationRefreshesAtFifteenMinuteBoundary(age: Double) async {
+        let cached = WeatherSnapshot(
+            locationName: "Travel city",
+            coordinate: origin,
+            fetchedAt: Date.now.addingTimeInterval(-age),
+            current: WeatherSnapshot.preview.current,
+            hourly: WeatherSnapshot.preview.hourly
+        )
+        let fixture = TravelFixture(cachedSnapshot: cached)
+
+        let result = await fixture.store.refreshOnActivation()
+
+        #expect(result == (age < 15 * 60 ? .skipped : .succeeded))
+        #expect(fixture.location.requestLocationCount == 1)
+        #expect(fixture.weather.fetchCount == (age < 15 * 60 ? 0 : 1))
+        #expect(fixture.location.placenameCount == (age < 15 * 60 ? 0 : 1))
     }
 
     @Test
@@ -1094,110 +1169,305 @@ struct AutomaticLocationTests {
     @Test
     func manualCityStopsMonitoringAndIgnoresMovement() async {
         let fixture = TravelFixture()
+        fixture.location.statusOverride = .authorizedAlways
+        fixture.location.onAuthorizationChange?(.authorizedAlways)
+        fixture.store.followLocationInBackground = true
         fixture.store.setForeground(true)
         #expect(fixture.location.monitoringEnabled)
         let manual = SavedPlace(name: "Home", coordinate: origin)
         await fixture.store.chooseAndRefresh(place: manual)
         #expect(!fixture.location.monitoringEnabled)
-        #expect(!fixture.store.needsAlwaysLocationNotice)
+        #expect(!fixture.store.showsBackgroundFollowPermissionAlert)
         #expect(await fixture.store.refreshForLocation(destination) == .skipped)
         #expect(fixture.snapshot?.coordinate == origin)
         #expect(fixture.location.requestLocationCount == 0)
     }
 
     @Test
-    func permissionExplanationAppearsOnceAndNoticeTracksAccess() async {
+    func enablingBackgroundFollowingRequestsAlwaysOnlyFromSettings() async {
         let fixture = TravelFixture()
         await fixture.store.refresh()
         fixture.store.setForeground(true)
-        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
-        #expect(fixture.store.needsAlwaysLocationNotice)
-        fixture.store.dismissBackgroundLocationExplanation(requestAlways: true)
+        #expect(fixture.location.alwaysRequests == 0)
+        #expect(!fixture.store.followLocationInBackground)
+        fixture.store.followLocationInBackground = true
+        #expect(!fixture.store.followLocationInBackground)
+        #expect(fixture.preferences.followLocationInBackground == false)
+        #expect(!fixture.store.showsBackgroundFollowPermissionAlert)
+        #expect(fixture.preferences.hasRequestedAlwaysLocationAccess)
         #expect(fixture.location.alwaysRequests == 1)
-        fixture.store.setForeground(false)
-        fixture.store.setForeground(true)
-        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
+        #expect(!fixture.location.monitoringEnabled)
         fixture.location.statusOverride = .authorizedAlways
         fixture.location.onAuthorizationChange?(.authorizedAlways)
-        #expect(!fixture.store.needsAlwaysLocationNotice)
+        #expect(fixture.store.followLocationInBackground)
+        #expect(fixture.location.monitoringEnabled)
+        #expect(!fixture.store.showsBackgroundFollowPermissionAlert)
+        fixture.store.followLocationInBackground = false
+        #expect(!fixture.location.monitoringEnabled)
         fixture.location.statusOverride = .denied
         fixture.location.onAuthorizationChange?(.denied)
-        #expect(!fixture.store.needsAlwaysLocationNotice)
         #expect(fixture.store.locationAccessBlocked)
         #expect(await fixture.store.refreshForLocation(destination) == .skipped)
     }
 
     @Test
-    func newUserSeesExplanationOnNextVisitNotAfterOnboarding() async {
+    func declinedAlwaysPermissionLeavesFollowingOff() {
+        let fixture = TravelFixture()
+        fixture.store.setForeground(true)
+        fixture.store.followLocationInBackground = true
+        #expect(fixture.location.alwaysRequests == 1)
+        fixture.store.setForeground(true) // returning after declining the permission prompt
+        #expect(!fixture.store.followLocationInBackground)
+        #expect(fixture.preferences.followLocationInBackground == false)
+        #expect(!fixture.location.monitoringEnabled)
+        #expect(fixture.store.showsBackgroundFollowPermissionAlert)
+        fixture.store.dismissBackgroundFollowPermissionAlert()
+        #expect(!fixture.store.showsBackgroundFollowPermissionAlert)
+        fixture.store.followLocationInBackground = true
+        #expect(fixture.store.showsBackgroundFollowPermissionAlert)
+        #expect(fixture.location.alwaysRequests == 1)
+    }
+
+    @Test
+    func grantingAlwaysInSettingsCompletesBackgroundFollowingRequest() {
+        let fixture = TravelFixture()
+        fixture.store.setForeground(true)
+        fixture.store.followLocationInBackground = true
+        fixture.store.setForeground(true) // The system prompt kept When In Use access.
+        #expect(fixture.store.showsBackgroundFollowPermissionAlert)
+
+        fixture.store.enableBackgroundFollowingAfterSettings()
+        #expect(!fixture.store.followLocationInBackground)
+        #expect(fixture.preferences.followLocationInBackground == true)
+        #expect(!fixture.location.monitoringEnabled)
+
+        fixture.store.setForeground(false)
+        fixture.location.statusOverride = .authorizedAlways
+        fixture.location.onAuthorizationChange?(.authorizedAlways)
+        fixture.store.setForeground(true)
+
+        #expect(fixture.store.followLocationInBackground)
+        #expect(fixture.location.monitoringEnabled)
+    }
+
+    @Test
+    func returningFromSettingsWithoutAlwaysKeepsFollowingOff() {
+        let fixture = TravelFixture()
+        fixture.store.setForeground(true)
+        fixture.store.followLocationInBackground = true
+        fixture.store.setForeground(true)
+        fixture.store.enableBackgroundFollowingAfterSettings()
+
+        fixture.store.setForeground(false)
+        fixture.store.setForeground(true)
+
+        #expect(!fixture.store.followLocationInBackground)
+        #expect(fixture.preferences.followLocationInBackground == false)
+        #expect(!fixture.location.monitoringEnabled)
+    }
+
+    @Test
+    func settingsHandoffSurvivesAppRestartAfterAlwaysIsGranted() {
+        let preferences = InMemoryUserPreferenceStore()
+        preferences.hasCompletedOnboarding = true
+        let before = LocationStub(result: .success(origin), placename: "Travel city")
+        let originalController = LocationFollowController(location: before, preferences: preferences)
+        originalController.enableFollowingAfterSettings()
+        #expect(preferences.followLocationInBackground == true)
+
+        let after = LocationStub(result: .success(origin), placename: "Travel city")
+        after.statusOverride = .authorizedAlways
+        let restoredController = LocationFollowController(location: after, preferences: preferences)
+        restoredController.setEligible(true)
+
+        #expect(restoredController.isFollowing)
+        #expect(after.monitoringEnabled)
+    }
+
+    @Test
+    func alreadyDeniedBackgroundFollowingShowsSettingsAlertWithoutRequestingAgain() {
+        let fixture = TravelFixture()
+        fixture.preferences.hasRequestedAlwaysLocationAccess = true
+        fixture.store.followLocationInBackground = true
+        #expect(!fixture.store.followLocationInBackground)
+        #expect(fixture.store.showsBackgroundFollowPermissionAlert)
+        #expect(fixture.location.alwaysRequests == 0)
+    }
+
+    @Test
+    func revokedAlwaysPermissionTurnsFollowingOff() {
+        let fixture = TravelFixture(authorization: .authorizedAlways)
+        #expect(fixture.store.followLocationInBackground)
+        fixture.location.statusOverride = .authorizedWhenInUse
+        fixture.location.onAuthorizationChange?(.authorizedWhenInUse)
+        #expect(!fixture.store.followLocationInBackground)
+        #expect(fixture.preferences.followLocationInBackground == false)
+        #expect(!fixture.location.monitoringEnabled)
+    }
+
+    @Test
+    func newUserDoesNotRequestAlwaysDuringOnboardingOrActivation() async {
         let fixture = TravelFixture(completedOnboarding: false)
         fixture.store.setForeground(true)
         await fixture.store.completeOnboarding()
-        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
-        #expect(!fixture.preferences.hasExplainedBackgroundLocation)
-        // Active callbacks from permission sheets aren't a new visit.
         await fixture.store.refreshOnActivation()
-        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
         fixture.store.setForeground(false)
         await fixture.store.refreshOnActivation()
-        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
-    }
-
-    @Test
-    func cachedUpgradeRemainsEligibleUntilUserResponds() {
-        let fixture = TravelFixture(cachedSnapshot: .preview)
-        #expect(fixture.snapshot != nil)
-        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
-        fixture.store.setForeground(true)
-        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
-        #expect(fixture.weather.fetchCount == 0)
-        #expect(!fixture.preferences.hasExplainedBackgroundLocation)
-        fixture.store.setForeground(false)
-        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
-        fixture.store.setForeground(true)
-        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
-        fixture.store.dismissBackgroundLocationExplanation(requestAlways: false)
-        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
-    }
-
-    @Test
-    func existingUserWaitsForDashboardBeforeExplanation() async {
-        let fixture = TravelFixture()
-        fixture.weather.suspendNext = true
-        let activation = Task { await fixture.store.refreshOnActivation() }
-        await fixture.weather.waitForSuspension()
-        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
-        fixture.weather.resume()
-        _ = await activation.value
-        #expect(fixture.store.shouldOfferBackgroundLocationExplanation)
-    }
-
-    @Test
-    func failedInitialLoadDoesNotShowExplanation() async {
-        let fixture = TravelFixture()
-        fixture.weather.fails = true
-        await fixture.store.refreshOnActivation()
-        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
-        #expect(!fixture.preferences.hasExplainedBackgroundLocation)
-    }
-
-    @Test
-    func decliningAlwaysKeepsForegroundLocationWorking() async {
-        let fixture = TravelFixture()
-        fixture.store.setForeground(true)
-        fixture.store.dismissBackgroundLocationExplanation(requestAlways: false)
+        #expect(!fixture.store.followLocationInBackground)
         #expect(fixture.location.alwaysRequests == 0)
+    }
+
+    @Test
+    func existingAlwaysUserStartsWithBackgroundFollowingOn() {
+        let fixture = TravelFixture(authorization: .authorizedAlways)
+        #expect(fixture.store.followLocationInBackground)
+        fixture.store.synchronizeLocationMonitoring()
         #expect(fixture.location.monitoringEnabled)
+        #expect(fixture.location.alwaysRequests == 0)
+    }
+
+    @Test
+    func foregroundChecksLocationButDoesNotFetchWhileStationary() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.store.setForeground(true)
+        let result = await fixture.store.checkForegroundLocation()
+        #expect(result == .skipped)
+        #expect(fixture.location.requestLocationCount == 2)
+        #expect(fixture.weather.fetchCount == 1)
+        #expect(fixture.location.placenameCount == 1)
+        #expect(!fixture.location.monitoringEnabled)
+    }
+
+    @Test
+    func foregroundMovementFetchesWeather() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.store.setForeground(true)
+        fixture.location.result = .success(destination)
+        #expect(await fixture.store.checkForegroundLocation() == .succeeded)
+        #expect(fixture.weather.fetchCount == 2)
+        #expect(fixture.location.placenameCount == 2)
+    }
+
+    @Test
+    func travelDetectedOnReturnShowsBackgroundFollowTipAfterRefresh() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.location.result = .success(destination)
+
         #expect(await fixture.store.refreshOnActivation() == .succeeded)
+        #expect(fixture.snapshot?.coordinate == destination)
+        #expect(fixture.store.showsBackgroundFollowTip)
+        #expect(fixture.preferences.backgroundFollowTipState == .consumed)
+        #expect(fixture.location.alwaysRequests == 0)
+
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.showsBackgroundFollowTip)
+
+        fixture.store.setForeground(false)
+        #expect(!fixture.store.showsBackgroundFollowTip)
+        await fixture.store.refreshOnActivation()
+        #expect(!fixture.store.showsBackgroundFollowTip)
+    }
+
+    @Test
+    func dismissingTravelTipHidesItImmediately() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.location.result = .success(destination)
+        await fixture.store.refreshOnActivation()
+        #expect(fixture.store.showsBackgroundFollowTip)
+
+        fixture.store.dismissBackgroundFollowTip()
+        #expect(!fixture.store.showsBackgroundFollowTip)
+        #expect(fixture.preferences.backgroundFollowTipState == .consumed)
+    }
+
+    @Test
+    func foregroundTravelQueuesTipUntilNextVisit() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.store.setForeground(true)
+        fixture.location.result = .success(destination)
+
+        #expect(await fixture.store.checkForegroundLocation() == .succeeded)
+        #expect(fixture.preferences.backgroundFollowTipState == .pending)
+        #expect(!fixture.store.showsBackgroundFollowTip)
+
+        fixture.store.setForeground(false)
+        #expect(await fixture.store.refreshOnActivation() == .skipped)
+        #expect(fixture.store.showsBackgroundFollowTip)
+        #expect(fixture.preferences.backgroundFollowTipState == .consumed)
+        #expect(fixture.weather.fetchCount == 2)
+    }
+
+    @Test
+    func shortMoveAndFailedTravelFetchDoNotQueueTip() async {
+        let shortMove = TravelFixture()
+        await shortMove.store.refresh()
+        shortMove.location.result = .success(Coordinate(latitude: origin.latitude + 0.001, longitude: origin.longitude))
+        #expect(await shortMove.store.refreshOnActivation() == .skipped)
+        #expect(shortMove.preferences.backgroundFollowTipState == .tracking(origin))
+
+        let failedMove = TravelFixture()
+        await failedMove.store.refresh()
+        failedMove.weather.fails = true
+        failedMove.location.result = .success(destination)
+        #expect(await failedMove.store.refreshOnActivation() == .failed)
+        #expect(failedMove.preferences.backgroundFollowTipState == .tracking(origin))
+        #expect(!failedMove.store.showsBackgroundFollowTip)
+
+        failedMove.weather.fails = false
+        #expect(await failedMove.store.refreshOnActivation() == .succeeded)
+        #expect(failedMove.store.showsBackgroundFollowTip)
+    }
+
+    @Test
+    func severalShortMovesAccumulateTowardTravelTip() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.store.setForeground(true)
+        let firstMove = Coordinate(latitude: origin.latitude + 0.025, longitude: origin.longitude)
+        let secondMove = Coordinate(latitude: origin.latitude + 0.055, longitude: origin.longitude)
+
+        #expect(await fixture.store.refreshForLocation(firstMove) == .succeeded)
+        #expect(fixture.preferences.backgroundFollowTipState == .tracking(origin))
+        #expect(await fixture.store.refreshForLocation(secondMove) == .succeeded)
+        #expect(fixture.preferences.backgroundFollowTipState == .pending)
+        #expect(!fixture.store.showsBackgroundFollowTip)
+    }
+
+    @Test
+    func manualCityAndPriorPermissionChoiceSuppressTravelTip() async {
+        let manualCity = TravelFixture()
+        await manualCity.store.refresh()
+        manualCity.store.setForeground(true)
+        manualCity.location.result = .success(destination)
+        await manualCity.store.checkForegroundLocation()
+        #expect(manualCity.preferences.backgroundFollowTipState == .pending)
+        await manualCity.store.chooseAndRefresh(place: SavedPlace(name: "Home", coordinate: origin))
+        #expect(manualCity.preferences.backgroundFollowTipState == .uninitialized)
+        manualCity.store.setForeground(false)
+        await manualCity.store.refreshOnActivation()
+        #expect(!manualCity.store.showsBackgroundFollowTip)
+
+        let priorChoice = TravelFixture()
+        priorChoice.preferences.hasRequestedAlwaysLocationAccess = true
+        await priorChoice.store.refresh()
+        priorChoice.location.result = .success(destination)
+        #expect(await priorChoice.store.refreshOnActivation() == .succeeded)
+        #expect(priorChoice.preferences.backgroundFollowTipState == .uninitialized)
+        #expect(!priorChoice.store.showsBackgroundFollowTip)
     }
 
     @Test
     func launchRestoresMonitoringWithoutForegroundPermissionPrompt() {
-        let fixture = TravelFixture()
-        fixture.location.statusOverride = .authorizedAlways
+        let fixture = TravelFixture(authorization: .authorizedAlways)
         fixture.store.synchronizeLocationMonitoring()
         #expect(fixture.location.monitoringEnabled)
         #expect(!fixture.location.monitoringForeground)
-        #expect(!fixture.store.shouldOfferBackgroundLocationExplanation)
+        #expect(fixture.location.alwaysRequests == 0)
         #expect(fixture.location.requestLocationCount == 0)
     }
 
@@ -1270,8 +1540,10 @@ private final class TravelFixture {
     let notifications = TravelNotificationSpy()
     let store: AppStore
 
-    init(completedOnboarding: Bool = true, cachedSnapshot: WeatherSnapshot? = nil) {
+    init(completedOnboarding: Bool = true, cachedSnapshot: WeatherSnapshot? = nil,
+         authorization: CLAuthorizationStatus? = nil) {
         preferences.hasCompletedOnboarding = completedOnboarding
+        location.statusOverride = authorization
         let cache = WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "travel-\(UUID()).json"))
         if let cachedSnapshot { cache.save(cachedSnapshot) }
         store = AppStore(weather: weather, location: location, places: PlaceSearchStub(),

@@ -29,6 +29,7 @@ enum RecommendationReason: String, Codable, Hashable, Sendable {
     case rainRisk
     case windy
     case activePrecipitation
+    case recentRain
     case thunderstorm
     case extremeTemperature
     case extremeHumidity
@@ -45,6 +46,7 @@ enum RecommendationReason: String, Codable, Hashable, Sendable {
         case .rainRisk: "Rain is possible"
         case .windy: "Wind is elevated"
         case .activePrecipitation: "Precipitation is active"
+        case .recentRain: "Recent rain"
         case .thunderstorm: "Thunderstorms nearby"
         case .extremeTemperature: "Temperature is unsafe"
         case .extremeHumidity: "Dew point is too high"
@@ -56,7 +58,7 @@ enum RecommendationReason: String, Codable, Hashable, Sendable {
         switch self {
         case .comfortableTemperature, .temperatureOutsideRange, .extremeTemperature: "thermometer.medium"
         case .lowDewPoint, .humid, .extremeHumidity: "drop"
-        case .noRain, .rainRisk, .activePrecipitation: "cloud.rain"
+        case .noRain, .rainRisk, .activePrecipitation, .recentRain: "cloud.rain"
         case .lightWind, .windy, .dangerousGusts: "wind"
         case .thunderstorm: "cloud.bolt.rain"
         }
@@ -64,7 +66,7 @@ enum RecommendationReason: String, Codable, Hashable, Sendable {
 
     var allowsTransientSmoothing: Bool {
         switch self {
-        case .activePrecipitation, .thunderstorm, .extremeTemperature, .extremeHumidity, .dangerousGusts:
+        case .activePrecipitation, .recentRain, .thunderstorm, .extremeTemperature, .extremeHumidity, .dangerousGusts:
             false
         case .comfortableTemperature, .lowDewPoint, .noRain, .lightWind, .temperatureOutsideRange, .humid, .rainRisk, .windy:
             true

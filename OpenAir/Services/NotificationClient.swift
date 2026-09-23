@@ -5,6 +5,11 @@ protocol NotificationScheduling {
     func authorizationStatus() async -> UNAuthorizationStatus
     func requestAuthorization() async throws -> Bool
     func replaceNotifications(plan: RecommendationPlan, locationName: String, enabled: Bool) async
+    func notifyCurrentChange(status: RecommendationStatus, locationName: String) async
+}
+
+extension NotificationScheduling {
+    func notifyCurrentChange(status: RecommendationStatus, locationName: String) async {}
 }
 
 struct NotificationTransition: Equatable, Sendable {
@@ -18,10 +23,16 @@ struct NotificationTransitionPlanner: Sendable {
 
         var transitions: [NotificationTransition] = []
         var effectiveStatus = first.recommendation.status
+        var rainClosure = first.recommendation.reasons.contains(.activePrecipitation) ||
+            first.recommendation.reasons.contains(.recentRain)
         var index = 1
 
         while index < plan.hourly.count {
             let item = plan.hourly[index]
+            if item.recommendation.reasons.contains(.activePrecipitation) ||
+                item.recommendation.reasons.contains(.recentRain) {
+                rainClosure = true
+            }
 
             if shouldSuppressOneHourChange(
                 at: index,
@@ -34,7 +45,7 @@ struct NotificationTransitionPlanner: Sendable {
 
             if item.recommendation.status != effectiveStatus {
                 effectiveStatus = item.recommendation.status
-                if item.weather.date > now {
+                if item.weather.date > now && !(item.recommendation.status == .open && rainClosure) {
                     transitions.append(
                         NotificationTransition(
                             date: item.weather.date,
@@ -67,9 +78,26 @@ struct NotificationTransitionPlanner: Sendable {
     }
 }
 
+struct ImmediateAlertDeduplicator {
+    static func shouldSend(
+        signature: String,
+        now: Date,
+        recentSignature: String?,
+        recentDate: Date?,
+        delivered: [(signature: String, date: Date)]
+    ) -> Bool {
+        if recentSignature == signature, let recentDate,
+           now.timeIntervalSince(recentDate) < 30 * 60 { return false }
+        return !delivered.contains { item in
+            item.signature == signature && now.timeIntervalSince(item.date) < 30 * 60
+        }
+    }
+}
+
 struct NotificationClient: NotificationScheduling {
     private let center = UNUserNotificationCenter.current()
     private let prefix = "openair.transition."
+    private let recentImmediateKey = "openair.lastImmediateAlert"
 
     func authorizationStatus() async -> UNAuthorizationStatus {
         await center.notificationSettings().authorizationStatus
@@ -98,6 +126,7 @@ struct NotificationClient: NotificationScheduling {
                 ? "Outdoor conditions in \(locationName) are favorable."
                 : "Outdoor conditions in \(locationName) are expected to worsen."
             content.sound = .default
+            content.userInfo = ["status": status.rawValue, "location": locationName]
 
             let request = UNNotificationRequest(
                 identifier: "\(prefix)\(Int(date.timeIntervalSince1970))",
@@ -112,5 +141,41 @@ struct NotificationClient: NotificationScheduling {
             )
             try? await center.add(request)
         }
+    }
+
+    func notifyCurrentChange(status: RecommendationStatus, locationName: String) async {
+        let now = Date.now
+        let signature = "\(status.rawValue)|\(locationName)"
+        let record = UserDefaults.standard.dictionary(forKey: recentImmediateKey)
+        let delivered = await center.deliveredNotifications()
+        let deliveredSignatures = delivered.compactMap { notification -> (signature: String, date: Date)? in
+            guard let status = notification.request.content.userInfo["status"] as? String,
+                  let location = notification.request.content.userInfo["location"] as? String else { return nil }
+            return ("\(status)|\(location)", notification.date)
+        }
+        guard ImmediateAlertDeduplicator.shouldSend(
+            signature: signature,
+            now: now,
+            recentSignature: record?["signature"] as? String,
+            recentDate: record?["date"] as? Date,
+            delivered: deliveredSignatures
+        ) else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = status == .open ? "Open your windows" : "Keep your windows closed"
+        content.body = status == .open
+            ? "Outdoor conditions in \(locationName) are favorable."
+            : "Outdoor conditions in \(locationName) have changed."
+        content.sound = .default
+        content.userInfo = ["status": status.rawValue, "location": locationName]
+        let request = UNNotificationRequest(
+            identifier: "openair.immediate.\(Int(now.timeIntervalSince1970))",
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        )
+        do {
+            try await center.add(request)
+            UserDefaults.standard.set(["signature": signature, "date": now], forKey: recentImmediateKey)
+        } catch { }
     }
 }

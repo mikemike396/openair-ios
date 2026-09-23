@@ -1,6 +1,11 @@
 import Foundation
 import Observation
 
+enum LocationSelectionErrorSource {
+    case currentLocation
+    case citySearch
+}
+
 /// Shared search and selection state for onboarding and Location settings.
 @Observable
 final class LocationSelectionModel {
@@ -10,6 +15,7 @@ final class LocationSelectionModel {
     private(set) var isSearching = false
     private(set) var isChoosingCurrentLocation = false
     var errorMessage: String?
+    private(set) var errorSource: LocationSelectionErrorSource?
 
     init(places: any PlaceSearching) {
         self.places = places
@@ -21,6 +27,7 @@ final class LocationSelectionModel {
         guard canUseCurrentLocation else { return false }
         isChoosingCurrentLocation = true
         errorMessage = nil
+        errorSource = nil
         return true
     }
 
@@ -33,6 +40,12 @@ final class LocationSelectionModel {
         isSearching = false
         searchResults = []
         errorMessage = nil
+        errorSource = nil
+    }
+
+    func showCurrentLocationError(_ message: String) {
+        errorMessage = message
+        errorSource = .currentLocation
     }
 
     func searchPlaces(_ query: String, debounce: Bool = false) async {
@@ -54,6 +67,7 @@ final class LocationSelectionModel {
         } catch {
             guard searchID == id else { return }
             errorMessage = error.localizedDescription
+            errorSource = .citySearch
         }
     }
 }
