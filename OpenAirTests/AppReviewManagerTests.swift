@@ -69,7 +69,6 @@ struct AppReviewManagerTests {
     }
 }
 private final class ReviewUserPreferenceStore: UserPreferenceStoring {
-    var hasExplainedBackgroundLocation = false
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?
     var lastKnownCurrentLocation: SavedPlace?

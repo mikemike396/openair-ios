@@ -6,7 +6,6 @@ extension EnvironmentValues {
 
 // Default no-op implementation
 final class DefaultNoOpUserPreferenceStore: UserPreferenceStoring {
-    var hasExplainedBackgroundLocation = false
     var hasCompletedOnboarding: Bool = false
     var savedPlace: SavedPlace? = nil
     var lastKnownCurrentLocation: SavedPlace? = nil

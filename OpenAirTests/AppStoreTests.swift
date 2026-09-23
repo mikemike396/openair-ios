@@ -831,7 +831,6 @@ private func appStoreTestSnapshot(fetchedAt: Date) -> WeatherSnapshot {
     )
 }
 private final class InMemoryUserPreferenceStore: UserPreferenceStoring {
-    var hasExplainedBackgroundLocation = false
     var hasCompletedOnboarding = false
     var savedPlace: SavedPlace?
     var lastKnownCurrentLocation: SavedPlace?

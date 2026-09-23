@@ -24,7 +24,6 @@ enum BackgroundFollowTipState: Codable, Equatable {
 
 protocol UserPreferenceStoring {
     var hasCompletedOnboarding: Bool { get set }
-    var hasExplainedBackgroundLocation: Bool { get set }
     var savedPlace: SavedPlace? { get set }
     var lastKnownCurrentLocation: SavedPlace? { get set }
     var followLocationInBackground: Bool? { get set }
@@ -69,11 +68,6 @@ final class UserPreferenceStore: UserPreferenceStoring {
                 newValue: newValue
             )
         }
-    }
-
-    var hasExplainedBackgroundLocation: Bool {
-        get { getter(keyPath: \.hasExplainedBackgroundLocation, key: "hasExplainedBackgroundLocation", defaultValue: false) }
-        set { setter(keyPath: \.hasExplainedBackgroundLocation, key: "hasExplainedBackgroundLocation", newValue: newValue) }
     }
 
     var savedPlace: SavedPlace? {
