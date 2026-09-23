@@ -27,8 +27,9 @@ enum RefreshState: Equatable {
 
 @Observable
 final class AppStore {
-    private let weather: any WeatherProviding
+    private let weatherRequests: WeatherRequestCoordinator
     let location: any LocationProviding
+    private let locationFollow: LocationFollowController
     let locationSelection: LocationSelectionModel
     private let evaluator: any RecommendationEvaluating
     private let notifications: any NotificationScheduling
@@ -40,20 +41,16 @@ final class AppStore {
     // View state
     var loadState: DashboardLoadState = .idle
     private(set) var refreshState: RefreshState = .idle
-    private(set) var locationAuthorization: CLAuthorizationStatus
+    var locationAuthorization: CLAuthorizationStatus { locationFollow.authorizationStatus }
     var notificationStatus: UNAuthorizationStatus = .notDetermined
     private(set) var isRequestingNotificationPermission = false
 
     // Location lifecycle
-    private var isForeground = false
+    private var isForeground: Bool { locationFollow.isForeground }
     private var locationWork: Task<Void, Never>?
-    private var foregroundCheckTask: Task<Void, Never>?
     private var locationBackgroundTask: UIBackgroundTaskIdentifier = .invalid
-    private var lastRoutineWeatherRequestAt: Date?
     private var stabilization: RecommendationStabilizationState
-    private var pendingBackgroundFollowAuthorization = false
-    private var backgroundAuthorizationFallbackTask: Task<Void, Never>?
-    private(set) var showsBackgroundFollowPermissionAlert = false
+    var showsBackgroundFollowPermissionAlert: Bool { locationFollow.showsPermissionAlert }
     private var travelTipVisible = false
 
     var showsBackgroundFollowTip: Bool {
@@ -78,17 +75,10 @@ final class AppStore {
     private var locationSelectionVersion = 0
 
     // Refresh queue
-    private enum RefreshLocationSource {
-        case currentLocation
-        case deliveredLocation(Coordinate)
-        case savedLocation
-    }
-
     private struct RefreshRequest {
         let keepsLoadedState: Bool
-        let source: RefreshLocationSource
-        let onlyIfNeeded: Bool
-        let movementOnly: Bool
+        let source: WeatherRequestCoordinator.Source
+        let policy: WeatherRequestCoordinator.Policy
     }
 
     private var pendingRefresh: RefreshRequest?
@@ -158,51 +148,16 @@ final class AppStore {
     }
 
     var followLocationInBackground: Bool {
-        get {
-            userPreferences.followLocationInBackground == true && locationAuthorization == .authorizedAlways
-        }
+        get { locationFollow.isFollowing }
         set {
-            locationAuthorization = location.authorizationStatus
-            if newValue && locationAuthorization != .authorizedAlways {
-                dismissBackgroundFollowTip()
-                userPreferences.followLocationInBackground = false
-                if locationAuthorization == .authorizedWhenInUse &&
-                    !userPreferences.hasRequestedAlwaysLocationAccess {
-                    userPreferences.hasRequestedAlwaysLocationAccess = true
-                    pendingBackgroundFollowAuthorization = true
-                    showsBackgroundFollowPermissionAlert = false
-                    location.requestAlwaysAuthorization()
-                    backgroundAuthorizationFallbackTask?.cancel()
-                    backgroundAuthorizationFallbackTask = Task { [weak self] in
-                        do { try await Task.sleep(for: .seconds(2)) }
-                        catch { return }
-                        guard let self, self.pendingBackgroundFollowAuthorization,
-                              UIApplication.shared.applicationState == .active else { return }
-                        self.finishBackgroundFollowAuthorizationAttempt()
-                        self.synchronizeLocationMonitoring()
-                    }
-                } else {
-                    pendingBackgroundFollowAuthorization = false
-                    backgroundAuthorizationFallbackTask?.cancel()
-                    showsBackgroundFollowPermissionAlert = true
-                }
-                synchronizeLocationMonitoring()
-                return
-            }
-            guard followLocationInBackground != newValue || pendingBackgroundFollowAuthorization || showsBackgroundFollowPermissionAlert else { return }
-            pendingBackgroundFollowAuthorization = false
-            backgroundAuthorizationFallbackTask?.cancel()
-            showsBackgroundFollowPermissionAlert = false
-            userPreferences.followLocationInBackground = newValue
             if newValue { dismissBackgroundFollowTip() }
-            if !newValue {
+            if locationFollow.setFollowing(newValue) {
                 locationWork?.cancel()
                 locationWork = nil
                 weatherContextVersion += 1
                 pendingRefresh = nil
                 endLocationBackgroundTask()
             }
-            synchronizeLocationMonitoring()
         }
     }
 
@@ -217,9 +172,13 @@ final class AppStore {
         userPreferences: any UserPreferenceStoring,
         appReviewManager: AppReviewManager
     ) {
-        self.weather = weather
+        self.weatherRequests = WeatherRequestCoordinator(
+            weather: weather,
+            location: location,
+            preferences: userPreferences
+        )
         self.location = location
-        self.locationAuthorization = location.authorizationStatus
+        self.locationFollow = LocationFollowController(location: location, preferences: userPreferences)
         self.locationSelection = LocationSelectionModel(places: places)
         self.evaluator = evaluator
         self.notifications = notifications
@@ -228,15 +187,6 @@ final class AppStore {
         self.userPreferences = userPreferences
         self.stabilization = userPreferences.recommendationStabilization ?? .init()
         self.appReviewManager = appReviewManager
-        if location.authorizationStatus == .authorizedAlways || userPreferences.followLocationInBackground == true {
-            self.userPreferences.hasRequestedAlwaysLocationAccess = true
-        }
-        if userPreferences.followLocationInBackground == nil {
-            self.userPreferences.followLocationInBackground = userPreferences.hasCompletedOnboarding &&
-                location.authorizationStatus == .authorizedAlways
-        } else if location.authorizationStatus != .authorizedAlways {
-            self.userPreferences.followLocationInBackground = false
-        }
         if userPreferences.savedPlace == nil,
            userPreferences.backgroundFollowTipState == .uninitialized,
            let coordinate = userPreferences.lastKnownCurrentLocation?.coordinate {
@@ -247,18 +197,22 @@ final class AppStore {
             let plan = stabilization.plan(for: cached, base: base, preferences: preferences, fresh: false)
             self.userPreferences.recommendationStabilization = stabilization
             loadState = .loaded(snapshot: cached, plan: plan)
-            lastRoutineWeatherRequestAt = cached.fetchedAt
+            weatherRequests.seedLastRequest(at: cached.fetchedAt)
         }
-        location.onLocationChange = { [weak self] coordinate in
+        locationFollow.onSignificantLocation = { [weak self] coordinate in
             self?.receiveLocation(coordinate)
         }
-        location.onAuthorizationChange = { [weak self] status in
-            self?.authorizationChanged(status)
+        locationFollow.onAuthorizationChange = { [weak self] status in
+            self?.locationAuthorizationChanged(status)
+        }
+        locationFollow.onForegroundCheck = { [weak self] in
+            guard let self else { return }
+            _ = await self.checkForegroundLocation()
         }
     }
 
     func dismissBackgroundFollowPermissionAlert() {
-        showsBackgroundFollowPermissionAlert = false
+        locationFollow.dismissPermissionAlert()
     }
 
     func dismissBackgroundFollowTip() {
@@ -272,65 +226,18 @@ final class AppStore {
 
     // Called during application launch too, before any scene exists.
     func synchronizeLocationMonitoring() {
-        location.setMonitoring(
-            enabled: hasCompletedOnboarding && savedPlace == nil && followLocationInBackground,
-            foreground: isForeground
-        )
-        foregroundCheckTask?.cancel()
-        foregroundCheckTask = nil
-        if isForeground && hasCompletedOnboarding && savedPlace == nil {
-            foregroundCheckTask = Task { [weak self] in
-                while !Task.isCancelled {
-                    do { try await Task.sleep(for: .seconds(15 * 60)) }
-                    catch { return }
-                    guard let self, !Task.isCancelled else { return }
-                    _ = await self.checkForegroundLocation()
-                }
-            }
-        }
+        locationFollow.setEligible(hasCompletedOnboarding && savedPlace == nil)
     }
 
     func setForeground(_ foreground: Bool) {
-        isForeground = foreground
         if !foreground { travelTipVisible = false }
-        locationAuthorization = location.authorizationStatus
-        if foreground && pendingBackgroundFollowAuthorization {
-            finishBackgroundFollowAuthorizationAttempt()
-        }
-        if locationAuthorization != .authorizedAlways {
-            userPreferences.followLocationInBackground = false
-        }
-        synchronizeLocationMonitoring()
+        locationFollow.setForeground(foreground, eligible: hasCompletedOnboarding && savedPlace == nil)
     }
 
-    private func authorizationChanged(_ status: CLAuthorizationStatus) {
-        locationAuthorization = status
-        if pendingBackgroundFollowAuthorization && status == .authorizedAlways {
-            pendingBackgroundFollowAuthorization = false
-            backgroundAuthorizationFallbackTask?.cancel()
-            showsBackgroundFollowPermissionAlert = false
-            userPreferences.followLocationInBackground = true
-        } else if status != .authorizedAlways {
-            userPreferences.followLocationInBackground = false
-        }
+    private func locationAuthorizationChanged(_ status: CLAuthorizationStatus) {
         if savedPlace == nil && (status == .denied || status == .restricted) {
             weatherContextVersion += 1
             pendingRefresh = nil
-        }
-        synchronizeLocationMonitoring()
-    }
-
-    private func finishBackgroundFollowAuthorizationAttempt() {
-        guard pendingBackgroundFollowAuthorization else { return }
-        pendingBackgroundFollowAuthorization = false
-        backgroundAuthorizationFallbackTask?.cancel()
-        locationAuthorization = location.authorizationStatus
-        if locationAuthorization == .authorizedAlways {
-            userPreferences.followLocationInBackground = true
-            showsBackgroundFollowPermissionAlert = false
-        } else {
-            userPreferences.followLocationInBackground = false
-            showsBackgroundFollowPermissionAlert = true
         }
     }
 
@@ -340,7 +247,7 @@ final class AppStore {
         await refreshNotificationPermission()
         guard hasCompletedOnboarding else { return .skipped }
         if savedPlace != nil { return await refreshIfNeeded() }
-        let result = await performRefresh(keepsLoadedState: true, onlyIfNeeded: true)
+        let result = await performRefresh(keepsLoadedState: true, policy: .whenStaleOrMoved)
         if isForeground && !travelTipVisible &&
             userPreferences.backgroundFollowTipState == .pending && canSuggestBackgroundFollowing {
             travelTipVisible = true
@@ -353,8 +260,8 @@ final class AppStore {
     private func receiveLocation(_ coordinate: Coordinate) {
         guard !isForeground, hasCompletedOnboarding, savedPlace == nil,
               followLocationInBackground, locationAuthorization == .authorizedAlways else { return }
-        if let lastRoutineWeatherRequestAt,
-           Date.now.timeIntervalSince(lastRoutineWeatherRequestAt) < .foregroundRefreshInterval { return }
+        if let lastRequestAt = weatherRequests.lastRequestAt,
+           Date.now.timeIntervalSince(lastRequestAt) < .foregroundRefreshInterval { return }
         // Hold a bounded execution allowance for geocoding, weather, and publishing.
         if locationBackgroundTask == .invalid {
             locationBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Update local weather") { [weak self] in
@@ -367,7 +274,7 @@ final class AppStore {
             }
         }
         if refreshState == .refreshing {
-            pendingRefresh = RefreshRequest(keepsLoadedState: true, source: .deliveredLocation(coordinate), onlyIfNeeded: true, movementOnly: false)
+            pendingRefresh = RefreshRequest(keepsLoadedState: true, source: .deliveredLocation(coordinate), policy: .whenStaleOrMoved)
             return
         }
         locationWork = Task { [weak self] in
@@ -387,7 +294,7 @@ final class AppStore {
     func refreshForLocation(_ coordinate: Coordinate) async -> RefreshResult {
         guard hasCompletedOnboarding, savedPlace == nil,
               locationAuthorization == .authorizedWhenInUse || locationAuthorization == .authorizedAlways else { return .skipped }
-        return await performRefresh(keepsLoadedState: true, source: .deliveredLocation(coordinate), onlyIfNeeded: true)
+        return await performRefresh(keepsLoadedState: true, source: .deliveredLocation(coordinate), policy: .whenStaleOrMoved)
     }
 
     @discardableResult
@@ -398,8 +305,7 @@ final class AppStore {
             return await performRefresh(
                 keepsLoadedState: true,
                 source: .deliveredLocation(coordinate),
-                onlyIfNeeded: true,
-                movementOnly: true
+                policy: .whenMoved
             )
         } catch {
             return .skipped
@@ -580,15 +486,13 @@ final class AppStore {
     @discardableResult
     private func performRefresh(
         keepsLoadedState: Bool,
-        source: RefreshLocationSource = .currentLocation,
-        onlyIfNeeded: Bool = false,
-        movementOnly: Bool = false
+        source: WeatherRequestCoordinator.Source = .currentLocation,
+        policy: WeatherRequestCoordinator.Policy = .always
     ) async -> RefreshResult {
         let request = RefreshRequest(
             keepsLoadedState: keepsLoadedState,
             source: source,
-            onlyIfNeeded: onlyIfNeeded,
-            movementOnly: movementOnly
+            policy: policy
         )
         guard refreshState != .refreshing else {
             // A scheduled fetch must not replace a newer movement event.
@@ -636,17 +540,29 @@ final class AppStore {
         }
 
         do {
-            guard let target = try await targetForWeatherRefresh(
+            let targetRequest = WeatherRequestCoordinator.Request(
                 source: request.source,
+                selectedPlace: savedPlace,
                 existingSnapshot: existingSnapshot,
-                onlyIfNeeded: request.onlyIfNeeded,
-                movementOnly: request.movementOnly
+                policy: request.policy
             )
-            else { return .skipped }
+            let resolution = try await weatherRequests.resolveTarget(targetRequest) { [weak self] in
+                guard let self else { return false }
+                return contextVersion == self.weatherContextVersion && self.savedPlace == nil
+            }
+            let target: WeatherRequestCoordinator.Target
+            switch resolution {
+            case .target(let resolvedTarget):
+                target = resolvedTarget
+            case .unchangedLocation:
+                publishLoadedSnapshot()
+                return .skipped
+            case .noLastKnownLocation:
+                return .skipped
+            }
             try Task.checkCancellation()
             guard contextVersion == weatherContextVersion else { return .skipped }
-            lastRoutineWeatherRequestAt = .now
-            let snapshot = try await weather.fetchWeather(for: target.coordinate, locationName: target.name)
+            let snapshot = try await weatherRequests.fetch(for: target)
             try Task.checkCancellation()
             guard contextVersion == weatherContextVersion else { return .skipped }
             let previousStatus = stabilization.effective?.status
@@ -698,66 +614,6 @@ final class AppStore {
     private func recordSignificantEventIfNeeded(for result: RefreshResult) {
         guard result == .succeeded else { return }
         appReviewManager.recordSignificantEvent()
-    }
-
-    private func targetForWeatherRefresh(
-        source: RefreshLocationSource,
-        existingSnapshot: WeatherSnapshot?,
-        onlyIfNeeded: Bool,
-        movementOnly: Bool
-    ) async throws -> (coordinate: Coordinate, name: String)? {
-        // The user's selected city takes precedence over every automatic source.
-        if let savedPlace {
-            return (savedPlace.coordinate, savedPlace.name)
-        }
-
-        switch source {
-        case .currentLocation:
-            return try await resolveCurrentLocationTarget(
-                existingSnapshot: existingSnapshot,
-                onlyIfNeeded: onlyIfNeeded,
-                movementOnly: movementOnly
-            )
-        case .deliveredLocation(let coordinate):
-            return try await resolveCurrentLocationTarget(
-                coordinate: coordinate,
-                existingSnapshot: existingSnapshot,
-                onlyIfNeeded: onlyIfNeeded,
-                movementOnly: movementOnly
-            )
-        case .savedLocation:
-            guard let lastKnownCurrentLocation else { return nil }
-            return (lastKnownCurrentLocation.coordinate, lastKnownCurrentLocation.name)
-        }
-    }
-
-    private func resolveCurrentLocationTarget(
-        coordinate deliveredCoordinate: Coordinate? = nil,
-        existingSnapshot: WeatherSnapshot?,
-        onlyIfNeeded: Bool,
-        movementOnly: Bool
-    ) async throws -> (coordinate: Coordinate, name: String)? {
-        let contextVersion = weatherContextVersion
-        let coordinate: Coordinate
-        if let deliveredCoordinate { coordinate = deliveredCoordinate }
-        else { coordinate = try await location.requestLocation() }
-        if onlyIfNeeded, let existingSnapshot {
-            let distance = existingSnapshot.coordinate.clLocation.distance(from: coordinate.clLocation)
-            if distance < 1_000 &&
-                (movementOnly || Date.now.timeIntervalSince(existingSnapshot.fetchedAt) < .foregroundRefreshInterval) {
-                lastKnownCurrentLocation = SavedPlace(
-                    name: lastKnownCurrentLocation?.name ?? existingSnapshot.locationName,
-                    coordinate: coordinate
-                )
-                publishLoadedSnapshot()
-                return nil
-            }
-        }
-        let name = await location.placename(for: coordinate) ?? "Current Location"
-        try Task.checkCancellation()
-        guard contextVersion == weatherContextVersion, savedPlace == nil else { throw CancellationError() }
-        lastKnownCurrentLocation = SavedPlace(name: name, coordinate: coordinate)
-        return (coordinate, name)
     }
 
     private func recalculate() {
