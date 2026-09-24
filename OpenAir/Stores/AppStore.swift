@@ -255,7 +255,6 @@ final class AppStore {
         if isForeground && !travelTipVisible &&
             userPreferences.backgroundFollowTipState == .pending && canSuggestBackgroundFollowing {
             travelTipVisible = true
-            userPreferences.backgroundFollowTipState = .consumed
         }
         if isForeground { recordSignificantEventIfNeeded(for: result) }
         return result

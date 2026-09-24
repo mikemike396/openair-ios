@@ -1351,7 +1351,7 @@ struct AutomaticLocationTests {
     }
 
     @Test
-    func travelDetectedOnReturnShowsBackgroundFollowTipAfterRefresh() async {
+    func travelDetectedOnReturnKeepsBackgroundFollowTipUntilDismissed() async {
         let fixture = TravelFixture()
         await fixture.store.refresh()
         fixture.location.result = .success(destination)
@@ -1359,7 +1359,7 @@ struct AutomaticLocationTests {
         #expect(await fixture.store.refreshOnActivation() == .succeeded)
         #expect(fixture.snapshot?.coordinate == destination)
         #expect(fixture.store.showsBackgroundFollowTip)
-        #expect(fixture.preferences.backgroundFollowTipState == .consumed)
+        #expect(fixture.preferences.backgroundFollowTipState == .pending)
         #expect(fixture.location.alwaysRequests == 0)
 
         await fixture.store.refreshOnActivation()
@@ -1368,7 +1368,8 @@ struct AutomaticLocationTests {
         fixture.store.setForeground(false)
         #expect(!fixture.store.showsBackgroundFollowTip)
         await fixture.store.refreshOnActivation()
-        #expect(!fixture.store.showsBackgroundFollowTip)
+        #expect(fixture.store.showsBackgroundFollowTip)
+        #expect(fixture.preferences.backgroundFollowTipState == .pending)
     }
 
     @Test
@@ -1385,6 +1386,28 @@ struct AutomaticLocationTests {
     }
 
     @Test
+    func pendingTravelTipSurvivesAppRelaunch() async {
+        let fixture = TravelFixture()
+        await fixture.store.refresh()
+        fixture.location.result = .success(destination)
+        await fixture.store.refreshOnActivation()
+
+        let relaunchedStore = AppStore(
+            weather: TravelWeatherProvider(),
+            location: LocationStub(result: .success(destination), placename: "Travel city"),
+            places: PlaceSearchStub(),
+            notifications: NotificationStub(),
+            cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "travel-relaunch-\(UUID()).json")),
+            userPreferences: fixture.preferences,
+            appReviewManager: AppReviewManager(userPreferences: fixture.preferences)
+        )
+
+        #expect(await relaunchedStore.refreshOnActivation() == .succeeded)
+        #expect(relaunchedStore.showsBackgroundFollowTip)
+        #expect(fixture.preferences.backgroundFollowTipState == .pending)
+    }
+
+    @Test
     func foregroundTravelQueuesTipUntilNextVisit() async {
         let fixture = TravelFixture()
         await fixture.store.refresh()
@@ -1398,7 +1421,7 @@ struct AutomaticLocationTests {
         fixture.store.setForeground(false)
         #expect(await fixture.store.refreshOnActivation() == .skipped)
         #expect(fixture.store.showsBackgroundFollowTip)
-        #expect(fixture.preferences.backgroundFollowTipState == .consumed)
+        #expect(fixture.preferences.backgroundFollowTipState == .pending)
         #expect(fixture.weather.fetchCount == 2)
     }
 
