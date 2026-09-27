@@ -6,3 +6,4 @@
 .xcodebuildmcp-derived/
 xcuserdata/
 *.xcresult
+project-resources/app-store-metadata/analytics.csv
