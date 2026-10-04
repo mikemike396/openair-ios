@@ -2,21 +2,23 @@ import SwiftUI
 import UIKit
 
 struct LocationSettingsSection: View {
-    @Environment(AppStore.self) private var store
+    @Environment(LocationStore.self) private var location
+    @Environment(WeatherStore.self) private var weather
+    @AppCoordinatorEnvironment private var coordinator
     @Environment(\.openURL) private var openURL
     @State private var query = ""
-    private var selection: LocationSelectionModel { store.locationSelection }
+    private var selection: LocationSelectionModel { location.selection }
 
     var body: some View {
         Section {
             activeLocationRow
 
-            if store.savedPlace != nil {
+            if location.savedPlace != nil {
                 currentLocationButton(title: "Use Current Location", loadingTitle: "Finding Location")
             } else {
                 Toggle("Follow location in background", isOn: Binding(
-                    get: { store.followLocationInBackground },
-                    set: { store.followLocationInBackground = $0 }
+                    get: { location.followLocationInBackground },
+                    set: { location.followLocationInBackground = $0 }
                 ))
             }
 
@@ -28,18 +30,18 @@ struct LocationSettingsSection: View {
         } header: {
             Text("Weather Location")
         } footer: {
-            if store.savedPlace == nil {
-                Text(Self.followingFooter(isEnabled: store.followLocationInBackground))
+            if location.savedPlace == nil {
+                Text(Self.followingFooter(isEnabled: location.followLocationInBackground))
             }
         }
         .alert("Background following is off", isPresented: Binding(
-            get: { store.showsBackgroundFollowPermissionAlert },
-            set: { if !$0 { store.dismissBackgroundFollowPermissionAlert() } }
+            get: { location.showsBackgroundFollowPermissionAlert },
+            set: { if !$0 { location.dismissBackgroundFollowPermissionAlert() } }
         )) {
             Button("Not Now", role: .cancel) {}
             Button("Open Settings") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
-                    store.enableBackgroundFollowingAfterSettings()
+                    location.enableBackgroundFollowingAfterSettings()
                     openURL(url)
                 }
             }
@@ -64,7 +66,7 @@ struct LocationSettingsSection: View {
                 Button(place.name) {
                     Task {
                         query = ""
-                        await store.chooseAndRefresh(place: place)
+                        await coordinator.chooseAndRefresh(place: place)
                     }
                 }
             }
@@ -82,8 +84,8 @@ struct LocationSettingsSection: View {
     private var activeLocationRow: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(store.savedPlace?.name ?? "Current Location")
-                Text(store.savedPlace == nil ? currentLocationName : "Selected City")
+                Text(location.savedPlace?.name ?? "Current Location")
+                Text(location.savedPlace == nil ? currentLocationName : "Selected City")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -94,7 +96,7 @@ struct LocationSettingsSection: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            store.savedPlace.map { "Active weather location: selected city, \($0.name)" }
+            location.savedPlace.map { "Active weather location: selected city, \($0.name)" }
                 ?? "Active weather location: current location, \(currentLocationName)"
         )
     }
@@ -120,16 +122,16 @@ struct LocationSettingsSection: View {
     }
 
     private var currentLocationName: String {
-        if let lastKnownCurrentLocation = store.lastKnownCurrentLocation {
+        if let lastKnownCurrentLocation = location.lastKnownCurrentLocation {
             return lastKnownCurrentLocation.name
         }
-        guard case .loaded(let snapshot, _) = store.loadState else {
+        guard case .loaded(let snapshot, _) = weather.loadState else {
             return "Current location"
         }
         return snapshot.locationName
     }
 
     private func chooseCurrentLocation() async {
-        _ = await store.useCurrentLocation()
+        _ = await coordinator.useCurrentLocation()
     }
 }

@@ -9,6 +9,6 @@ This directory records the US English metadata prepared for each OpenAir release
 3. Once live, record the release date. Keep that version's snapshot unchanged; use a new directory for later edits.
 4. Compare App Store Search impressions, first-time downloads, and conversion over equal periods. Record major changes to screenshots, paid acquisition, or app behavior alongside metadata changes.
 
-The keyword field is recorded in each version's metadata file and is intended to be public. Analytics snapshots are kept locally in the gitignored `analytics.csv`; preserve the period, territory filter, source, and metric definition so later comparisons are meaningful. Analytics are not committed to Git and need a separate private backup to survive a new machine or checkout.
+The keyword field is recorded in each version's metadata file and is intended to be public. Analytics, API credentials, collection scripts, and weekly reviews are maintained in a separate, private ASO workspace outside this app repository. This directory retains public version snapshots. Preserve the period, territory filter, source, and metric definition so later comparisons are meaningful. Analytics are not committed to Git and need a separate private backup.
 
 Apple limits app names and subtitles to 30 characters and the keyword field to 100 bytes. Promotional text is limited to 170 characters. Verify counts before entering new copy in App Store Connect.

@@ -21,19 +21,47 @@ import SwiftUI
 }
 
 private struct DashboardPreview: View {
-    @State private var store: AppStore
+    @State private var preferences: UserPreferenceStore
+    @State private var weather: WeatherStore
+    @State private var location: LocationStore
+    @State private var notifications: NotificationStore
+    @State private var coordinator: AppCoordinator
 
     init(state: DashboardLoadState) {
-        let store = Self.makeStore()
-        store.loadState = state
-        _store = State(initialValue: store)
+        let defaults = UserDefaults(suiteName: "DashboardPreview.\(UUID().uuidString)")!
+        let preferences = UserPreferenceStore(userDefaults: defaults)
+        preferences.hasCompletedOnboarding = true
+        let provider = LocationClient()
+        let location = LocationStore(provider: provider, places: MapKitPlaceSearchClient(), preferences: preferences)
+        let weather = WeatherStore(
+            requests: WeatherRequestCoordinator(weather: PreviewWeatherClient(), location: provider, preferences: preferences),
+            evaluator: RecommendationEngine(),
+            cache: WeatherCache(url: FileManager.default.temporaryDirectory.appending(path: "preview-\(UUID()).json")),
+            widgets: DisabledWidgetSnapshotPublisher(), preferences: preferences
+        )
+        let notifications = NotificationStore(scheduler: NotificationClient(), preferences: preferences)
+        let coordinator = AppCoordinator(
+            weather: weather, location: location, notifications: notifications,
+            preferences: preferences, reviews: AppReviewManager(userPreferences: preferences),
+            background: PreviewBackgroundRefreshClient()
+        )
+        weather.loadState = state
+        _preferences = State(initialValue: preferences)
+        _weather = State(initialValue: weather)
+        _location = State(initialValue: location)
+        _notifications = State(initialValue: notifications)
+        _coordinator = State(initialValue: coordinator)
     }
 
     var body: some View {
         NavigationStack {
             DashboardView()
         }
-        .environment(store)
+        .environment(weather)
+        .environment(location)
+        .environment(notifications)
+        .environment(\.userPreferenceStore, preferences)
+        .environment(\.appCoordinator, coordinator)
     }
 
     static func loaded(
@@ -78,10 +106,10 @@ private struct DashboardPreview: View {
         )
     }
 
-    private static func makeStore() -> AppStore {
-        let defaults = UserDefaults(suiteName: "DashboardPreview.\(UUID().uuidString)")!
-        let userPreferences = UserPreferenceStore(userDefaults: defaults)
-        userPreferences.hasCompletedOnboarding = true
-        return AppStore(weather: PreviewWeatherClient(), userPreferences: userPreferences, appReviewManager: AppReviewManager())
-    }
+}
+
+private final class PreviewBackgroundRefreshClient: BackgroundRefreshManaging {
+    func beginLocationUpdate(expiration: @escaping @MainActor () -> Void) {}
+    func endLocationUpdate() {}
+    func scheduleRefresh() {}
 }

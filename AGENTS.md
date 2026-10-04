@@ -14,3 +14,10 @@ Testing when practical.
 For command-line Xcode verification, use `.build/DerivedData` so builds stay
 inside the workspace sandbox. Keep `.build/DerivedData/` ignored, and do not
 add Xcode build output to git.
+
+For every code-review task, including when using a code-review skill, spawn
+at least one sub-agent for an independent review of the same scope and give
+it the relevant repository context. Reconcile and deduplicate the reviews
+before reporting findings. The primary agent owns final decisions about
+finding validity, severity, and reporting. This rule applies to code reviews,
+not ordinary implementation or planning tasks.

@@ -1,7 +1,10 @@
 import SwiftUI
 
 struct DashboardView: View {
-    @Environment(AppStore.self) private var store
+    @Environment(WeatherStore.self) private var weather
+    @Environment(LocationStore.self) private var location
+    @Environment(\.userPreferenceStore) private var preferences
+    @AppCoordinatorEnvironment private var coordinator
     @State private var showingSettings = false
 
     var body: some View {
@@ -13,7 +16,7 @@ struct DashboardView: View {
                         Text(navigationTitle)
                             .lineLimit(1)
                             .layoutPriority(1)
-                        Image(systemName: store.savedPlace == nil ? "location" : "mappin")
+                        Image(systemName: location.savedPlace == nil ? "location" : "mappin")
                             .font(.caption.weight(.semibold))
                     }
                     .font(.headline)
@@ -29,7 +32,7 @@ struct DashboardView: View {
                 }
             }
             .refreshable {
-                await store.refresh(keepsLoadedState: true)
+                await coordinator.refresh(keepsLoadedState: true)
             }
             .appBackground()
             .sheet(isPresented: $showingSettings) {
@@ -39,7 +42,7 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch store.loadState {
+        switch weather.loadState {
         case .idle, .loading:
             ProgressView("Checking outdoor conditions…")
         case .failed(let message, _):
@@ -48,34 +51,34 @@ struct DashboardView: View {
             } description: {
                 Text(message)
             } actions: {
-                Button("Try Again") { Task { await store.refresh() } }
+                Button("Try Again") { Task { await coordinator.refresh() } }
                     .buttonStyle(.glassProminent)
-                Button("Use Demo Weather") { Task { await store.usePreviewWeather() } }
+                Button("Use Demo Weather") { Task { await weather.usePreviewWeather() } }
                     .buttonStyle(.glass)
             }
         case .loaded(let snapshot, let plan):
             ScrollView {
                 LazyVStack(spacing: 18) {
-                    if store.shouldShowStaleBanner(for: snapshot) {
+                    if weather.shouldShowStaleBanner(for: snapshot) {
                         staleBanner
                     }
                     RecommendationCard(
                         snapshot: snapshot,
                         plan: plan,
-                        unit: store.preferences.temperatureUnit,
-                        temperatureSource: store.preferences.temperatureEvaluationSource,
-                        isRefreshing: store.refreshState == .refreshing
+                        unit: preferences.preferences.temperatureUnit,
+                        temperatureSource: preferences.preferences.temperatureEvaluationSource,
+                        isRefreshing: weather.refreshState == .refreshing
                     )
-                    if store.showsBackgroundFollowTip {
+                    if location.showsBackgroundFollowTip {
                         backgroundFollowTip
                     }
                     NavigationLink {
                         ForecastView(
                             plan: plan,
-                            preferences: store.preferences,
+                            preferences: preferences.preferences,
                             forecastRange: Binding(
-                                get: { store.forecastRange },
-                                set: { store.forecastRange = $0 }
+                                get: { preferences.forecastRange },
+                                set: { preferences.forecastRange = $0 }
                             )
                         )
                     } label: {
@@ -85,19 +88,19 @@ struct DashboardView: View {
                     .accessibilityHint("Opens the 10-day forecast")
                     HourlyList(
                         plan: plan,
-                        preferences: store.preferences,
+                        preferences: preferences.preferences,
                         forecastRange: Binding(
-                            get: { store.forecastRange },
-                            set: { store.forecastRange = $0 }
+                            get: { preferences.forecastRange },
+                            set: { preferences.forecastRange = $0 }
                         )
                     )
                     NavigationLink {
                         ForecastView(
                             plan: plan,
-                            preferences: store.preferences,
+                            preferences: preferences.preferences,
                             forecastRange: Binding(
-                                get: { store.forecastRange },
-                                set: { store.forecastRange = $0 }
+                                get: { preferences.forecastRange },
+                                set: { preferences.forecastRange = $0 }
                             )
                         )
                     } label: {
@@ -113,7 +116,7 @@ struct DashboardView: View {
     }
 
     private var navigationTitle: String {
-        if case .loaded(let snapshot, _) = store.loadState {
+        if case .loaded(let snapshot, _) = weather.loadState {
             snapshot.locationName
         } else {
             ""
@@ -139,7 +142,7 @@ struct DashboardView: View {
                     .font(.headline)
                 Spacer()
                 Button {
-                    store.dismissBackgroundFollowTip()
+                    location.dismissBackgroundFollowTip()
                 } label: {
                     Image(systemName: "xmark")
                 }
@@ -148,7 +151,7 @@ struct DashboardView: View {
             Text("Let OpenAir follow your weather when the app is closed.")
                 .font(.subheadline)
             Button("Set up background following") {
-                store.dismissBackgroundFollowTip()
+                location.dismissBackgroundFollowTip()
                 showingSettings = true
             }
             .buttonStyle(.glass)

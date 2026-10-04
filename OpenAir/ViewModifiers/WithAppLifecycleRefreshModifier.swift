@@ -8,19 +8,19 @@ extension View {
 
 private struct AppLifecycleRefreshModifier: ViewModifier {
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(AppStore.self) private var store
+    @AppCoordinatorEnvironment private var coordinator
 
     func body(content: Content) -> some View {
         content
             .task {
-                if scenePhase == .active { await store.start() }
+                if scenePhase == .active { await coordinator.refreshOnActivation() }
             }
             .onChange(of: scenePhase) { _, newPhase in
                 // Inactive includes system permission sheets; stop only on background.
-                if newPhase == .background { store.setForeground(false) }
+                if newPhase == .background { coordinator.setForeground(false) }
                 guard newPhase == .active else { return }
                 Task {
-                    await store.refreshOnActivation()
+                    await coordinator.refreshOnActivation()
                 }
             }
     }

@@ -67,10 +67,37 @@ The recommendation engine is deterministic and covered by unit tests.
 
 ## Architecture
 
+OpenAir uses SwiftUI Model–View with focused observable stores. Views observe the
+stores they need; `AppCoordinator` connects workflows across stores.
+
+- `Stores`: `WeatherStore` owns forecast state, refresh queuing, caching,
+  recommendation stabilization, and widget publication. `LocationStore` owns
+  location selection, authorization, monitoring, and background-follow guidance.
+  `NotificationStore` owns notification permissions and alert scheduling.
+  `UserPreferenceStore` persists onboarding, comfort preferences, and settings.
+- `Coordinators`: `AppCoordinator` handles lifecycle refreshes, onboarding
+  completion, location changes followed by refresh, preference updates,
+  background execution, and review events. Feature stores do not reference one
+  another. `WeatherRequestCoordinator` resolves request targets and refresh
+  eligibility; `LocationFollowController` manages location-follow permissions
+  and monitoring.
+- `App`: `DependencyContainer` constructs shared adapters and stores, wires the
+  coordinator, and injects dependencies into SwiftUI.
 - `Domain`: weather models and the deterministic recommendation engine.
-- `Services`: WeatherKit, Core Location, MapKit, notification, and cache adapters.
-- `Features`: onboarding, dashboard, schedule, hour detail, and settings.
-- `OpenAirTests`: recommendation boundaries, windows, notification transitions, persistence, and location fallback behavior.
+- `Services`: protocol-based WeatherKit, Core Location, MapKit, notification,
+  cache, widget/watch publication, and background-execution adapters.
+- `Features`: onboarding, dashboard, forecast, hour detail, settings, and tip jar
+  views and presentation models.
+- `OpenAirWidgetShared`: snapshot models, persistence, and shared widget views
+  used by the iOS/watch widget targets and watch app.
+- `OpenAirTests`: focused store tests and coordinator integration tests, alongside
+  recommendation boundaries, notification transitions, persistence, and
+  presentation-model tests, written with Swift Testing.
+
+The main dependency direction is views → stores/coordinator → service protocols
+and domain logic. Concrete adapters implement those protocols using Apple
+frameworks. The coordinator wires store callbacks for cross-feature effects;
+stores keep their own state and share one preference-store instance.
 
 ## Contributing
 

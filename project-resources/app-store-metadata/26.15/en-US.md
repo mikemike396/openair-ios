@@ -1,6 +1,6 @@
 # OpenAir iOS 26.15 — US English metadata
 
-Status: **entered in App Store Connect — owner confirmed**
+Status: **live — verified through the App Store Connect API**
 
 Prepared: 2026-09-27
 
@@ -10,7 +10,11 @@ Submitted: —
 
 Live: —
 
-The owner confirmed on 2026-09-27 that the metadata below was entered exactly as drafted. Build submission and publication have not yet been confirmed. Start the performance comparison period when the updated listing is live.
+First observed live: 2026-10-02
+
+API verified: 2026-10-03
+
+The owner confirmed on 2026-09-27 that the metadata below was entered exactly as drafted. API checks on 2026-10-02 and 2026-10-03 confirmed version 26.15 is ready for distribution and all five US English fields match this snapshot. The exact submission and publication dates have not been established; the version's creation date is not its release date.
 
 ## Name
 
