@@ -68,7 +68,7 @@ struct ComfortSettingsSection: View {
                 coordinator.updatePreferences(preferences.normalized)
             }
         } message: {
-            Text("Restore default comfort limits and temperature source. Your temperature unit, location, and alert settings won’t change.")
+            Text("Restore default temperature, dew point, rain, and wind limits, and switch to feels-like temperature. Your temperature unit, location, and alert settings won’t change.")
         }
     }
 
