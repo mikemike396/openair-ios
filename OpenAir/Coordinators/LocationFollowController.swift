@@ -5,7 +5,6 @@ import UIKit
 
 /// Owns the location-following permission, monitoring, and foreground check timer.
 @Observable
-@MainActor
 final class LocationFollowController {
     private let location: any LocationProviding
     private let preferences: any UserPreferenceStoring

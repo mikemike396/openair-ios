@@ -3,7 +3,6 @@ import OSLog
 import UIKit
 
 /// Isolates iOS execution allowances and refresh scheduling from application workflows.
-@MainActor
 protocol BackgroundRefreshManaging: AnyObject {
     func beginLocationUpdate(expiration: @escaping @MainActor () -> Void)
     func endLocationUpdate()

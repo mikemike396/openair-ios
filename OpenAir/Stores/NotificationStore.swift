@@ -3,7 +3,6 @@ import Observation
 import UserNotifications
 
 @Observable
-@MainActor
 final class NotificationStore {
     private let scheduler: any NotificationScheduling
     private let preferences: any UserPreferenceStoring

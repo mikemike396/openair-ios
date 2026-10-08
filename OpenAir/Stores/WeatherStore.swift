@@ -22,7 +22,6 @@ enum RefreshState: Equatable {
 
 /// Owns the forecast state and serializes requests. Cross-feature effects are wired by AppCoordinator.
 @Observable
-@MainActor
 final class WeatherStore {
     private let requests: WeatherRequestCoordinator
     private let evaluator: any RecommendationEvaluating

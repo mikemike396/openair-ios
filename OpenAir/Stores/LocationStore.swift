@@ -3,7 +3,6 @@ import Foundation
 import Observation
 
 @Observable
-@MainActor
 final class LocationStore {
     private let provider: any LocationProviding
     private let follow: LocationFollowController

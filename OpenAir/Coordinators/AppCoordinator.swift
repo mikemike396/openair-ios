@@ -1,7 +1,6 @@
 import Foundation
 
 /// Connects feature stores and owns cross-feature work, without observable presentation state.
-@MainActor
 final class AppCoordinator {
     private let weather: WeatherStore
     private let location: LocationStore
