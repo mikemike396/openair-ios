@@ -3,6 +3,7 @@ import SwiftUI
 struct ComfortSettingsSection: View {
     @Environment(\.userPreferenceStore) private var preferenceStore
     @AppCoordinatorEnvironment private var coordinator
+    @State private var showsResetConfirmation = false
 
     var body: some View {
         Section("Comfort range") {
@@ -56,10 +57,18 @@ struct ComfortSettingsSection: View {
             )
 
             Button("Reset Comfort Defaults") {
+                showsResetConfirmation = true
+            }
+        }
+        .alert("Reset comfort settings?", isPresented: $showsResetConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset", role: .destructive) {
                 var preferences = preferenceStore.preferences
                 preferences.resetSliderDefaults(for: .autoupdatingCurrent)
                 coordinator.updatePreferences(preferences.normalized)
             }
+        } message: {
+            Text("Restore default comfort limits and temperature source. Your temperature unit, location, and alert settings won’t change.")
         }
     }
 
