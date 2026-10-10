@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct OnboardingView: View {
-    @Environment(AppStore.self) private var store
+    @Environment(LocationStore.self) private var location
+    @Environment(NotificationStore.self) private var notifications
+    @AppCoordinatorEnvironment private var coordinator
 
     @State private var page = 0
     @State private var query = ""
     @State private var hasChosenLocation = false
-    private var selection: LocationSelectionModel { store.locationSelection }
+    private var selection: LocationSelectionModel { location.selection }
 
     @FocusState private var isSearchFocused: Bool
 
@@ -48,7 +50,7 @@ struct OnboardingView: View {
                                         isChoosingCurrentLocation: selection.isChoosingCurrentLocation,
                                         currentLocationMessage: selection.errorMessage,
                                         selectedLocationLabel: selectedLocationLabel,
-                                        savedPlace: store.savedPlace,
+                                        savedPlace: location.savedPlace,
                                         searchResults: Array(selection.searchResults.prefix(4)),
                                         isSearching: selection.isSearching,
                                         searchResultsAnchor: searchResultsAnchor,
@@ -65,10 +67,10 @@ struct OnboardingView: View {
                                     )
                                 default:
                                     OnboardingNotificationsPage(
-                                        authorizationStatus: store.notificationStatus,
+                                        authorizationStatus: notifications.authorizationStatus,
                                         statusLabel: notificationLabel,
                                         requestPermission: {
-                                            Task { await store.requestNotificationPermission() }
+                                            Task { await notifications.requestPermission() }
                                         }
                                     )
                                 }
@@ -103,7 +105,7 @@ struct OnboardingView: View {
                 goBack: { page -= 1 },
                 continueForward: { page += 1 },
                 complete: {
-                    Task { await store.completeOnboarding() }
+                    Task { await coordinator.completeOnboarding() }
                 }
             )
             .padding(.horizontal, 24)
@@ -125,7 +127,7 @@ struct OnboardingView: View {
     }
 
     private var selectedLocationLabel: String? {
-        if let savedPlace = store.savedPlace {
+        if let savedPlace = location.savedPlace {
             return "Selected: \(savedPlace.name)"
         }
 
@@ -139,14 +141,14 @@ struct OnboardingView: View {
     private var canContinue: Bool {
         switch page {
         case 1:
-            store.savedPlace != nil || (hasChosenLocation && !selection.isChoosingCurrentLocation)
+            location.savedPlace != nil || (hasChosenLocation && !selection.isChoosingCurrentLocation)
         default:
             true
         }
     }
 
     private var notificationLabel: String {
-        switch store.notificationStatus {
+        switch notifications.authorizationStatus {
         case .authorized, .provisional, .ephemeral:
             "Notifications enabled"
         case .denied:
@@ -157,7 +159,7 @@ struct OnboardingView: View {
     }
 
     private func chooseCurrentLocation() async {
-        let didChoose = await store.useCurrentLocation()
+        let didChoose = await coordinator.useCurrentLocation()
 
         hasChosenLocation = didChoose
 
@@ -169,7 +171,7 @@ struct OnboardingView: View {
     }
 
     private func choosePlace(_ place: SavedPlace) {
-        store.choose(place: place)
+        location.choose(place: place)
         query = ""
         hasChosenLocation = true
         selection.errorMessage = nil

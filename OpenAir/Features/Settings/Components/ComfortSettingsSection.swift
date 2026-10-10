@@ -1,7 +1,9 @@
 import SwiftUI
 
 struct ComfortSettingsSection: View {
-    @Environment(AppStore.self) private var store
+    @Environment(\.userPreferenceStore) private var preferenceStore
+    @AppCoordinatorEnvironment private var coordinator
+    @State private var showsResetConfirmation = false
 
     var body: some View {
         Section("Comfort range") {
@@ -55,10 +57,18 @@ struct ComfortSettingsSection: View {
             )
 
             Button("Reset Comfort Defaults") {
-                var preferences = store.preferences
-                preferences.resetSliderDefaults(for: .autoupdatingCurrent)
-                store.preferences = preferences.normalized
+                showsResetConfirmation = true
             }
+        }
+        .alert("Reset comfort settings?", isPresented: $showsResetConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset", role: .destructive) {
+                var preferences = preferenceStore.preferences
+                preferences.resetSliderDefaults(for: .autoupdatingCurrent)
+                coordinator.updatePreferences(preferences.normalized)
+            }
+        } message: {
+            Text("Restore default temperature, dew point, rain, and wind limits, and switch to feels-like temperature. Your temperature unit, location, and alert settings won’t change.")
         }
     }
 
@@ -67,11 +77,11 @@ struct ComfortSettingsSection: View {
         keyPath: WritableKeyPath<ComfortPreferences, Double>,
         range: ClosedRange<Double>
     ) -> some View {
-        let unit = store.preferences.temperatureUnit
+        let unit = preferenceStore.preferences.temperatureUnit
         return valueSlider(
             title: title,
             binding: temperaturePreferenceBinding(keyPath),
-            currentValue: store.preferences[keyPath: keyPath],
+            currentValue: preferenceStore.preferences[keyPath: keyPath],
             range: range,
             step: 1,
             value: { "\(unit.display($0))\(unit.symbol)" }
@@ -88,7 +98,7 @@ struct ComfortSettingsSection: View {
         valueSlider(
             title: title,
             binding: preferenceBinding(keyPath),
-            currentValue: store.preferences[keyPath: keyPath],
+            currentValue: preferenceStore.preferences[keyPath: keyPath],
             range: range,
             step: step,
             value: value
@@ -118,11 +128,11 @@ struct ComfortSettingsSection: View {
         _ keyPath: WritableKeyPath<ComfortPreferences, Value>
     ) -> Binding<Value> {
         Binding {
-            store.preferences[keyPath: keyPath]
+            preferenceStore.preferences[keyPath: keyPath]
         } set: { value in
-            var preferences = store.preferences
+            var preferences = preferenceStore.preferences
             preferences[keyPath: keyPath] = value
-            store.preferences = preferences.normalized
+            coordinator.updatePreferences(preferences.normalized)
         }
     }
 
@@ -130,9 +140,9 @@ struct ComfortSettingsSection: View {
         _ keyPath: WritableKeyPath<ComfortPreferences, Double>
     ) -> Binding<Double> {
         Binding {
-            store.preferences[keyPath: keyPath]
+            preferenceStore.preferences[keyPath: keyPath]
         } set: { value in
-            var preferences = store.preferences
+            var preferences = preferenceStore.preferences
             preferences[keyPath: keyPath] = value
             if keyPath == \.idealMinimumFahrenheit,
                preferences.idealMinimumFahrenheit > preferences.idealMaximumFahrenheit {
@@ -141,7 +151,7 @@ struct ComfortSettingsSection: View {
                       preferences.idealMaximumFahrenheit < preferences.idealMinimumFahrenheit {
                 preferences.idealMinimumFahrenheit = preferences.idealMaximumFahrenheit
             }
-            store.preferences = preferences
+            coordinator.updatePreferences(preferences)
         }
     }
 }

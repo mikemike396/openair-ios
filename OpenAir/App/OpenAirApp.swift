@@ -22,7 +22,7 @@ final class OpenAirAppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         // Significant-change relaunches may have no active SwiftUI scene.
-        dependencies.appStore.synchronizeLocationMonitoring()
+        dependencies.appCoordinator.synchronizeLocationMonitoring()
         return true
     }
 }

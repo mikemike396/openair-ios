@@ -2,24 +2,24 @@ import SwiftUI
 import UIKit
 
 struct AlertSettingsSection: View {
-    @Environment(AppStore.self) private var store
+    @Environment(NotificationStore.self) private var notifications
     @Environment(\.openURL) private var openURL
     @State private var showsPermissionAlert = false
 
     var body: some View {
         Section {
             Toggle("Open and close alerts", isOn: alertsEnabled)
-                .disabled(store.isRequestingNotificationPermission)
+                .disabled(notifications.isRequestingPermission)
         } header: {
             Text("Alerts")
         } footer: {
             Text("Alerts use the latest downloaded forecast. iOS may delay or skip background refreshes.")
         }
-        .task { await store.refreshNotificationPermission() }
+        .task { await notifications.refreshPermission() }
         .alert("Notifications are disabled", isPresented: $showsPermissionAlert) {
             Button("Open Settings") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
-                    store.enableAlertsWhenPermissionGranted()
+                    notifications.enableAlertsWhenPermissionGranted()
                     openURL(url)
                 }
             }
@@ -31,11 +31,11 @@ struct AlertSettingsSection: View {
 
     private var alertsEnabled: Binding<Bool> {
         Binding {
-            store.alertsEffectivelyEnabled
+            notifications.alertsEffectivelyEnabled
         } set: { isEnabled in
             Task {
-                let enabled = await store.setAlertsEnabled(isEnabled)
-                if isEnabled && !enabled && store.notificationStatus == .denied {
+                let enabled = await notifications.setAlertsEnabled(isEnabled)
+                if isEnabled && !enabled && notifications.authorizationStatus == .denied {
                     showsPermissionAlert = true
                 }
             }

@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct RootView: View {
-    @Environment(AppStore.self) private var appStore
+    @Environment(\.userPreferenceStore) private var preferences
 
     var body: some View {
         NavigationStack {
-            if appStore.hasCompletedOnboarding {
+            if preferences.hasCompletedOnboarding {
                 DashboardView()
             } else {
                 OnboardingView()

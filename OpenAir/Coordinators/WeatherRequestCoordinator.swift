@@ -2,7 +2,6 @@ import CoreLocation
 import Foundation
 
 /// Checks weather-request eligibility before reverse geocoding, then fetches weather.
-@MainActor
 final class WeatherRequestCoordinator {
     enum Source {
         case currentLocation

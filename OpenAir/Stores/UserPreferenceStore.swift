@@ -22,7 +22,7 @@ enum BackgroundFollowTipState: Codable, Equatable {
     case consumed
 }
 
-// AppStore and its coordinators must mutate the same preference-store instance.
+// Feature stores and the app coordinator share the same preference-store instance.
 protocol UserPreferenceStoring: AnyObject {
     var hasCompletedOnboarding: Bool { get set }
     var savedPlace: SavedPlace? { get set }
